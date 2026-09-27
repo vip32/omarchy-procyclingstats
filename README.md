@@ -87,7 +87,8 @@ cache, credentials or background service outside the shell.
 
 ## Use
 
-Click the bike, choose a date, then select a race. Click a group to expand its
+Click the bike, choose a date, then select a race. Each row has a ↗ icon that
+opens that race or stage’s page directly on ProCyclingStats. Click a group to expand its
 riders and bib numbers. Finished stages open on GC; switch to stage results when
 needed. The header’s flag always returns to the race list; Live returns to today.
 
@@ -98,6 +99,7 @@ needed. The header’s flag always returns to the race list; Live returns to tod
 | Live indicator / `2` | Today’s live races |
 | `←` / `→` in the list | Yesterday / today / tomorrow |
 | Click the date | Return to today |
+| Race-row ↗ | Open that race or stage on PCS |
 | `J` / `K` or `↓` / `↑` | Select a race or setting |
 | Enter / click a race | Open its details |
 | `T` in race details | Overview / race events |

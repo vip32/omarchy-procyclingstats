@@ -7,6 +7,7 @@ First prepared marketplace candidate; not yet published or tagged.
 - Center-bar race-bike widget with a compact live race overview, rider groups,
   time gaps, race events and course profile.
 - Yesterday/today/tomorrow navigation, selected-stage GC and upcoming race previews.
+- A direct PCS link on every race row, alongside the header’s current-view link.
 - Thirteen category checkboxes and a minimum race level, all included by default.
 - Configurable refresh intervals and optional expiring event notifications.
 - Visible connection warnings, bounded requests, cached snapshots and retry backoff.

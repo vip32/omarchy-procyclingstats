@@ -102,6 +102,9 @@ Panel {
     }
     function openSource() {
         var path = selected ? selected.path + (expanded && detailView === "events" ? "/live/race-events" : !preview && (selected.status === "live" || selected.status === "upcoming") ? "/live" : "") : ""
+        openPcsPath(path)
+    }
+    function openPcsPath(path) {
         if(path && !/^race\/[a-z0-9-]+\/\d{4}\/(result|stage-\d+[a-z]?)(\/live(\/race-events)?)?$/.test(path)) return
         Quickshell.execDetached(["/usr/bin/xdg-open","https://www.procyclingstats.com/" + path])
     }
@@ -308,6 +311,7 @@ Panel {
                                 width:parent.width;height:Style.space(74)
                                 bordered:true;foreground:root.foreground
                                 hasCursor:root.cursorIndex===index
+                                MouseArea {anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.PointingHandCursor;onEntered:root.cursorIndex=raceRow.index;onClicked:root.select(raceRow.index,true)}
                                 Column {
                                     anchors.left:parent.left;anchors.leftMargin:Style.space(10)
                                     anchors.right:miniProfile.left;anchors.rightMargin:Style.space(10)
@@ -317,11 +321,21 @@ Panel {
                                 }
                                 Column {
                                     id:miniProfile;anchors.right:parent.right;anchors.rightMargin:Style.space(10)
-                                    anchors.verticalCenter:parent.verticalCenter;width:Style.space(84)
+                                    anchors.verticalCenter:parent.verticalCenter;width:Style.space(104)
                                     Profile {width:parent.width;height:Style.space(27);points:raceRow.modelData.profile || [];lineColor:Color.accent}
-                                    RaceText {width:parent.width;text:raceRow.modelData.toGo || "→";horizontalAlignment:Text.AlignRight;font.pixelSize:Style.font.caption;color:root.dim}
+                                    Row {
+                                        width:parent.width;height:Style.space(24);spacing:Style.space(4)
+                                        RaceText {width:parent.width-raceLink.width-parent.spacing;anchors.verticalCenter:parent.verticalCenter;text:raceRow.modelData.toGo || "";horizontalAlignment:Text.AlignRight;font.pixelSize:Style.font.caption;color:root.dim}
+                                        Button {
+                                            id:raceLink;width:Style.space(24);height:Style.space(24)
+                                            text:"↗";foreground:root.foreground
+                                            tooltipText:"Open "+raceRow.modelData.name+" on PCS"
+                                            Accessible.name:tooltipText
+                                            onClicked:root.openPcsPath(raceRow.modelData.path)
+                                        }
+                                    }
                                 }
-                                MouseArea {anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.PointingHandCursor;onEntered:root.cursorIndex=raceRow.index;onClicked:root.select(raceRow.index,true)}
+
                             }
                         }
                         RaceText {
