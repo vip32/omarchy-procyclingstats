@@ -253,6 +253,9 @@ Panel {
         id:dashboardWindow
         title:"ProCyclingStats — Race dashboard"
         visible:false
+        // Synchronize the requested visibility after a compositor-initiated close.
+        // Otherwise Quickshell can retain its old true request and ignore reopening.
+        onClosed: visible=false
         color:Color.background
         implicitWidth:Style.space(760)
         implicitHeight:Style.space(760)
