@@ -54,6 +54,14 @@ class Parsing(unittest.TestCase):
         self.assertNotIn('PRIVATE IN TEST',json.dumps(race))
         self.assertEqual(race['keypoints'][0]['gradient'],6.8)
         self.assertGreaterEqual(len(race['profile']),3)
+    def test_hidden_uncertainty_marker_is_not_uncertain(self):
+        race=pcs.parse_race(live().replace('data-uncertain="1"','data-uncertain="0"'),'race/demo/2026/result')
+        self.assertFalse(race['groups'][0]['uncertain'])
+    def test_start_timezone_and_source_time(self):
+        race=pcs.parse_race(live(dict(DATA,start_time_cet='15:08',cur_ts=1790528157)),'race/demo/2026/result')
+        self.assertEqual(race['start'],'15:08')
+        self.assertEqual(race['startZone'],'CET')
+        self.assertTrue(race['sourceAt'].endswith('+00:00'))
     def test_finished_zero_is_not_missing(self):
         race=pcs.parse_race(live(dict(DATA,race_status='finished',kmtogo=0)), 'race/demo/2026/result')
         self.assertEqual(race['kmToGo'],0)

@@ -211,7 +211,7 @@ def parse_race(html, path):
             label=txt(g.first(cls='groupname')) or ('Front of race' if i==0 else 'Group '+str(i+1))
             count=sum(1 for a in g.nodes('a') if a.attrs.get('href','').startswith('rider/'))
             groups.append(dict(label=label,gap=gap[0] if gap else '',count=count,
-                               uncertain='??' in raw or (gap_node is not None and gap_node.attrs.get('data-uncertain')=='1')))
+                               uncertain=(gap_node.attrs['data-uncertain']=='1') if gap_node is not None and 'data-uncertain' in gap_node.attrs else '??' in raw))
     keypoints=[]
     for kp in (data.get('keypoints') or [])[:120]:
         if not isinstance(kp,dict) or kp.get('type') not in (1,2,3) or not kp.get('title'): continue
@@ -223,7 +223,7 @@ def parse_race(html, path):
     header=txt(doc.first('title')).removeprefix('LiveStats for ')
     return dict(state='ready',path=path,name=header,status=status,date=clean(data.get('race_date'),10),
                 kmToGo=remaining,kmDone=done,distance=distance,avgSpeed=number(value('avg_speed','avg'),150),
-                elapsed=value('racetime'),start=value('starttime','start_time_cet'),elevation=number(value('elevation_todo')),
+                elapsed=value('racetime'),start=clean(data.get('start_time_cet')) or value('starttime'),startZone='CET' if data.get('start_time_cet') else 'local',elevation=number(value('elevation_todo')),
                 groups=groups,keypoints=keypoints[:40],profile=profile(doc.first(cls='bigProfile') or doc),
                 sourceAt=dt.datetime.fromtimestamp(data['cur_ts'],dt.timezone.utc).isoformat()
                 if number(data.get('cur_ts'),4102444800) is not None else '')

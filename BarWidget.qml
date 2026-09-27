@@ -70,6 +70,7 @@ Panel {
         function status(): string {
             return JSON.stringify({opened:root.opened, expanded:root.expanded, serviceReady:!!root.service,
                 rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
+                geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 demo:root.demo, vertical:root.bar ? root.bar.vertical : false})
         }
     }
@@ -203,7 +204,7 @@ Panel {
                         visible:root.expanded && !!root.selected
                         width:parent.width;spacing:Style.space(12)
                         RaceText {width:parent.width;text:root.selected ? root.selected.name : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
-                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || "",root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
+                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || "",root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "LiveStats unavailable" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
                         RaceText {width:parent.width;visible:!!root.detail.error;text:(root.detail.fetchedAt ? "Previous snapshot · " : "")+(root.detail.error || "");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Color.urgent}
                         Grid {
                             width:parent.width;columns:3;spacing:Style.space(8)
@@ -214,7 +215,7 @@ Panel {
                                     {label:"AVG. KM/H",value:root.val(root.detail.avgSpeed)},
                                     {label:"KM DONE",value:root.val(root.detail.kmDone)},
                                     {label:"DISTANCE",value:root.val(root.detail.distance," km")},
-                                    {label:"START (PCS)",value:root.detail.start || "—"}
+                                    {label:"START ("+(root.detail.startZone || "local")+")",value:root.detail.start || "—"}
                                 ]
                                 CursorSurface {
                                     required property var modelData

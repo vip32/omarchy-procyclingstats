@@ -120,7 +120,7 @@ Item {
     }
     Process {
         id: worker
-        stdout: StdioCollector { onStreamFinished: root.output = text }
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.output = text }
         onExited: function(code, status) { root.consume(code) }
     }
     Timer {
