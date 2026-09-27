@@ -12,6 +12,7 @@ sessions or attempt challenge bypass. The provider can block access or change it
 | Browser launch | `/usr/bin/xdg-open` receives a validated PCS URL after a user action |
 | Notifications | `/usr/bin/omarchy notification send`, only when enabled; bounded, escaped remote text |
 | Settings write | The shell updates this widget’s entry in `~/.config/omarchy/shell.json` when the user changes settings |
+| Window focus | Wayland toplevel metadata locates the dashboard by title and activates it when the user opens it; Qt activation is the fallback |
 | Runtime state | Race snapshots, day lists and notification baselines live in memory and clear on restart |
 
 Runs with your normal user permissions. No separate daemon, service installation,

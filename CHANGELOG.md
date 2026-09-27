@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.7.0 — submission candidate
+## 0.8.0 — submission candidate
+
+- Pop the dashboard out into a normal tiled desktop window and dock it back with
+  the header button or `P`, retaining the existing view and rider expansion state.
+- Reuse one detached window and one polling service; clicking the bike focuses
+  the window across workspaces, or reopens it after a desktop close.
+- Add native window lifecycle checks and a reproducible window screenshot.
+
+## 0.7.0 — initial candidate
 
 First prepared marketplace candidate; not yet published or tagged.
 

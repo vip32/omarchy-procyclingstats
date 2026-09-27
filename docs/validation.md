@@ -1,17 +1,18 @@
 # Candidate validation
 
-Candidate: version **0.7.0**, prepared **2026-09-27**. Exact final source identity
+Candidate: version **0.8.0**, prepared **2026-09-27**. Exact final source identity
 and raw local reports are in `.git/submission-candidate/` of the preparation checkout.
 
 | Check | Evidence / scope |
 | --- | --- |
-| Portable suite | 85 behavioral tests: 46 Python, 26 JavaScript, 13 QtTest service cases |
+| Portable suite | 88 behavioral tests: 46 Python, 26 JavaScript, 16 QtTest service cases |
 | Native manifest validation | `omarchy plugin validate .` on Omarchy 4.0.4-1 |
 | QML syntax | Qt 6.11.2 `qmlformat` parses the production QML files |
 | Advisory static review | No reported security findings; collected process output and process execution require human capability review |
 | Process boundary review | Isolated Python; argument arrays; fixed HTTPS origin; producer-side byte/node/output limits; total deadline; serialized requests; validated race paths |
 | Live race data | Today’s six races enriched with category and class; yesterday’s CRO stage GC returned 104 riders and race events; tomorrow’s preview returned start, distance and route |
 | Local installation/update | Installed from the Git checkout, updated, removed and freshly reinstalled at the production-code commit; shell IPC and native panel exercised |
+| Detached window | One tiled instance, repeated open, cross-workspace activation, floating/tiled resize, desktop close/reopen, docking and retained view checked with fictional data |
 | Filters | Native settings screenshot reviewed; saved filter values checked against the matching shell entry. Automated matching, partial-failure and notification scope tests passed |
 | Demo captures | Native fixture-only screenshots, with normal fetching/preferences/workspace/cursor restored after capture; a forced screenshot-write failure also restored normal operation |
 

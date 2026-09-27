@@ -38,6 +38,7 @@ so update it before capturing a changed UI:
 omarchy plugin update io.github.vip32.procyclingstats --yes
 omarchy restart shell
 ./demo/run --output preview.png
+./demo/run --window --verify-window --output screenshots/window.png
 ./demo/run --compact --output screenshots/compact.png
 ./demo/run --events --output screenshots/events.png
 ./demo/run --race-index 2 --output screenshots/gc.png
@@ -60,9 +61,14 @@ The harness records the installed commit, shell process IDs, current panel state
 workspace and cursor in a private, uniquely named recovery directory under
 `XDG_RUNTIME_DIR` (or `/tmp`). It also backs up shell configuration without changing
 it. Normal completion and exceptions restore live fetching, the workspace, cursor,
-selected day/race, open state and scroll position before deleting recovery files.
+selected day/race, popup/window mode, open state and scroll position before deleting recovery files.
 A stale recovery directory blocks another capture. Restoration failures retain
 its exact path for inspection; do not delete it until normal operation is restored.
+
+`--verify-window` checks one tiled instance, repeated open, activation from another
+workspace, a floating/tiled geometry change, desktop close/reopen and docking.
+It checks retained selection, date, tab, settings view, classification and expanded
+group count. It does not assert compositor tile ordering after remapping.
 
 Demo mode can also be controlled manually:
 

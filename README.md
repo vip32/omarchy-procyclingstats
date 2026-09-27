@@ -10,6 +10,8 @@ Race coverage depends on the public data PCS makes available.
 
 ## Features
 
+- **Pop-out window:** detach into a regular tiled window and dock back without
+  losing your current view; polling and notifications stay shared.
 - **Yesterday, today and tomorrow:** results, current races and upcoming stages.
 - **One race overview:** distance remaining, race time, average speed, groups and
   rider splits, latest events, course profile and the next published climb or sprint.
@@ -37,7 +39,7 @@ All screenshots show the actual plugin using committed fictional fixtures.
 | --- | --- |
 | ![General classification](screenshots/gc.png) | ![Upcoming race information](screenshots/tomorrow-preview.png) |
 
-[Race events](screenshots/events.png) · [Refresh and notifications](screenshots/refresh-settings.png)
+[Detached window](screenshots/window.png) · [Race events](screenshots/events.png) · [Refresh and notifications](screenshots/refresh-settings.png)
 · [Connection warning](screenshots/warning.png) · [Tomorrow’s list](screenshots/tomorrow-list.png)
 
 ## Requirements
@@ -94,7 +96,7 @@ needed. The header’s flag always returns to the race list; Live returns to tod
 
 | Control | Action |
 | --- | --- |
-| Bike: left / right / middle click | Toggle dashboard / open PCS / refresh |
+| Bike: left / right / middle click | Toggle popup or focus detached window / open PCS / refresh |
 | Flag / `1` | Return to the full list for the selected date |
 | Live indicator / `2` | Today’s live races |
 | `←` / `→` in the list | Yesterday / today / tomorrow |
@@ -104,11 +106,20 @@ needed. The header’s flag always returns to the race list; Live returns to tod
 | Enter / click a race | Open its details |
 | `T` in race details | Overview / race events |
 | Header ↗ / `O` | Open the selected view on PCS |
+| Window icon / `P` | Pop out to a desktop window / dock back to the bar |
 | Gear / comma | Settings |
 | `H` / `L` in Settings | Decrease / increase, uncheck / check |
 | Enter in Settings | Toggle a category or adjust the selected setting |
 | `R` | Refresh, respecting configured intervals and cooldowns |
 | Esc | Back, then close |
+
+The pop-out is a normal Hyprland window: tile, move or resize it with your usual
+window controls. Closing it keeps the current view; click the bike to reopen it.
+Only one detached dashboard opens, and it uses the existing polling service.
+The selected date/race, tab, expanded rider groups and scroll position survive
+detaching and docking (scroll is clamped if the new view is shorter). Navigation
+state lasts for the current loaded shell session; shell restart or plugin reload
+resets it. Saved settings persist across restarts.
 
 Settings save automatically to the widget’s entry in `~/.config/omarchy/shell.json`.
 See [filters, refresh intervals and notifications](docs/settings.md).

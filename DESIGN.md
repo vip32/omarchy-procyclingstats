@@ -1,10 +1,16 @@
 # Architecture
 
 `io.github.vip32.procyclingstats` is one root Omarchy Quattro plugin with a
-bar-widget and shared service. Version 0.7.0 is the first submission candidate.
+bar-widget and shared service. Version 0.8.0 is the first submission candidate.
 
 - `BarWidget.qml` owns panel navigation, local selection and the shell-hosted
-  Settings page. Configuration is saved through the host’s widget-entry API.
+  Settings page. The same live content tree is reparented between the bar popup
+  and a regular `FloatingWindow`; no second dashboard or polling service is created.
+  Selection, tabs, scroll and rider expansion state remain in that tree. The service
+  holds one window owner across bar instances, releasing it on widget destruction.
+  Desktop close hides the window and resets Quickshell requested visibility so it
+  can reopen. Window activation uses the matching Wayland toplevel. Navigation
+  state is session-local and clears on plugin reload or shell restart. Configuration is saved through the host’s widget-entry API.
 - `Service.qml` owns serialized polling, bounded request queues, three watched
   races, date-keyed caches, cooldowns and notification baselines across panels.
 - `bin/pcs.py` is a standard-library HTML adapter. Every process receives an

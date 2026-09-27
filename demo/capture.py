@@ -49,6 +49,18 @@ def verify_window():
     ipc(target,'open');ipc(target,'open')
     if len(dashboard_windows())!=1 or dashboard_windows()[0]['address']!=address:
         raise RuntimeError('Repeated open duplicated the dashboard')
+    used={w['id'] for w in json.loads(run('hyprctl','workspaces','-j'))}
+    away=next(i for i in range(110,130) if i not in used)
+    run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{away}" }})')
+    ipc(target,'open')
+    wait_for(lambda:json.loads(run('hyprctl','activewindow','-j')).get('address')==address)
+    same_view()
+    # Exercise a real geometry change, then return to the normal tiled state.
+    run('hyprctl','dispatch','hl.dsp.window.float({action="toggle"})')
+    wait_for(lambda:dashboard_windows()[0]['floating'])
+    same_view()
+    run('hyprctl','dispatch','hl.dsp.window.float({action="toggle"})')
+    wait_for(lambda:not dashboard_windows()[0]['floating'])
     # A real compositor close must retain the QML view and keep the shell alive.
     wait_for(lambda:json.loads(run('hyprctl','activewindow','-j')).get('address')==address)
     run('hyprctl','dispatch','hl.dsp.window.close()')
@@ -60,7 +72,7 @@ def verify_window():
     ipc(target,'dock')
     wait_for(lambda:not dashboard_windows() and not status(target)['detached'])
     same_view()
-    print('Window smoke check passed: tiled, one instance, native close/reopen, dock and view retention.')
+    print('Window smoke check passed: tiled, one instance, cross-workspace focus, resize, native close/reopen, dock and view retention.')
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
