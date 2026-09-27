@@ -14,7 +14,7 @@ Column {
     spacing: Style.space(12)
     readonly property var fields: [
         {key:"refreshIntervalSec",label:"Live races & events",min:60,max:900,step:30},
-        {key:"overviewIntervalSec",label:"Today’s race list",min:300,max:3600,step:60},
+        {key:"overviewIntervalSec",label:"Race list",min:300,max:3600,step:60},
         {key:"resultsIntervalSec",label:"Finished results & GC",min:300,max:3600,step:60},
         {key:"notificationDurationSec",label:"Notification duration",min:5,max:30,step:1}
     ]

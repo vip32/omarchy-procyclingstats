@@ -3,7 +3,7 @@
 A road-bike icon in the center of the Omarchy Quattro bar. Click it for today's
 professional road cycling races, then select a race for its LiveStats overview.
 
-- Today and Live filters, including women's and men's races.
+- Races and Live filters in the header (checkered flag and live indicator), including women's and men's races.
 - Distance remaining and covered, elapsed race time, average speed and start time.
 - Course profile with the current race position.
 - Race situation: front group, chasing groups and peloton, with rider names, bibs
@@ -102,7 +102,9 @@ installed clone leaves the development checkout untouched.
 
 | Input | Action |
 | --- | --- |
-| Left click bike | Open or close today's races |
+| Left click bike | Open or close races |
+| Flag / 1 | Show Races |
+| Live indicator / 2 | Show Live races |
 | Right click bike | Open PCS in browser |
 | Middle click bike / R | Refresh, subject to cooldown |
 | Click race / Enter | Expand race overview |

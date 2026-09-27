@@ -1,10 +1,10 @@
 # Design and verification
 
-- ID: `io.github.vip32.procyclingstats`, version 0.4.0.
+- ID: `io.github.vip32.procyclingstats`, version 0.4.1.
 - Hosted kinds: `bar-widget` (`BarWidget.qml`) and `service` (`Service.qml`).
 - UI: native Omarchy `Panel`, `KeyboardPanel`, `BarIconButton`, `CursorSurface`;
   custom Canvas road bike and profile. Stochi informs the visual layout.
-- Per-panel state: Today/Live filter, selected row, expanded state, scroll.
+- Per-panel state: Races/Live filter, selected row, expanded state, scroll.
 - Shared state: today's races, timestamped race snapshots, serialized fetch queue,
   request timestamps, cooldown and three most recently requested race pages.
 - Settings: live/list/results intervals, notification toggle and expiry saved inline

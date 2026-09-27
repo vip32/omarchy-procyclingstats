@@ -29,7 +29,7 @@ Panel {
     property string classificationKind: "gc"
     property string detailView: "overview"
     property string lastSelectedPath: ""
-    property string filter: "Today"
+    property string filter: "Races"
     property int cursorIndex: 0
     property bool expanded: false
     property double now: Date.now()
@@ -40,6 +40,12 @@ Panel {
         return secs < 60 ? "Updated just now" : "Updated " + Math.floor(secs/60) + "m ago"
     }
     function val(n, unit) {return n === null || n === undefined ? "—" : String(n) + (unit || "")}
+    function showFilter(name) {
+        filter=name === "Live" ? "Live" : "Races"
+        settingsOpen=false
+        expanded=false
+        Qt.callLater(function(){scroller.contentY=0})
+    }
     function titleStatus(s) { return ({live:"LIVE",finished:"FINISHED",upcoming:"UPCOMING",scheduled:"SCHEDULED",unknown:"STATUS UNKNOWN"})[s] || "WAITING" }
     function configure() {
         if(service) for(var key in preferences) service[key]=preferences[key]
@@ -103,9 +109,9 @@ Panel {
         function settings(): void { root.settingsOpen=true;root.open() }
         function showRaces(): void { root.settingsOpen=false }
         function compact(): void { root.expanded = false; root.open() }
-        function selectRace(index: int): void { root.filter = "Today"; root.open(); root.select(index, true) }
+        function selectRace(index: int): void { root.filter = "Races"; root.open(); root.select(index, true) }
         function restoreView(filterName: string, path: string, expanded: bool, opened: bool): void {
-            root.filter = filterName === "Live" ? "Live" : "Today"
+            root.filter = filterName === "Live" ? "Live" : "Races"
             var i = root.rows.findIndex(function(r){return r.path === path})
             root.cursorIndex = Math.max(0,i)
             root.expanded = expanded
@@ -168,6 +174,8 @@ Panel {
                 var k=text.toLowerCase()
                 if(k===","){root.settingsOpen=!root.settingsOpen;return}
                 if(root.settingsOpen)return
+                if(k==="1")root.showFilter("Races")
+                if(k==="2")root.showFilter("Live")
                 if(k==="r" && root.service)root.service.refresh()
                 if(k==="o")root.openSource()
                 if(k==="t" && root.expanded)root.detailView=root.detailView==="events" ? "overview" : "events"
@@ -211,9 +219,11 @@ Panel {
                         }
                         Row {
                             id:actions;anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(6)
+                            Button {text:"\uf11e";tooltipText:"Races (1)";Accessible.name:"Races";selected:root.filter==="Races" && !root.settingsOpen;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
+                            Button {text:"◉";tooltipText:"Live races (2)";Accessible.name:"Live races";selected:root.filter==="Live" && !root.settingsOpen;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Live")}
                             Button {text:"↻";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:if(root.service)root.service.refresh()}
                             Button {text:root.settingsOpen ? "←" : "⚙";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:root.settingsOpen=!root.settingsOpen}
-                            Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to today’s races";bordered:true;foreground:root.foreground;onClicked:root.expanded=false}
+                            Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to races";bordered:true;foreground:root.foreground;onClicked:root.expanded=false}
                         }
                     }
                     PanelSeparator {foreground:root.foreground}
@@ -225,13 +235,6 @@ Panel {
                     }
                     Column {
                     width:parent.width;spacing:Style.spacing.panelGap;visible:!root.settingsOpen
-                    Row {
-                        width:parent.width;spacing:Style.space(6)
-                        Repeater {
-                            model:["Today","Live"]
-                            Button {required property string modelData;width:(parent.width-Style.space(6))/2;text:modelData;selected:root.filter===modelData;bordered:true;foreground:root.foreground;onClicked:root.filter=modelData}
-                        }
-                    }
                     RaceText {
                         width:parent.width
                         visible:root.service && root.service.error !== ""
@@ -243,7 +246,7 @@ Panel {
                     Column {
                         visible:!root.expanded || !root.selected
                         width:parent.width;spacing:Style.space(7)
-                        PanelSectionHeader {text:"TODAY’S RACES";foreground:root.foreground}
+                        PanelSectionHeader {text:root.filter==="Live" ? "LIVE RACES" : "RACES";foreground:root.foreground}
                         Repeater {
                             id:raceRepeater
                             model:root.rows

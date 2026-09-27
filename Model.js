@@ -35,7 +35,7 @@ function updateIssues(previous, path, result, cached, label, now) {
         } else if (state) delete issues[id]
     }
     cached = cached || {}
-    update("", result.state, result.error, cached.fetchedAt, path ? label : "Today’s races")
+    update("", result.state, result.error, cached.fetchedAt, path ? label : "Races")
     if (path && result.state === "ready") {
         update("/events", result.eventsState, result.eventsError, cached.eventsFetchedAt, "Race events · " + label)
         // A finished results response may omit resultsState on success.
