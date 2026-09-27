@@ -224,7 +224,9 @@ def parse_race(html, path):
     return dict(state='ready',path=path,name=header,status=status,date=clean(data.get('race_date'),10),
                 kmToGo=remaining,kmDone=done,distance=distance,avgSpeed=number(value('avg_speed','avg'),150),
                 elapsed=value('racetime'),start=value('starttime','start_time_cet'),elevation=number(value('elevation_todo')),
-                groups=groups,keypoints=keypoints[:40],profile=profile(doc.first(cls='bigProfile') or doc))
+                groups=groups,keypoints=keypoints[:40],profile=profile(doc.first(cls='bigProfile') or doc),
+                sourceAt=dt.datetime.fromtimestamp(data['cur_ts'],dt.timezone.utc).isoformat()
+                if number(data.get('cur_ts'),4102444800) is not None else '')
 
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -249,6 +251,7 @@ def fetch(path):
         with urllib.request.build_opener(SafeRedirect()).open(request,timeout=10) as response:
             return bounded_read(response).decode('utf-8',errors='replace')
     except urllib.error.HTTPError as e:
+        e.close()
         if e.code in (401,403): raise SourceError('blocked','PCS blocks automated access. Open PCS in your browser.') from None
         if e.code == 429: raise SourceError('rate-limited','PCS rate limit reached. Retrying in 15 minutes.') from None
         if e.code == 404: raise SourceError('unavailable','PCS has no LiveStats page for this race.') from None

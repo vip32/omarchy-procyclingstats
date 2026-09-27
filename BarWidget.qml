@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
@@ -34,7 +35,18 @@ Panel {
         cursorIndex = Math.max(0,Math.min(rows.length-1,index))
         if(show) expanded = true
         if(service && selected) service.watch(selected.path)
-        Qt.callLater(function() { scroller.contentY = 0 })
+        Qt.callLater(function() {
+            if (expanded) scroller.contentY = 0
+            else {
+                var item = raceRepeater.itemAt(cursorIndex)
+                if (item) {
+                    var y = item.mapToItem(column, 0, 0).y
+                    if (y < scroller.contentY) scroller.contentY = y
+                    else if (y + item.height > scroller.contentY + scroller.height)
+                        scroller.contentY = y + item.height - scroller.height
+                }
+            }
+        })
     }
     function openSource() {
         var path = selected ? selected.path + (selected.status === "live" || selected.status === "upcoming" ? "/live" : "") : ""
@@ -49,6 +61,18 @@ Panel {
         if(opened) {now=Date.now(); configure(); if(service)service.refresh(); Qt.callLater(function(){keys.forceActiveFocus()})}
     }
     Timer { interval:30000; running:root.opened; repeat:true; onTriggered:root.now=Date.now() }
+    IpcHandler {
+        target: "io.github.vip32.procyclingstats.panel"
+        function open(): void { root.open() }
+        function close(): void { root.close() }
+        function expand(): void { root.open(); root.select(root.cursorIndex, true) }
+        function compact(): void { root.expanded = false; root.open() }
+        function status(): string {
+            return JSON.stringify({opened:root.opened, expanded:root.expanded, serviceReady:!!root.service,
+                rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
+                demo:root.demo, vertical:root.bar ? root.bar.vertical : false})
+        }
+    }
     implicitWidth: button.implicitWidth
     implicitHeight: button.implicitHeight
 
@@ -144,6 +168,7 @@ Panel {
                         width:parent.width;spacing:Style.space(7)
                         PanelSectionHeader {text:"TODAY’S RACES";foreground:root.foreground}
                         Repeater {
+                            id:raceRepeater
                             model:root.rows
                             CursorSurface {
                                 id:raceRow
@@ -178,7 +203,7 @@ Panel {
                         visible:root.expanded && !!root.selected
                         width:parent.width;spacing:Style.space(12)
                         RaceText {width:parent.width;text:root.selected ? root.selected.name : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
-                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || "",root.detail.fetchedAt ? root.age(root.detail.fetchedAt) : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
+                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || "",root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
                         RaceText {width:parent.width;visible:!!root.detail.error;text:(root.detail.fetchedAt ? "Previous snapshot · " : "")+(root.detail.error || "");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Color.urgent}
                         Grid {
                             width:parent.width;columns:3;spacing:Style.space(8)

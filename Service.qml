@@ -82,7 +82,7 @@ Item {
         if (["blocked", "rate-limited"].indexOf(result.state) >= 0) {
             nextAllowed = Date.now() + 900000
             queue = []
-        } else if (["offline", "error", "unsupported"].indexOf(result.state) >= 0) {
+        } else if (["offline", "error", "unsupported"].indexOf(result.state) >= 0 && !currentPath) {
             nextAllowed = Date.now() + 300000
             queue = []
         }
