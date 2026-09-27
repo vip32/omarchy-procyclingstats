@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Window
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
@@ -52,8 +53,12 @@ Panel {
         dashboardWindow.visible=true
         dashboardWindow.minimized=false
         Qt.callLater(function(){
-            var nativeWindow=windowMount.Window.window
-            if(nativeWindow) nativeWindow.requestActivate()
+            var toplevel=ToplevelManager.toplevels.values.find(function(t){return t.title===dashboardWindow.title})
+            if(toplevel) toplevel.activate()
+            else {
+                var nativeWindow=windowMount.Window.window
+                if(nativeWindow) nativeWindow.requestActivate()
+            }
             keys.forceActiveFocus()
         })
     }

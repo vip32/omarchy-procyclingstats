@@ -8,6 +8,7 @@ TestCase {
     property string racePath: "race/fictional/2026/result"
     property var race: ({path:racePath,name:"Fictional race",status:"live"})
     Component {id:factory;Plugin.Service {}}
+    Component {id:ownerFactory;QtObject {}}
     function init() {
         Quickshell.commands=[]
         service=createTemporaryObject(factory,this)
@@ -174,5 +175,31 @@ TestCase {
         compare(Quickshell.commands.length,0)
         deliver(snapshot("Newest"))
         compare(Quickshell.commands.length,1)
+    }
+    function test_detached_window_has_one_owner() {
+        var first=createTemporaryObject(ownerFactory,this)
+        var second=createTemporaryObject(ownerFactory,this)
+        verify(service.claimWindow(first))
+        verify(service.claimWindow(first))
+        verify(!service.claimWindow(second))
+        compare(service.windowOwner,first)
+    }
+    function test_only_the_window_owner_can_release_it() {
+        var first=createTemporaryObject(ownerFactory,this)
+        var second=createTemporaryObject(ownerFactory,this)
+        service.claimWindow(first)
+        service.releaseWindow(second)
+        compare(service.windowOwner,first)
+        service.releaseWindow(first)
+        compare(service.windowOwner,null)
+        verify(service.claimWindow(second))
+    }
+    function test_destroyed_window_owner_does_not_block_reopening() {
+        var first=createTemporaryObject(ownerFactory,this)
+        service.claimWindow(first)
+        first.destroy()
+        wait(0)
+        compare(service.windowOwner,null)
+        verify(service.claimWindow(createTemporaryObject(ownerFactory,this)))
     }
 }

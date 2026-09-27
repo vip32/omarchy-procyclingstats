@@ -31,10 +31,43 @@ def wait_for(predicate):
 
 def interrupted(*_): raise KeyboardInterrupt()
 
+def dashboard_windows():
+    return [c for c in json.loads(run('hyprctl','clients','-j')) if c.get('title')=='ProCyclingStats — Race dashboard']
+
+def verify_window():
+    target=ID+'.panel'
+    before=status(target)
+    def same_view():
+        current=status(target)
+        for key in ('selected','dayOffset','filter','expanded','detailView','settingsOpen','classificationTitle','expandedGroups'):
+            if current[key]!=before[key]: raise RuntimeError('Window transition changed '+key)
+    ipc(target,'detach')
+    wait_for(lambda:len(dashboard_windows())==1)
+    if dashboard_windows()[0]['floating']: raise RuntimeError('Dashboard did not tile on this host')
+    same_view()
+    address=dashboard_windows()[0]['address']
+    ipc(target,'open');ipc(target,'open')
+    if len(dashboard_windows())!=1 or dashboard_windows()[0]['address']!=address:
+        raise RuntimeError('Repeated open duplicated the dashboard')
+    # A real compositor close must retain the QML view and keep the shell alive.
+    wait_for(lambda:json.loads(run('hyprctl','activewindow','-j')).get('address')==address)
+    run('hyprctl','dispatch','hl.dsp.window.close()')
+    wait_for(lambda:not status(target)['windowVisible'])
+    same_view()
+    ipc(target,'open')
+    wait_for(lambda:len(dashboard_windows())==1 and status(target)['windowVisible'])
+    same_view()
+    ipc(target,'dock')
+    wait_for(lambda:not dashboard_windows() and not status(target)['detached'])
+    same_view()
+    print('Window smoke check passed: tiled, one instance, native close/reopen, dock and view retention.')
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,default=ROOT/'preview.png')
     p.add_argument('--day',type=int,choices=[-1,0,1],default=0,help='Yesterday, today or tomorrow')
+    p.add_argument('--window',action='store_true',help='Capture the detached desktop window')
+    p.add_argument('--verify-window',action='store_true',help='Exercise dock, reopen, focus and close with fictional data')
     p.add_argument('--compact',action='store_true')
     p.add_argument('--events',action='store_true',help='Capture the race-events tab')
     p.add_argument('--settings',action='store_true',help='Capture the settings screen')
@@ -71,6 +104,7 @@ def main():
     for sig in (signal.SIGINT,signal.SIGTERM,signal.SIGHUP): signal.signal(sig,interrupted)
     restored=False
     try:
+        if panel_state.get('detached'): ipc(ID+'.panel','dock')
         wait_for(lambda:not status()['loading'])
         if ipc(ID,'demo','true')!='true': raise RuntimeError('Could not enable demo')
         wait_for(lambda:status()['demo'] and status()['races']==4)
@@ -87,18 +121,26 @@ def main():
             ipc(ID+'.panel','settingsSection',args.settings_section)
             if args.settings_section=='refresh':
                 wait_for(lambda:status(ID+'.panel')['scrollY']>0)
+        if args.verify_window: verify_window()
+        if args.window:
+            ipc(ID+'.panel','detach')
+            wait_for(lambda:len(dashboard_windows())==1)
         geometry=status(ID+'.panel')['geometry']
         # Wait only for the native panel fade-in after readiness is established.
         time.sleep(.6)
         if not status(ID+'.panel')['demo']: raise RuntimeError('Refusing to capture non-demo data')
         mon=monitors[0]
         x,y=round(geometry['x']+mon['x']),round(geometry['y']+mon['y'])
+        if args.window:
+            client=dashboard_windows()[0]
+            x,y=client['at'];geometry={'width':client['size'][0],'height':client['size'][1]}
         area=f"{x},{y} {round(geometry['width'])}x{round(geometry['height'])}"
         args.output.parent.mkdir(parents=True,exist_ok=True)
         run('grim','-g',area,str(args.output))
         print(args.output)
     finally:
         try:
+            if status(ID+'.panel').get('detached'): ipc(ID+'.panel','dock')
             ipc(ID+'.panel','close')
             if ipc(ID,'demo','false')!='true': raise RuntimeError('Could not restore live fetching')
             run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{original_workspace}" }})')
@@ -110,6 +152,7 @@ def main():
             ipc(ID+'.panel','restoreView',panel_state.get('filter','Races'),panel_state['selected'],str(panel_state['expanded']).lower(),str(panel_state['opened']).lower())
             ipc(ID+'.panel','setDetailView',panel_state.get('detailView','overview'))
             if panel_state.get('settingsOpen'): ipc(ID+'.panel','settings')
+            if panel_state.get('detached'): ipc(ID+'.panel','detach')
             ipc(ID+'.panel','restoreScroll',str(panel_state.get('scrollY',0)),str(panel_state.get('settingsCursor',0)))
             if not panel_state['opened']: ipc(ID+'.panel','close')
             if status()['demo']: raise RuntimeError('Demo remains enabled')
