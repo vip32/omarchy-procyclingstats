@@ -80,9 +80,13 @@ def main():
         ipc(ID+'.panel','selectRace',str(args.race_index))
         ipc(ID+'.panel',mode)
         ipc(ID+'.panel','setDetailView','events' if args.events else 'overview')
-        if args.settings: ipc(ID+'.panel','settingsSection',args.settings_section)
+        if args.settings: ipc(ID+'.panel','settings')
         if args.warning: ipc(ID,'demoWarning',args.warning)
         wait_for(lambda:status(ID+'.panel')['opened'] and status(ID+'.panel')['expanded'] != args.compact)
+        if args.settings:
+            ipc(ID+'.panel','settingsSection',args.settings_section)
+            if args.settings_section=='refresh':
+                wait_for(lambda:status(ID+'.panel')['scrollY']>0)
         geometry=status(ID+'.panel')['geometry']
         # Wait only for the native panel fade-in after readiness is established.
         time.sleep(.6)

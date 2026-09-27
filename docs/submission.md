@@ -39,7 +39,7 @@ release evidence and is not part of the installable checkout.
    with the actual repository URL. Configure Issues and private security reporting.
 2. Run hosted CI, check public accessibility, and rerun release preflight against
    the final public source. Record the resulting full SHA; any code change needs
-   affected checks repeated. A full remove/reinstall lifecycle test remains pending.
+   affected checks repeated. The local remove/reinstall lifecycle test has passed.
 3. If creating a versioned release, obtain authorization, then create an annotated
    immutable tag and matching release notes. No tag exists for this local candidate.
 4. Search the marketplace for the repository and plugin ID to avoid duplicate

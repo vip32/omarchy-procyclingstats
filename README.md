@@ -79,7 +79,9 @@ omarchy plugin disable io.github.vip32.procyclingstats
 omarchy plugin remove io.github.vip32.procyclingstats --yes
 ```
 
-Removal deletes the installed clone. A separate source checkout and screenshots
+Removal deletes the installed clone and its bar entry. Reinstalling uses default
+settings and placement; preserve your widget entry first if you want to reuse it.
+A separate source checkout and screenshots
 exported by the developer demo remain yours. The plugin keeps no persistent race
 cache, credentials or background service outside the shell.
 
