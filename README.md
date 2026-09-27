@@ -55,14 +55,13 @@ PCS’s API or bypass browser challenges. See [data access and permissions](docs
 
 ## Install
 
-Until a public repository is published, install from this Git checkout:
+Install from GitHub:
 
 ```sh
-omarchy plugin add /absolute/path/to/omarchy-procyclingstats --yes --enable
+omarchy plugin add https://github.com/vip32/omarchy-procyclingstats --yes --enable
 omarchy bar move io.github.vip32.procyclingstats --section center
 ```
 
-After publication, the first argument can be the public GitHub repository URL.
 The plugin ID is `io.github.vip32.procyclingstats`.
 
 Update using the repository from which it was installed:

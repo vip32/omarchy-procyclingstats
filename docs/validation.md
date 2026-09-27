@@ -20,12 +20,13 @@ and raw local reports are in `.git/submission-candidate/` of the preparation che
 
 - Local display evidence covers one laptop monitor on Omarchy 4.0.4-1 / Qt 6.11.2.
   Multi-monitor and vertical-bar behavior are implemented but not covered by this run.
-- Hosted GitHub Actions has not run because the repository is local. The Qt test
-  job is configured to fail rather than silently skip when its runner is absent.
+- [Hosted GitHub Actions](https://github.com/vip32/omarchy-procyclingstats/actions/workflows/test.yml)
+  reports validation for each pushed commit. The Qt test job is configured to fail
+  rather than silently skip when its runner is absent.
 - Native removal and fresh reinstall passed. Omarchy removes the old bar entry and
   re-adds defaults; the original widget preferences and exact bar order were restored
   from the pre-test backup. No plugin-owned persistent race cache or credentials exist.
-- Public-origin release preflight remains blocked until the owner publishes a
-  GitHub repository. No remote, tag, GitHub release or marketplace request exists.
+- The public source is [vip32/omarchy-procyclingstats](https://github.com/vip32/omarchy-procyclingstats).
+  No tag, GitHub release or marketplace request has been created.
 - Static checks are not a security audit. Marketplace compatibility, capability
   review and maintainer approval are separate steps for an exact public commit.

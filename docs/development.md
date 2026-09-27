@@ -14,7 +14,8 @@ omarchy plugin validate .
 
 GitHub Actions is configured for Ubuntu 24.04, Python 3.12, Node 22 and Qt 6.
 Actions are pinned to full commits. CI installs its own test packages; the plugin
-never installs dependencies at runtime. Hosted CI is pending repository publication.
+never installs dependencies at runtime. [Hosted CI](https://github.com/vip32/omarchy-procyclingstats/actions/workflows/test.yml)
+runs on pushes to main and pull requests.
 
 ## Adapter diagnostics
 

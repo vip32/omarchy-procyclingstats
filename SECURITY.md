@@ -4,10 +4,9 @@ Only the current candidate version is maintained. PCS markup and the Omarchy
 plugin contract can change; update the plugin before reporting a fixed issue again.
 
 For a sensitive vulnerability, use the hosting repository’s **Security → Report a
-vulnerability** option if private vulnerability reporting is enabled. If it is not,
-open a minimal issue asking the maintainer for a private reporting channel without
-posting exploit details, tokens or personal configuration. No private reporting
-endpoint has been configured while this repository remains local.
+vulnerability** option at [vip32/omarchy-procyclingstats](https://github.com/vip32/omarchy-procyclingstats/security/advisories/new).
+Private vulnerability reporting is enabled. Do not post exploit details, tokens
+or personal configuration in public issues.
 
 Include the affected version or commit, reproduction steps, expected impact and
 relevant redacted logs. Do not attach a complete shell configuration or environment.
