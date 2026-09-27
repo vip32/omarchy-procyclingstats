@@ -151,4 +151,28 @@ TestCase {
         for(var i=0;i<service.data.length;i++) if("command" in service.data[i]) command=service.data[i].command
         verify(command.indexOf("--upcoming")>=0)
     }
+    function test_metadata_failure_retains_known_filters_and_sets_cooldown() {
+        service.currentPath=""
+        deliver({state:"ready",metadataState:"ready",metadataFetchedAt:"saved",races:[Object.assign({},race,{competitionCategory:"ME",raceClass:"2.Pro"})]})
+        deliver({state:"ready",metadataState:"blocked",metadataError:"Rejected",races:[race]})
+        compare(service.races[0].raceClass,"2.Pro")
+        compare(service.races[0].competitionCategory,"ME")
+        compare(service.updateIssues["overview/metadata"].lastSuccess,"saved")
+        verify(service.nextAllowed>Date.now()+890000)
+        deliver({state:"ready",metadataState:"ready",races:[race]})
+        compare(Object.keys(service.updateIssues).length,0)
+    }
+    function test_filtered_race_events_do_not_notify() {
+        service.eventNotifications=true
+        service.raceFilters={categoryME:false}
+        var hidden=Object.assign({},race,{competitionCategory:"ME"})
+        service.races=[hidden]
+        deliver(snapshot("Old"));deliver(snapshot("New"))
+        compare(Quickshell.commands.length,0)
+        service.raceFilters={categoryME:true}
+        deliver(snapshot("New"))
+        compare(Quickshell.commands.length,0)
+        deliver(snapshot("Newest"))
+        compare(Quickshell.commands.length,1)
+    }
 }

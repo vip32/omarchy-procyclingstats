@@ -235,4 +235,37 @@ class Calendar(unittest.TestCase):
         self.assertNotIn('events',result)
         self.assertEqual(result['profile'],[])
 
+class Filters(unittest.TestCase):
+    def test_time_trial_categories_from_explicit_source_labels(self):
+        for category, name, expected in [
+            ('ME','World Championships ME - ITT','ME (TT)'),
+            ('WE','Team Time Trial','WE (TT)'),
+            ('MJ','Stage 2a (ITT)','MJ (TT)'),
+            ('WU (TT)','Race','WU (TT)'),
+            ('ME+WE','Mixed Relay','ME+WE (TT)'),
+            ('MU','Prologue','MU (TT)'),
+            ('ME','World Championships ME - Road Race','ME'),
+            ('WE','Stage 4','WE'),
+            ('','Unknown','')]:
+            self.assertEqual(pcs.race_metadata(category,'WC',name)['competitionCategory'],expected)
+    def test_today_calendar_enriches_live_and_finished_without_losing_live_metrics(self):
+        calendar=Calendar().page().replace('2026-09-28','2026-09-27')
+        with patch.object(pcs,'fetch',side_effect=[HOME,calendar]): result=pcs.load_overview('2026-09-27')
+        race=next(r for r in result['races'] if r['path']=='race/demo/2026/stage-2')
+        self.assertEqual(race['competitionCategory'],'WE')
+        self.assertEqual(race['raceClass'],'2.Pro')
+        self.assertEqual(race['status'],'finished')
+        self.assertEqual(race['toGo'],'42.6km')
+        self.assertEqual(result['metadataState'],'ready')
+    def test_calendar_adds_races_missing_from_homepage(self):
+        with patch.object(pcs,'fetch',side_effect=['<ul class="hp3-livestats"></ul>',Calendar().page()]): result=pcs.load_overview('2026-09-28')
+        self.assertEqual(len(result['races']),1)
+        self.assertEqual(result['state'],'ready')
+    def test_metadata_failure_preserves_homepage_and_reports_partial_failure(self):
+        with patch.object(pcs,'fetch',side_effect=[HOME,pcs.SourceError('blocked','Rejected')]): result=pcs.load_overview('2026-09-28')
+        self.assertEqual(result['state'],'ready')
+        self.assertEqual(len(result['races']),2)
+        self.assertEqual(result['metadataState'],'blocked')
+        self.assertEqual(result['metadataError'],'Rejected')
+
 if __name__=='__main__': unittest.main()

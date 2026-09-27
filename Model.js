@@ -6,13 +6,16 @@ function integer(value, fallback, min, max) {
 
 function settings(value) {
     value = value || {}
-    return {
+    var result = {
         refreshIntervalSec: integer(value.refreshIntervalSec, 60, 60, 900),
         overviewIntervalSec: integer(value.overviewIntervalSec, 300, 300, 3600),
         resultsIntervalSec: integer(value.resultsIntervalSec, 300, 300, 3600),
         eventNotifications: value.eventNotifications === true,
-        notificationDurationSec: integer(value.notificationDurationSec, 8, 5, 30)
+        notificationDurationSec: integer(value.notificationDurationSec, 8, 5, 30),
+        minimumRaceLevel: raceLevels().indexOf(value.minimumRaceLevel)>=0 ? value.minimumRaceLevel : "All"
     }
+    categories().forEach(function(c) {result[c.key]=value[c.key] !== false})
+    return result
 }
 
 function requestInterval(path, finished, options) {
@@ -36,6 +39,7 @@ function updateIssues(previous, path, result, cached, label, now) {
     }
     cached = cached || {}
     update("", result.state, result.error, cached.fetchedAt, path ? label : "Races")
+    if (!path && result.metadataState) update("/metadata", result.metadataState, result.metadataError, cached.metadataFetchedAt, "Race categories and levels")
     if (path && result.state === "ready") {
         update("/events", result.eventsState, result.eventsError, cached.eventsFetchedAt, "Race events · " + label)
         // A finished results response may omit resultsState on success.
@@ -107,4 +111,43 @@ function dayLabel(now, offset) {
     var d = new Date(dayKey(now,offset)+"T12:00:00")
     return ["Yesterday", "Today", "Tomorrow"][offset+1] + " · " + d.getDate() + " " +
         ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]
+}
+
+function categories() {
+    return [
+        ["ME","Men elite"],["ME (TT)","Men elite · TT"],
+        ["WE","Women elite"],["WE (TT)","Women elite · TT"],
+        ["MU","Men U23"],["MU (TT)","Men U23 · TT"],
+        ["MJ","Men junior"],["MJ (TT)","Men junior · TT"],
+        ["WJ","Women junior"],["WJ (TT)","Women junior · TT"],
+        ["WU","Women U23"],["WU (TT)","Women U23 · TT"],
+        ["ME+WE (TT)","Mixed team · TT"]
+    ].map(function(c) {return {code:c[0],label:c[1],key:"category"+c[0].replace(/[^A-Z]/g,"")}})
+}
+function raceLevels() { return ["All", "Class 2+", "Class 1+", "ProSeries+", "WorldTour"] }
+function raceLevel(value) {
+    var c = String(value || "").toUpperCase()
+    // Championships are separate competitions, retained at every threshold.
+    if (["WC","NC","CC","JC","JOJ","JR","OG"].indexOf(c)>=0) return 5
+    if (/^[12]\.(UWT|WWT)$/.test(c)) return 4
+    if (/^[12]\.(PRO|HC)$/.test(c)) return 3
+    if (/^[12]\.1$/.test(c)) return 2
+    if (/^[12]\.2U?$/.test(c)) return 1
+    // Nations Cups and other classifications are outside this level ladder.
+    return 0
+}
+function filterMetadata(race) {
+    var parts=String(race.category || "").split(" · ")
+    return {category:race.competitionCategory || parts[0] || "",level:race.raceClass || parts[1] || ""}
+}
+function filtersActive(options) {
+    var s=settings(options)
+    return s.minimumRaceLevel!=="All" || categories().some(function(c){return !s[c.key]})
+}
+function matchesRace(race, options) {
+    var s=settings(options), cats=categories(), meta=filterMetadata(race)
+    var category=cats.filter(function(c){return c.code===meta.category})[0]
+    if (category ? !s[category.key] : cats.some(function(c){return !s[c.key]})) return false
+    var minimum=raceLevels().indexOf(s.minimumRaceLevel)
+    return !minimum || raceLevel(meta.level)>=minimum
 }

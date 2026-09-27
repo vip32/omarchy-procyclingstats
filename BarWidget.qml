@@ -13,11 +13,13 @@ Panel {
     readonly property color foreground: bar ? bar.foreground : Color.foreground
     readonly property color dim: Qt.darker(foreground, 1.5)
     readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
-    readonly property var todayRaces: service ? service.races : []
+    readonly property var todayRaces: service ? service.races.filter(function(r){return Model.matchesRace(r,preferences)}) : []
     property int dayOffset: 0
     readonly property string dayDate: Model.dayKey(now,dayOffset)
     readonly property var dayData: !service ? ({}) : dayOffset === 0 ? {state:service.state,error:service.error,fetchedAt:service.fetchedAt,races:service.races} : service.dayLists[dayDate] || ({state:"loading"})
-    readonly property var races: dayData.races || []
+    readonly property var unfilteredRaces: dayData.races || []
+    readonly property var races: unfilteredRaces.filter(function(r){return Model.matchesRace(r,preferences)})
+    readonly property bool filtersActive: Model.filtersActive(preferences)
     readonly property bool preview: dayOffset > 0 && !finished
     readonly property bool demo: service ? service.demo : false
     readonly property var rows: filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races
@@ -65,7 +67,12 @@ Panel {
     }
     function titleStatus(s) { return ({live:"LIVE",finished:"FINISHED",upcoming:"UPCOMING",scheduled:"SCHEDULED",unknown:"STATUS UNKNOWN"})[s] || "WAITING" }
     function configure() {
-        if(service) for(var key in preferences) service[key]=preferences[key]
+        if(service) {
+            var filters={minimumRaceLevel:preferences.minimumRaceLevel}
+            Model.categories().forEach(function(c){filters[c.key]=preferences[c.key]})
+            if(JSON.stringify(service.raceFilters)!==JSON.stringify(filters)) service.raceFilters=filters
+            for(var key in preferences) if(key in service && key!=="raceFilters") service[key]=preferences[key]
+        }
     }
     function persistSettings(changes) {
         if(Object.keys(changes).every(function(k){return preferences[k]===changes[k]})) return
@@ -98,7 +105,7 @@ Panel {
         Quickshell.execDetached(["/usr/bin/xdg-open","https://www.procyclingstats.com/" + path])
     }
     onServiceChanged: configure()
-    onPreferencesChanged: configure()
+    onPreferencesChanged: {configure();cursorIndex=0;expanded=false}
     onSettingsOpenChanged: Qt.callLater(function(){scroller.contentY=0})
     onFilterChanged: { cursorIndex = 0; expanded = false }
     onSelectedChanged: {
@@ -141,7 +148,7 @@ Panel {
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
                 classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",
-                warning:root.connection,settingsOpen:root.settingsOpen,settings:root.preferences,
+                filtersActive:root.filtersActive,unfilteredRows:root.unfilteredRaces.length,settingsCursor:settingsPage.cursorIndex,warning:root.connection,settingsOpen:root.settingsOpen,settings:root.preferences,
                 demo:root.demo, vertical:root.bar ? root.bar.vertical : false})
         }
     }
@@ -250,6 +257,12 @@ Panel {
                         id:settingsPage;width:parent.width;visible:root.settingsOpen
                         values:root.preferences;foreground:root.foreground;feedback:root.settingsError
                         onChanged:function(changes){root.persistSettings(changes)}
+                        onReveal:function(item){
+                            if(!item) return
+                            var y=item.mapToItem(column,0,0).y
+                            if(y<scroller.contentY)scroller.contentY=y
+                            else if(y+item.height>scroller.contentY+scroller.height)scroller.contentY=y+item.height-scroller.height
+                        }
                     }
                     Column {
                     width:parent.width;spacing:Style.spacing.panelGap;visible:!root.settingsOpen
@@ -270,6 +283,7 @@ Panel {
                             Button {width:parent.width-previousDay.width-nextDay.width-Style.space(12);text:Model.dayLabel(root.now,root.dayOffset);tooltipText:"Return to today";Accessible.name:text;foreground:root.foreground;onClicked:root.showDay(0)}
                             Button {id:nextDay;text:"›";enabled:root.dayOffset<1;tooltipText:"Next day (Right)";Accessible.name:"Next day";bordered:true;foreground:root.foreground;onClicked:root.showDay(root.dayOffset+1)}
                         }
+                        RaceText {width:parent.width;visible:root.filtersActive;text:"Filters active · "+root.races.length+" of "+root.unfilteredRaces.length+" races · change in Settings";font.pixelSize:Style.font.caption;color:root.dim}
                         Repeater {
                             id:raceRepeater
                             model:root.rows
@@ -298,7 +312,7 @@ Panel {
                         }
                         RaceText {
                             width:parent.width;visible:root.rows.length===0
-                            text:root.dayData.error ? "Race data is unavailable. Use ↗ in the header to open PCS." : root.dayData.state==="loading" ? "Loading races…" : root.filter==="Live" ? "No live races listed right now." : "No races listed for this day."
+                            text:root.dayData.error ? "Race data is unavailable. Use ↗ in the header to open PCS." : root.dayData.state==="loading" ? "Loading races…" : root.filtersActive && root.unfilteredRaces.length ? "No races match these filters. Change them in Settings." : root.filter==="Live" ? "No live races listed right now." : "No races listed for this day."
                             color:root.dim;wrapMode:Text.WordWrap;elide:Text.ElideNone
                         }
                     }

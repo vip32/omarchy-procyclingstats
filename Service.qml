@@ -28,10 +28,13 @@ Item {
     property bool eventNotifications: false
     property int notificationDurationSec: 8
     property var updateIssues: ({})
+    property string metadataFetchedAt: ""
+    property var raceFilters: ({})
+    onRaceFiltersChanged: eventBaselines = ({})
     property var eventBaselines: ({})
-    readonly property var options: Model.settings({refreshIntervalSec:refreshIntervalSec,
+    readonly property var options: Model.settings(Object.assign({},raceFilters,{refreshIntervalSec:refreshIntervalSec,
         overviewIntervalSec:overviewIntervalSec,resultsIntervalSec:resultsIntervalSec,
-        eventNotifications:eventNotifications,notificationDurationSec:notificationDurationSec})
+        eventNotifications:eventNotifications,notificationDurationSec:notificationDurationSec}))
     property double nextAllowed: 0
     property bool demo: false
     onEventNotificationsChanged: eventBaselines = ({})
@@ -50,7 +53,7 @@ Item {
         today = date
         races = []; dayLists = ({}); details = ({}); watched = []
         queue = []; lastRequests = ({}); updateIssues = ({}); eventBaselines = ({})
-        fetchedAt = ""; state = "loading"; error = ""
+        fetchedAt = ""; metadataFetchedAt = ""; state = "loading"; error = ""
     }
     function watchDay(date) {
         if ([Model.dayKey(Date.now(),-1),today,Model.dayKey(Date.now(),1)].indexOf(date)<0) return
@@ -94,7 +97,7 @@ Item {
         output = ""
         var script = decodeURIComponent(Qt.resolvedUrl("bin/pcs.py").toString().replace(/^file:\/\//, ""))
         worker.command = currentPath ? ["/usr/bin/python3", "-I", script, "race", "--race", currentPath]
-                                     : ["/usr/bin/python3", "-I", script, "overview"]
+                                     : ["/usr/bin/python3", "-I", script, "overview", "--date", today]
         if (currentPath.indexOf("day:") === 0)
             worker.command = ["/usr/bin/python3", "-I", script, "calendar", "--date", currentPath.slice(4)]
         else {
@@ -114,9 +117,15 @@ Item {
         var calendar = currentPath.indexOf("day:") === 0
         var date = calendar ? currentPath.slice(4) : today
         var race = findRace(currentPath)
-        var previousData = calendar ? dayLists[date] || ({}) : currentPath ? details[currentPath] || ({}) : {fetchedAt:fetchedAt}
+        var previousData = calendar ? dayLists[date] || ({}) : currentPath ? details[currentPath] || ({}) : {fetchedAt:fetchedAt,metadataFetchedAt:metadataFetchedAt}
         if (!currentPath && (result.state === "ready" || result.state === "empty")) {
-            result.races = (result.races || []).map(function(r) {return Object.assign({},r,{date:today})})
+            result.races = (result.races || []).map(function(r) {
+                var old=races.filter(function(p){return p.path===r.path})[0] || {}
+                if(result.metadataError) {
+                    ["competitionCategory","raceClass","category"].forEach(function(k){if(!r[k] && old[k])r[k]=old[k]})
+                }
+                return Object.assign({},r,{date:today})
+            })
             result.retainedRaces = result.races.concat(allRaces().filter(function(r) {return r.date !== today}))
         }
         updateIssues = Model.updateIssues(updateIssues,currentPath,result,previousData,calendar ? "Races · "+date : race ? race.name : "Selected race",Date.now())
@@ -147,6 +156,7 @@ Item {
             if (state === "ready" || state === "empty") {
                 races = result.races || []
                 fetchedAt = result.fetchedAt || ""
+                if(result.metadataFetchedAt) metadataFetchedAt=result.metadataFetchedAt
                 var paths = allRaces().map(function(r) {return r.path})
                 watched = watched.filter(function(p) {return paths.indexOf(p) >= 0})
                 var retained = {}
@@ -157,7 +167,7 @@ Item {
                 eventBaselines = baselines
             }
         }
-        var failures = [result.state,result.resultsState,result.eventsState]
+        var failures = [result.state,result.resultsState,result.eventsState,result.metadataState]
         var failureState = failures.indexOf("blocked") >= 0 ? "blocked" : failures.indexOf("rate-limited") >= 0 ? "rate-limited" : result.resultsState || result.state
         if (["blocked", "rate-limited"].indexOf(failureState) >= 0) {
             nextAllowed = Date.now() + 900000
@@ -169,7 +179,7 @@ Item {
         Qt.callLater(runNext)
     }
     function receiveEvents(path,result,race) {
-        if (!path || !races.some(function(r){return r.path === path}) || demo || !eventNotifications || result.state !== "ready" || ["ready","empty"].indexOf(result.eventsState)<0) return
+        if (!path || (race && !Model.matchesRace(race,raceFilters)) || !races.some(function(r){return r.path === path}) || demo || !eventNotifications || result.state !== "ready" || ["ready","empty"].indexOf(result.eventsState)<0) return
         var diff = Model.newEvents(eventBaselines[path],result.events || [],Date.now(),Math.max(300000,refreshIntervalSec*3000))
         var next = {}
         // Bound memory to the recently watched races.
@@ -196,6 +206,7 @@ Item {
         dayLists = ({})
         today = Model.dayKey(Date.now(),0)
         fetchedAt = ""
+        metadataFetchedAt = ""
         error = ""
         watched = []
         lastRequests = ({})

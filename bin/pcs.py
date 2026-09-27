@@ -129,6 +129,36 @@ def profile(n):
             return points[::stride]
     return []
 
+def race_metadata(category, race_class, name):
+    category = clean(category).upper().replace(' ', '')
+    is_tt = '(TT)' in category or bool(re.search(r'\b(?:ITT|TTT|TT|PROLOGUE)\b|TIME[ -]TRIAL|MIXED[ -]RELAY', name.upper()))
+    base = category.replace('(TT)', '')
+    code = base + (' (TT)' if is_tt else '') if base in ('ME','WE','MU','WU','MJ','WJ','ME+WE') else ''
+    return dict(competitionCategory=code, raceClass=clean(race_class))
+
+def load_overview(date):
+    result = parse_overview(fetch(''))
+    try:
+        calendar = parse_calendar(fetch('races.php?p=uci&s=today&date='+date), date)
+        by_path = {r['path']: r for r in calendar['races']}
+        merged = []
+        for race in result['races']:
+            meta = by_path.pop(race['path'], None)
+            if meta:
+                for key in ('competitionCategory','raceClass','category','date'):
+                    race[key] = meta[key]
+                if meta['status'] == 'finished': race['status'] = 'finished'
+            merged.append(race)
+        merged.extend(by_path.values())
+        order = {'live':0,'upcoming':1,'scheduled':2,'finished':3}
+        result['races'] = sorted(merged,key=lambda r:order.get(r['status'],4))[:60]
+        result['state'] = 'ready' if result['races'] else 'empty'
+        result['metadataState'] = 'ready'
+        result['metadataFetchedAt'] = dt.datetime.now(dt.timezone.utc).isoformat()
+    except SourceError as e:
+        result.update(metadataState=e.state, metadataError=e.message)
+    return result
+
 def parse_overview(html):
     doc = checked_html(html)
     races = {}
@@ -158,6 +188,7 @@ def parse_overview(html):
                 continue
             race = races.setdefault(path, dict(path=path,name=txt(a),status='scheduled',toGo='',profile=[]))
             race.update(eta=txt(cells[1]), category=' · '.join(txt(x) for x in cells[4:6]))
+            race.update(race_metadata(txt(cells[4]) if len(cells)>4 else '',txt(cells[5]) if len(cells)>5 else '',race['name']))
     # PCS has occasionally nested yesterday's list inside today's list. Walk in
     # document order and stop at the next section heading, not every descendant.
     today = False
@@ -171,7 +202,8 @@ def parse_overview(html):
         if today and n.tag == 'li' and 'race' in n.attrs.get('class','').split():
             a,path = race_link(n)
             if path:
-                races[path] = dict(path=path,name=txt(a),status='finished',toGo='',profile=[],eta='',category='')
+                race = races.setdefault(path,dict(path=path,toGo='',profile=[],eta='',category=''))
+                race.update(name=txt(a),status='finished')
     if not recognized:
         raise SourceError('unsupported', 'PCS page format changed; today’s races could not be read.')
     order = {'live':0,'upcoming':1,'scheduled':2,'finished':3}
@@ -214,6 +246,7 @@ def parse_calendar(html, date):
                 status='finished' if winner else 'scheduled', profile=[], toGo='',
                 category=' · '.join(filter(None, [txt(values['cat.']), txt(values['class.'])])),
                 eta=txt(values['exp. finish']))
+            races[path].update(race_metadata(txt(values['cat.']),txt(values['class.']),txt(a)))
     if not recognized:
         raise SourceError('unsupported', 'PCS calendar format changed; races could not be read.')
     return dict(state='ready' if races else 'empty', date=date, races=list(races.values())[:60])
@@ -451,7 +484,7 @@ def main():
             with args.html.open('rb') as stream: html=bounded_read(stream).decode('utf-8',errors='replace')
             result=parse_calendar(html,date) if date else parse_events(html) if args.mode=='events' else (parse_preview(html,path) if args.upcoming else parse_results(html,path) if args.finished else parse_race(html,path)) if path else parse_overview(html)
         else:
-            result=parse_calendar(fetch('races.php?p=uci&s=today&date='+date),date) if date else parse_events(fetch(path+'/live/race-events')) if args.mode=='events' else load_race(path,args.finished,args.upcoming) if path else parse_overview(fetch(''))
+            result=parse_calendar(fetch('races.php?p=uci&s=today&date='+date),date) if date else parse_events(fetch(path+'/live/race-events')) if args.mode=='events' else load_race(path,args.finished,args.upcoming) if path else load_overview(calendar_date(args.date or dt.date.today().isoformat()))
         result['fetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat()
         result['savedPage']=bool(args.html)
     except SourceError as e:

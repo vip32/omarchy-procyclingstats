@@ -3,6 +3,8 @@
 A road-bike icon in the center of the Omarchy Quattro bar. Click it for today's
 professional road cycling races, then select a race for its LiveStats overview.
 
+- Settings filters: 13 independent race-category checkboxes (including TT and mixed), all enabled by default.
+- Minimum level: All, Class 2+, Class 1+, ProSeries+, or WorldTour; applies to one-day and stage races.
 - Compact yesterday / today / tomorrow navigation. Click the date to return to today; Live always shows today.
 - Tomorrow shows published start time, distance and route, plus the profile when extractable.
 - Races and Live filters in the header (checkered flag and live indicator), including women's and men's races.
@@ -74,6 +76,18 @@ scrolling content. It identifies the affected source, last successful fetch and
 retry countdown. A failure stays visible during retries and clears only when that
 source recovers; an unrelated successful request cannot hide it. Missing optional
 coverage is shown in the relevant tab without claiming a connection failure.
+
+Race filters apply to every date, the Live list, bar counts and event notifications.
+For example, **ProSeries+** keeps `1.Pro` / `2.Pro` and men's/women's WorldTour,
+while hiding `1.1` / `2.1` and lower classes. Championship codes (`WC`, `NC`, `CC`,
+`JC`, `JOJ`, `JR`, `OG`) remain eligible at every level, subject to category filters.
+Nations Cups and other unranked classes remain available under All. Category
+checkboxes distinguish road races from explicitly labelled ITT/TTT, time-trial,
+prologue or mixed-relay entries. Today's homepage is enriched with the date-specific
+calendar; the default setting preserves races even if metadata is missing.
+Restricting a category or level hides entries lacking that required metadata.
+An active-filter count and a specific empty message make this visible.
+Category and level selections save automatically; selecting None is supported.
 
 Race-event notifications are off by default. Enable them in Settings for up to
 three recently opened races from today, including while the panel is closed. The initial

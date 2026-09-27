@@ -1,6 +1,6 @@
 # Design and verification
 
-- ID: `io.github.vip32.procyclingstats`, version 0.6.0.
+- ID: `io.github.vip32.procyclingstats`, version 0.7.0.
 - Hosted kinds: `bar-widget` (`BarWidget.qml`) and `service` (`Service.qml`).
 - UI: native Omarchy `Panel`, `KeyboardPanel`, `BarIconButton`, `CursorSurface`;
   custom Canvas road bike and profile. Stochi informs the visual layout.
@@ -105,3 +105,19 @@
 - Installed-shell verification: yesterday returned six races; CRO Race stage 5
   opened its published GC (104 riders) with 60 events. Tomorrow returned two stages.
   Fictional list and preview screenshots were visually reviewed.
+
+## Race category and level filters (0.7.0)
+
+- Thirteen independent category booleans default true; minimumRaceLevel defaults All.
+  Flat widget settings use supported boolean and enum schemas. Checkboxes support
+  pointer and keyboard actions, with scroll-to-cursor in the existing Settings page.
+- Pure matching applies to all day lists, Live, bar counts and notifications. The
+  unfiltered service cache remains available when settings change. Filtered events
+  establish a fresh baseline when re-enabled, avoiding historical notification bursts.
+- Category and race class come from the date-specific UCI table; TT uses explicit
+  source labels. Today joins this metadata onto homepage live records, retains known
+  fields on partial failures, and independently warns on failed metadata refreshes.
+- Class 2, Class 1, ProSeries and WorldTour form the filter ladder. Championships
+  remain eligible at every level; unranked classes require All. These are dashboard
+  filter rules, not an invented official ranking of championships or Nations Cups.
+- 85 behavioral tests pass: 46 Python, 26 JavaScript and 13 service QtTest cases.

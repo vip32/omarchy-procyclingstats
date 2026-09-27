@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.vip32.procyclingstats",
   "name": "ProCyclingStats",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "author": "vip32",
   "license": "MIT",
   "description": "Professional road cycling races and live race situation.",
@@ -25,7 +25,21 @@
       "overviewIntervalSec": 300,
       "resultsIntervalSec": 300,
       "notificationDurationSec": 8,
-      "eventNotifications": false
+      "eventNotifications": false,
+      "minimumRaceLevel": "All",
+      "categoryME": true,
+      "categoryMETT": true,
+      "categoryWE": true,
+      "categoryWETT": true,
+      "categoryMU": true,
+      "categoryMUTT": true,
+      "categoryMJ": true,
+      "categoryMJTT": true,
+      "categoryWJ": true,
+      "categoryWJTT": true,
+      "categoryWU": true,
+      "categoryWUTT": true,
+      "categoryMEWETT": true
     },
     "schema": [
       {
@@ -69,6 +83,97 @@
         "type": "boolean",
         "label": "Race-event notifications",
         "defaultValue": false
+      },
+      {
+        "key": "minimumRaceLevel",
+        "type": "enum",
+        "label": "Minimum race level",
+        "options": [
+          "All",
+          "Class 2+",
+          "Class 1+",
+          "ProSeries+",
+          "WorldTour"
+        ],
+        "defaultValue": "All"
+      },
+      {
+        "key": "categoryME",
+        "type": "boolean",
+        "label": "Races: Men elite",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryMETT",
+        "type": "boolean",
+        "label": "Races: Men elite (TT)",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryWE",
+        "type": "boolean",
+        "label": "Races: Women elite",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryWETT",
+        "type": "boolean",
+        "label": "Races: Women elite (TT)",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryMU",
+        "type": "boolean",
+        "label": "Races: Men U23",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryMUTT",
+        "type": "boolean",
+        "label": "Races: Men U23 (TT)",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryMJ",
+        "type": "boolean",
+        "label": "Races: Men junior",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryMJTT",
+        "type": "boolean",
+        "label": "Races: Men junior (TT)",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryWJ",
+        "type": "boolean",
+        "label": "Races: Women junior",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryWJTT",
+        "type": "boolean",
+        "label": "Races: Women junior (TT)",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryWU",
+        "type": "boolean",
+        "label": "Races: Women U23",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryWUTT",
+        "type": "boolean",
+        "label": "Races: Women U23 (TT)",
+        "defaultValue": true
+      },
+      {
+        "key": "categoryMEWETT",
+        "type": "boolean",
+        "label": "Races: Mixed team (TT)",
+        "defaultValue": true
       }
     ]
   }

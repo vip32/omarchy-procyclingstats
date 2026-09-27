@@ -30,7 +30,8 @@ test('no future route point is invented from missing or passed coordinates', () 
 
 test('settings reject malformed values, bound intervals, and default notifications off', () => {
     const s=model.settings({refreshIntervalSec:-1,overviewIntervalSec:60,resultsIntervalSec:Infinity,eventNotifications:'true',notificationDurationSec:0});
-    assert.deepEqual(plain(s),{refreshIntervalSec:60,overviewIntervalSec:300,resultsIntervalSec:300,eventNotifications:false,notificationDurationSec:8});
+    const expected={refreshIntervalSec:60,overviewIntervalSec:300,resultsIntervalSec:300,eventNotifications:false,notificationDurationSec:8};
+    for(const key of Object.keys(expected)) assert.equal(s[key],expected[key]);
     assert.equal(model.settings({notificationDurationSec:99}).notificationDurationSec,30);
     assert.equal(model.settings({notificationDurationSec:1}).notificationDurationSec,5);
 });
@@ -129,4 +130,47 @@ test('calendar polling shares the race list interval', () => {
 test('today success preserves failures for cached dates and their races', () => {
     const old={'day:2026-09-26':{path:'day:2026-09-26'},[path]:{path}};
     assert.equal(Object.keys(model.updateIssues(old,'',{state:'ready',races:[],retainedRaces:[race]}, {},'',now)).length,2);
+});
+
+test('all categories and levels are selected by default; malformed filters fall back safely', () => {
+    const defaults=model.settings({minimumRaceLevel:'bogus',categoryME:'false'});
+    assert.equal(defaults.minimumRaceLevel,'All');
+    assert.equal(model.categories().length,13);
+    for(const c of model.categories()) assert.equal(defaults[c.key],true);
+    assert.equal(model.matchesRace({},defaults),true);
+    assert.equal(model.filtersActive(defaults),false);
+});
+test('category checkboxes combine independently and never confuse road with time trial', () => {
+    const selection=Object.fromEntries(model.categories().map(c=>[c.key,false]));
+    selection.categoryME=true;selection.categoryWETT=true;
+    for(const c of model.categories()) assert.equal(model.matchesRace({competitionCategory:c.code},selection),['ME','WE (TT)'].includes(c.code));
+    assert.equal(model.matchesRace({},selection),false);
+    selection.categoryME=false;selection.categoryWETT=false;
+    assert.equal(model.matchesRace({competitionCategory:'ME'},selection),false);
+});
+test('minimum level applies equally to one-day and stage races, men and women', () => {
+    for(const prefix of ['1','2']) {
+        for(const cls of ['Pro','UWT','WWT']) assert.equal(model.matchesRace({category:'WE · '+prefix+'.'+cls},{minimumRaceLevel:'ProSeries+'}),true);
+        for(const cls of ['1','2','2U']) assert.equal(model.matchesRace({raceClass:prefix+'.'+cls},{minimumRaceLevel:'ProSeries+'}),false);
+        assert.equal(model.matchesRace({raceClass:prefix+'.1'},{minimumRaceLevel:'Class 1+'}),true);
+        assert.equal(model.matchesRace({raceClass:prefix+'.Pro'},{minimumRaceLevel:'WorldTour'}),false);
+    }
+});
+test('championships keep their category filter at every level; unranked classes need All', () => {
+    for(const cls of ['WC','CC','NC','JR']) {
+        assert.equal(model.matchesRace({competitionCategory:'WE',raceClass:cls},{minimumRaceLevel:'WorldTour'}),true);
+        assert.equal(model.matchesRace({competitionCategory:'WE',raceClass:cls},{minimumRaceLevel:'WorldTour',categoryWE:false}),false);
+    }
+    for(const cls of ['','2.Ncup','unknown']) {
+        assert.equal(model.matchesRace({raceClass:cls},{}),true);
+        assert.equal(model.matchesRace({raceClass:cls},{minimumRaceLevel:'Class 2+'}),false);
+    }
+});
+test('metadata request failures stay visible until metadata itself recovers', () => {
+    let issues=model.updateIssues({},'',{state:'ready',metadataState:'blocked'},{metadataFetchedAt:stamp},'',now);
+    assert.equal(issues['overview/metadata'].lastSuccess,stamp);
+    issues=model.updateIssues(issues,'',{state:'ready',races:[]},{},'',now);
+    assert.equal(Object.keys(issues).length,1);
+    issues=model.updateIssues(issues,'',{state:'ready',metadataState:'ready'},{},'',now);
+    assert.equal(Object.keys(issues).length,0);
 });
