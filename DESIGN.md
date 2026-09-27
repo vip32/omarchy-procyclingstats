@@ -42,5 +42,7 @@
 - 30 tests pass, including live-to-finished transitions, partial results failure,
   correct tab selection, same-time markers and rider limits. Checked real CRO Race
   GC and Paris-Chauny final results, plus saved live groups with named riders.
+  Observed the live CRO Race GC panel with 103 rows, and captured both fictional
+  rider-group and GC views. Demo exit restored live mode and the previous view.
 - Deferred: official API integration, all-day calendars beyond PCS's homepage,
   historical race browsing, team/rider pages, push notifications.

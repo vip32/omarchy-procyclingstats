@@ -62,7 +62,7 @@ Panel {
     onFilterChanged: { cursorIndex = 0; expanded = false }
     onSelectedChanged: { classificationKind = "gc"; if(opened && expanded && service && selected) service.watch(selected.path) }
     onOpenedChanged: {
-        if(opened) {now=Date.now(); configure(); if(service)service.refresh(); Qt.callLater(function(){keys.forceActiveFocus()})}
+        if(opened) {now=Date.now(); configure(); if(service){service.refresh();if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
     }
     Timer { interval:30000; running:root.opened; repeat:true; onTriggered:root.now=Date.now() }
     IpcHandler {
