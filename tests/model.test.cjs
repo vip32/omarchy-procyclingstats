@@ -115,3 +115,18 @@ test('notification body escapes markup from remote events', () => {
     assert.match(args.at(-1),/&lt;b&gt;Attack&lt;\/b&gt; &amp; chase/);
     assert.equal(args.at(-1).includes('<b>'),false);
 });
+
+
+test('calendar stepping uses local dates across year and DST boundaries', () => {
+    process.env.TZ='Europe/Amsterdam';
+    assert.equal(model.dayKey(new Date('2026-12-31T23:30:00+01:00').getTime(),1),'2027-01-01');
+    assert.equal(model.dayKey(new Date('2026-03-29T00:30:00+01:00').getTime(),-1),'2026-03-28');
+    assert.equal(model.dayKey(new Date('2026-10-25T23:30:00+01:00').getTime(),1),'2026-10-26');
+});
+test('calendar polling shares the race list interval', () => {
+    assert.equal(model.requestInterval('day:2026-09-28',false,{overviewIntervalSec:600}),600000);
+});
+test('today success preserves failures for cached dates and their races', () => {
+    const old={'day:2026-09-26':{path:'day:2026-09-26'},[path]:{path}};
+    assert.equal(Object.keys(model.updateIssues(old,'',{state:'ready',races:[],retainedRaces:[race]}, {},'',now)).length,2);
+});

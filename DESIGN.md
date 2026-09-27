@@ -1,6 +1,6 @@
 # Design and verification
 
-- ID: `io.github.vip32.procyclingstats`, version 0.5.0.
+- ID: `io.github.vip32.procyclingstats`, version 0.6.0.
 - Hosted kinds: `bar-widget` (`BarWidget.qml`) and `service` (`Service.qml`).
 - UI: native Omarchy `Panel`, `KeyboardPanel`, `BarIconButton`, `CursorSurface`;
   custom Canvas road bike and profile. Stochi informs the visual layout.
@@ -88,3 +88,16 @@
 - Verified on the live World Championships: named groups and splits, recent
   events and profile fit together. Pointer clicks expand/collapse rider rows;
   the expanded list retains rider bibs. Fictional preview refreshed.
+
+## Adjacent-day race navigation (0.6.0)
+
+- A compact local-date selector covers yesterday, today and tomorrow. Live returns
+  to today; Races returns to the selected day's full list. The bar badge always uses today.
+- Date-keyed calendar caches use PCS's UCI road table and validate the response date.
+  Only published winner links mark a calendar race finished. Stage paths remain exact.
+- Tomorrow reads the normal race page for start time, distance and route without
+  polling event history. Embedded vector profiles are optional; no image challenge bypass.
+- In-flight results are isolated by date; midnight clears old watches and snapshots.
+  Today refreshes preserve adjacent-day failures and cached details. Historical events never notify.
+- 74 behavioral tests: 42 Python, 21 JavaScript, 11 QtTest; includes DST/year rollover,
+  calendar source validation, independent recovery, midnight and notification scope.

@@ -17,7 +17,7 @@ function settings(value) {
 
 function requestInterval(path, finished, options) {
     var s = settings(options)
-    return 1000 * (!path ? s.overviewIntervalSec : finished ? s.resultsIntervalSec : s.refreshIntervalSec)
+    return 1000 * ((!path || path.indexOf("day:") === 0) ? s.overviewIntervalSec : finished ? s.resultsIntervalSec : s.refreshIntervalSec)
 }
 
 function isFailure(state) {
@@ -43,9 +43,9 @@ function updateIssues(previous, path, result, cached, label, now) {
             result.resultsError, cached.fetchedAt, "Results · " + label)
     }
     if (!path && ["ready", "empty"].indexOf(result.state) >= 0) {
-        var paths = (result.races || []).map(function(r) {return r.path})
+        var paths = (result.retainedRaces || result.races || []).map(function(r) {return r.path})
         Object.keys(issues).forEach(function(id) {
-            if (issues[id].path && paths.indexOf(issues[id].path) < 0) delete issues[id]
+            if (issues[id].path && issues[id].path.indexOf("day:") !== 0 && paths.indexOf(issues[id].path) < 0) delete issues[id]
         })
     }
     return issues
@@ -95,4 +95,16 @@ function notificationArgs(name, events, duration) {
     return ["/usr/bin/omarchy", "notification", "send", "--app-name", "ProCyclingStats", "-u", "low", "-g", "󰂣",
         "-t", String(integer(duration,8,5,30)*1000), "Race events · " + String(name).slice(0,180),
         "Race update: " + lines.join("\n").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")]
+}
+
+// Local noon avoids UTC shifts and DST transitions when stepping calendar days.
+function dayKey(now, offset) {
+    var d = new Date(now)
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + offset, 12)
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0")
+}
+function dayLabel(now, offset) {
+    var d = new Date(dayKey(now,offset)+"T12:00:00")
+    return ["Yesterday", "Today", "Tomorrow"][offset+1] + " · " + d.getDate() + " " +
+        ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]
 }

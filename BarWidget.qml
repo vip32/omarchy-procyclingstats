@@ -13,7 +13,12 @@ Panel {
     readonly property color foreground: bar ? bar.foreground : Color.foreground
     readonly property color dim: Qt.darker(foreground, 1.5)
     readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
-    readonly property var races: service ? service.races : []
+    readonly property var todayRaces: service ? service.races : []
+    property int dayOffset: 0
+    readonly property string dayDate: Model.dayKey(now,dayOffset)
+    readonly property var dayData: !service ? ({}) : dayOffset === 0 ? {state:service.state,error:service.error,fetchedAt:service.fetchedAt,races:service.races} : service.dayLists[dayDate] || ({state:"loading"})
+    readonly property var races: dayData.races || []
+    readonly property bool preview: dayOffset > 0 && !finished
     readonly property bool demo: service ? service.demo : false
     readonly property var rows: filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races
     readonly property var selected: rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
@@ -43,10 +48,20 @@ Panel {
     function showFilter(name) {
         settingsOpen=false
         expanded=false
+        if(name === "Live") dayOffset=0
         filter=name === "Live" ? "Live" : "Races"
         cursorIndex=0
         detailView="overview"
         Qt.callLater(function(){scroller.contentY=0})
+    }
+    function showDay(offset) {
+        showFilter("Races")
+        dayOffset=Math.max(-1,Math.min(1,offset))
+        if(service) service.watchDay(dayDate)
+    }
+    onDayDateChanged: {
+        cursorIndex=0; expanded=false
+        if(service) {service.checkDate(now);service.watchDay(dayDate)}
     }
     function titleStatus(s) { return ({live:"LIVE",finished:"FINISHED",upcoming:"UPCOMING",scheduled:"SCHEDULED",unknown:"STATUS UNKNOWN"})[s] || "WAITING" }
     function configure() {
@@ -78,7 +93,7 @@ Panel {
         })
     }
     function openSource() {
-        var path = selected ? selected.path + (expanded && detailView === "events" ? "/live/race-events" : selected.status === "live" || selected.status === "upcoming" ? "/live" : "") : ""
+        var path = selected ? selected.path + (expanded && detailView === "events" ? "/live/race-events" : !preview && (selected.status === "live" || selected.status === "upcoming") ? "/live" : "") : ""
         if(path && !/^race\/[a-z0-9-]+\/\d{4}\/(result|stage-\d+[a-z]?)(\/live(\/race-events)?)?$/.test(path)) return
         Quickshell.execDetached(["/usr/bin/xdg-open","https://www.procyclingstats.com/" + path])
     }
@@ -93,7 +108,7 @@ Panel {
     }
     onDetailViewChanged: Qt.callLater(function(){scroller.contentY=0})
     onOpenedChanged: {
-        if(opened) {now=Date.now(); configure(); if(service){service.refresh();if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
+        if(opened) {now=Date.now(); configure(); if(service){service.refresh();service.watchDay(dayDate);if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
     }
     Timer { interval:15000; running:root.opened || root.connection.visible; repeat:true; onTriggered:root.now=Date.now() }
     Connections {
@@ -109,6 +124,7 @@ Panel {
         function events(): void { root.open(); root.select(root.cursorIndex,true); root.detailView="events" }
         function setDetailView(view: string): void { root.detailView=view==="events" ? "events" : "overview" }
         function settings(): void { root.settingsOpen=true;root.open() }
+        function showDay(offset: int): void { root.showDay(offset) }
         function showRaces(): void { root.showFilter("Races") }
         function compact(): void { root.expanded = false; root.open() }
         function selectRace(index: int): void { root.filter = "Races"; root.open(); root.select(index, true) }
@@ -121,7 +137,7 @@ Panel {
         }
         function status(): string {
             return JSON.stringify({opened:root.opened, expanded:root.expanded, serviceReady:!!root.service,
-                detailView:root.detailView, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
+                dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
                 classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",
@@ -137,14 +153,14 @@ Panel {
         anchors.fill: parent
         bar: root.bar
         iconComponent: Component { RaceBike {color:root.connection.visible ? root.warningColor : button.foreground} }
-        tooltipText: "ProCyclingStats · road cycling\n" + (root.connection.visible ? root.connection.title+"\n"+root.connection.text : root.demo ? "DEMO — fictional races" : root.service && root.service.error ? root.service.error : root.races.filter(function(r){return r.status === "live"}).length + " live · " + root.races.length + " races today") + "\nLeft click: races · Right click: PCS · Middle click: refresh"
+        tooltipText: "ProCyclingStats · road cycling\n" + (root.connection.visible ? root.connection.title+"\n"+root.connection.text : root.demo ? "DEMO — fictional races" : root.service && root.service.error ? root.service.error : root.todayRaces.filter(function(r){return r.status === "live"}).length + " live · " + root.todayRaces.length + " races today") + "\nLeft click: races · Right click: PCS · Middle click: refresh"
         onPressed: function(code) {
             if(code===Qt.LeftButton)root.toggle()
             else if(code===Qt.RightButton)root.openSource()
             else if(code===Qt.MiddleButton && root.service)root.service.refresh()
         }
         Rectangle {
-            visible: !root.connection.visible && root.races.some(function(r){return r.status === "live"}) && !root.demo && root.service && root.service.state === "ready"
+            visible: !root.connection.visible && root.todayRaces.some(function(r){return r.status === "live"}) && !root.demo && root.service && root.service.state === "ready"
             width: Style.space(4); height:width; radius:width/2
             color: Color.accent
             anchors.right:parent.right; anchors.top:parent.top
@@ -168,7 +184,7 @@ Panel {
         PanelKeyCatcher {
             id:keys
             anchors.fill:parent
-            onMoveRequested:function(dx,dy){if(root.settingsOpen)settingsPage.move(dx,dy);else if(dy!==0)root.select(root.cursorIndex+dy,root.expanded)}
+            onMoveRequested:function(dx,dy){if(root.settingsOpen)settingsPage.move(dx,dy);else if(dx!==0 && !root.expanded)root.showDay(root.dayOffset+dx);else if(dy!==0)root.select(root.cursorIndex+dy,root.expanded)}
             onActivateRequested:{if(root.settingsOpen)settingsPage.activate();else root.select(root.cursorIndex,true)}
             onCloseRequested:{if(root.settingsOpen)root.settingsOpen=false;else if(root.expanded)root.expanded=false;else root.close()}
             onTabRequested:function(direction){root.switchPanel(direction)}
@@ -180,7 +196,7 @@ Panel {
                 if(root.settingsOpen)return
                 if(k==="r" && root.service)root.service.refresh()
                 if(k==="o")root.openSource()
-                if(k==="t" && root.expanded)root.detailView=root.detailView==="events" ? "overview" : "events"
+                if(k==="t" && root.expanded && !root.preview)root.detailView=root.detailView==="events" ? "overview" : "events"
                 if(k==="e" && root.selected){root.expanded=!root.expanded;root.select(root.cursorIndex,root.expanded)}
             }
             BorderSurface {
@@ -217,7 +233,7 @@ Panel {
                             anchors.verticalCenter:parent.verticalCenter
                             spacing:Style.space(2)
                             RaceText {width:parent.width;text:root.settingsOpen ? "Settings" : "ProCyclingStats";font.pixelSize:Style.font.title;font.bold:true;color:root.foreground}
-                            RaceText {width:parent.width;text:root.demo ? "DEMO · fictional road races" : root.service && root.service.loading ? "Refreshing races…" : "Road cycling · " + root.age(root.service ? root.service.fetchedAt : "");font.pixelSize:Style.font.caption;color:root.dim}
+                            RaceText {width:parent.width;text:root.demo ? "DEMO · fictional road races" : root.service && root.service.loading ? "Refreshing races…" : "Road cycling · " + root.age(root.dayData.fetchedAt || "");font.pixelSize:Style.font.caption;color:root.dim}
                         }
                         Row {
                             id:actions;anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(6)
@@ -239,8 +255,8 @@ Panel {
                     width:parent.width;spacing:Style.spacing.panelGap;visible:!root.settingsOpen
                     RaceText {
                         width:parent.width
-                        visible:root.service && root.service.error !== ""
-                        text:(root.races.length ? "Showing previous data. " : "")+(root.service ? root.service.error : "")
+                        visible:!!root.dayData.error
+                        text:(root.races.length ? "Showing previous data. " : "")+(root.dayData.error || "")
                         color:Color.urgent
                         wrapMode:Text.WordWrap
                         elide:Text.ElideNone
@@ -248,7 +264,12 @@ Panel {
                     Column {
                         visible:!root.expanded || !root.selected
                         width:parent.width;spacing:Style.space(7)
-                        PanelSectionHeader {text:root.filter==="Live" ? "LIVE RACES" : "RACES";foreground:root.foreground}
+                        Row {
+                            width:parent.width;spacing:Style.space(6)
+                            Button {id:previousDay;text:"‹";enabled:root.dayOffset>-1;tooltipText:"Previous day (Left)";Accessible.name:"Previous day";bordered:true;foreground:root.foreground;onClicked:root.showDay(root.dayOffset-1)}
+                            Button {width:parent.width-previousDay.width-nextDay.width-Style.space(12);text:Model.dayLabel(root.now,root.dayOffset);tooltipText:"Return to today";Accessible.name:text;foreground:root.foreground;onClicked:root.showDay(0)}
+                            Button {id:nextDay;text:"›";enabled:root.dayOffset<1;tooltipText:"Next day (Right)";Accessible.name:"Next day";bordered:true;foreground:root.foreground;onClicked:root.showDay(root.dayOffset+1)}
+                        }
                         Repeater {
                             id:raceRepeater
                             model:root.rows
@@ -277,7 +298,7 @@ Panel {
                         }
                         RaceText {
                             width:parent.width;visible:root.rows.length===0
-                            text:root.service && root.service.error ? "Race data is unavailable. Use ↗ in the header to open PCS." : root.service && root.service.state==="loading" ? "Loading today’s races…" : root.filter==="Live" ? "No live races listed right now." : "No races listed today."
+                            text:root.dayData.error ? "Race data is unavailable. Use ↗ in the header to open PCS." : root.dayData.state==="loading" ? "Loading races…" : root.filter==="Live" ? "No live races listed right now." : "No races listed for this day."
                             color:root.dim;wrapMode:Text.WordWrap;elide:Text.ElideNone
                         }
                     }
@@ -285,15 +306,16 @@ Panel {
                         visible:root.expanded && !!root.selected
                         width:parent.width;spacing:Style.space(12)
                         RaceText {width:parent.width;text:root.selected ? root.selected.name : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
-                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || "",root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "Race data unavailable" : root.finished ? "Loading results…" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
+                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || "",root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "Race data unavailable" : root.finished ? "Loading results…" : root.preview ? "Loading race preview…" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
                         RaceText {width:parent.width;visible:!!root.detail.error;text:(root.detail.fetchedAt ? "Previous snapshot · " : "")+(root.detail.error || "");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Color.urgent}
                         Row {
+                            visible:!root.preview
                             width:parent.width;spacing:Style.space(6)
                             Button {width:(parent.width-Style.space(6))/2;text:"Overview";selected:root.detailView==="overview";bordered:true;foreground:root.foreground;onClicked:root.detailView="overview"}
                             Button {width:(parent.width-Style.space(6))/2;text:"Race events";selected:root.detailView==="events";bordered:true;foreground:root.foreground;onClicked:root.detailView="events"}
                         }
                         Column {
-                            visible:root.detailView==="events"
+                            visible:root.detailView==="events" && !root.preview
                             width:parent.width;spacing:Style.space(10)
                             RaceText {width:parent.width;text:root.demo ? "Fictional race events" : root.detail.eventsFetchedAt ? root.age(root.detail.eventsFetchedAt) : "";color:root.dim;font.pixelSize:Style.font.caption}
                             RaceEvents {width:parent.width;events:root.detail.events || [];state:root.detail.eventsState || "";error:root.detail.eventsError || (root.detail.error ? "Events could not be refreshed." : "");textColor:root.foreground}
@@ -313,12 +335,16 @@ Panel {
                             RaceText {width:parent.width;visible:!root.classifications.length;text:root.detail.resultsError || (root.detail.error ? "Results could not be loaded. Open PCS with ↗ in the header." : "Waiting for published results…");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
                             RaceText {width:parent.width;visible:root.detail.stageRace===true && root.detail.gcAvailable===false;text:"General classification is not published on this stage page yet.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
                         }
+                        RacePreview {
+                            visible:root.preview
+                            width:parent.width;detail:root.detail;foreground:root.foreground
+                        }
                         RaceOverview {
-                            visible:root.detailView==="overview" && !root.finished
+                            visible:root.detailView==="overview" && !root.finished && !root.preview
                             width:parent.width;detail:root.detail;foreground:root.foreground
                         }
                     }
-                    RaceText {width:parent.width;text:"J/K select · Enter details · T events · R refresh · Esc back";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}
+                    RaceText {width:parent.width;text:root.expanded ? "J/K select · Enter details · R refresh · Esc back" : "←/→ day · J/K select · Enter details · R refresh";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}
                     }
                 }
             }

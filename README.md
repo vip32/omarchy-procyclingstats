@@ -3,6 +3,8 @@
 A road-bike icon in the center of the Omarchy Quattro bar. Click it for today's
 professional road cycling races, then select a race for its LiveStats overview.
 
+- Compact yesterday / today / tomorrow navigation. Click the date to return to today; Live always shows today.
+- Tomorrow shows published start time, distance and route, plus the profile when extractable.
 - Races and Live filters in the header (checkered flag and live indicator), including women's and men's races.
 - A slim summary of distance remaining, elapsed time and average speed (start time before racing).
 - One live overview combines the race situation, latest three events and course profile.
@@ -34,7 +36,7 @@ team or rider browsing.
 
 Omarchy 4 Quattro, Python 3 (standard library only), and `xdg-open` to open PCS.
 No API key, paid service, browser automation or extra Python packages.
-The adapter reads the public PCS homepage, `/race/.../live`, stage results and
+The adapter reads the public PCS homepage, date-specific UCI road calendar, race previews, `/race/.../live`, stage results and
 `/race/.../live/race-events` HTML.
 PCS's [official API](https://www.procyclingstats.com/info/api) is available by
 request; its public page does not advertise a free tier. This plugin uses HTML,
@@ -47,7 +49,12 @@ access may vary. Blocked access and rate limits are displayed explicitly, with a
 in the browser when automatic access is unavailable.
 
 Live race pages refresh every 60 seconds by default. The homepage refreshes every
-5 minutes. The Settings screen (gear button or comma key) controls live updates
+5 minutes, as do visited adjacent-day lists. Preview refreshes use the results interval.
+Each day has a separate in-memory cache; local midnight resets the date window and
+rejects in-flight responses from the old day. Future start times retain PCS’s published
+time-zone text. Expected finish times remain labelled ETA, never start time.
+Image-only profiles may be unavailable in the panel; use the PCS header link.
+The Settings screen (gear button or comma key) controls live updates
 (60–900 seconds), the race list (5–60 minutes), finished results (5–60 minutes),
 and notification duration (5–30 seconds). Changes save automatically to this
 widget’s entry in `shell.json`. Explicit refresh respects these intervals. Up to three
@@ -67,7 +74,7 @@ source recovers; an unrelated successful request cannot hide it. Missing optiona
 coverage is shown in the relevant tab without claiming a connection failure.
 
 Race-event notifications are off by default. Enable them in Settings for up to
-three recently opened races, including while the panel is closed. The initial
+three recently opened races from today, including while the panel is closed. The initial
 fetch after enabling or restarting establishes a baseline without replaying the
 backlog. Only new events notify; each poll groups them into one notification per
 race (three event summaries plus a count). After a long outage, the baseline

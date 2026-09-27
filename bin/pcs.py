@@ -177,6 +177,62 @@ def parse_overview(html):
     order = {'live':0,'upcoming':1,'scheduled':2,'finished':3}
     return {'state':'ready' if races else 'empty', 'races':sorted(races.values(),key=lambda r:order[r['status']])[:60]}
 
+def calendar_date(value):
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', value):
+        raise SourceError('unsupported', 'Use an ISO calendar date.')
+    try:
+        return dt.date.fromisoformat(value).isoformat()
+    except ValueError:
+        raise SourceError('unsupported', 'Use a valid calendar date.') from None
+
+def parse_calendar(html, date):
+    date = calendar_date(date)
+    doc = checked_html(html)
+    selected = next((n.attrs.get('value') for n in doc.nodes('input') if n.attrs.get('name') == 'date'), None)
+    if selected != date:
+        raise SourceError('unsupported', 'PCS did not return the requested race date.')
+    races, recognized, in_uci = {}, False, False
+    for n in doc.nodes():
+        if n.tag in ('h3', 'h4'):
+            in_uci = txt(n).lower() == 'uci races'
+        if n.tag != 'table' or not in_uci:
+            continue
+        headers = [txt(h).lower() for h in n.nodes('th')]
+        if not {'race', 'winner', 'cat.', 'class.', 'exp. finish'}.issubset(headers):
+            continue
+        recognized = True
+        for row in n.nodes('tr'):
+            cells = [c for c in row.children if isinstance(c, Node) and c.tag == 'td']
+            if len(cells) != len(headers):
+                continue
+            values = dict(zip(headers, cells))
+            a, path = race_link(values['race'])
+            if not path:
+                continue
+            winner = any(a.attrs.get('href', '').startswith('rider/') for a in values['winner'].nodes('a'))
+            races[path] = dict(path=path, name=txt(a), date=date,
+                status='finished' if winner else 'scheduled', profile=[], toGo='',
+                category=' · '.join(filter(None, [txt(values['cat.']), txt(values['class.'])])),
+                eta=txt(values['exp. finish']))
+    if not recognized:
+        raise SourceError('unsupported', 'PCS calendar format changed; races could not be read.')
+    return dict(state='ready' if races else 'empty', date=date, races=list(races.values())[:60])
+
+def parse_preview(html, path):
+    doc = checked_html(html)
+    values = {}
+    for group in doc.nodes('ul', 'keyvalueList'):
+        for row in group.nodes('li'):
+            key = txt(row.first(cls='title')).rstrip(':').lower()
+            values[key] = txt(row.first(cls='value'))
+    if not values.get('date'):
+        raise SourceError('unsupported', 'PCS race preview could not be read.')
+    distance = re.match(r'^(\d+(?:\.\d+)?)', values.get('distance', ''))
+    return dict(state='ready', path=path, status='upcoming', date=values['date'],
+        startTime=values.get('start time', ''), distance=number(distance[1]) if distance else None,
+        departure=values.get('departure', ''), arrival=values.get('arrival', ''),
+        profile=profile(doc))
+
 def parse_race(html, path):
     doc = checked_html(html)
     data = {}
@@ -328,7 +384,9 @@ def attach_events(result,path):
         result.update(eventsState=e.state,eventsError=e.message)
     return result
 
-def load_race(path,finished=False):
+def load_race(path,finished=False,upcoming=False):
+    if upcoming:
+        return parse_preview(fetch(path),path)
     if finished:
         return attach_events(parse_results(fetch(path),path),path)
     result=parse_race(fetch(path+'/live'),path)
@@ -377,8 +435,10 @@ def deadline(*_):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode',choices=['overview','race','events'])
+    parser.add_argument('mode',choices=['overview','calendar','race','events'])
     parser.add_argument('--race',default='')
+    parser.add_argument('--date',default='')
+    parser.add_argument('--upcoming',action='store_true',help='Read the published pre-race information')
     parser.add_argument('--finished',action='store_true',help='Read published results and stage GC instead of LiveStats')
     parser.add_argument('--html',type=Path,help='Parse a saved public page offline; no network request')
     args=parser.parse_args()
@@ -386,11 +446,12 @@ def main():
     signal.alarm(18)
     try:
         path=race_path(args.race) if args.mode in ('race','events') else ''
+        date=calendar_date(args.date) if args.mode=='calendar' else ''
         if args.html:
             with args.html.open('rb') as stream: html=bounded_read(stream).decode('utf-8',errors='replace')
-            result=parse_events(html) if args.mode=='events' else (parse_results(html,path) if args.finished else parse_race(html,path)) if path else parse_overview(html)
+            result=parse_calendar(html,date) if date else parse_events(html) if args.mode=='events' else (parse_preview(html,path) if args.upcoming else parse_results(html,path) if args.finished else parse_race(html,path)) if path else parse_overview(html)
         else:
-            result=parse_events(fetch(path+'/live/race-events')) if args.mode=='events' else load_race(path,args.finished) if path else parse_overview(fetch(''))
+            result=parse_calendar(fetch('races.php?p=uci&s=today&date='+date),date) if date else parse_events(fetch(path+'/live/race-events')) if args.mode=='events' else load_race(path,args.finished,args.upcoming) if path else parse_overview(fetch(''))
         result['fetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat()
         result['savedPage']=bool(args.html)
     except SourceError as e:

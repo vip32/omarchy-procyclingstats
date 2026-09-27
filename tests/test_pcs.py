@@ -203,4 +203,36 @@ class Events(unittest.TestCase):
         self.assertTrue(d['gcAvailable'])
         self.assertEqual(d['events'][0]['text'],'Race finished.')
 
+class Calendar(unittest.TestCase):
+    def page(self, winner=True):
+        return '<input name="date" value="2026-09-28"><h4>UCI races</h4><table><tr>'+''.join('<th>'+x+'</th>' for x in ['Race','Class.','Cat.','Winner','Exp. finish'])+'</tr><tr><td><a href="race/demo/2026/stage-2">Demo stage 2</a></td><td>2.Pro</td><td>WE</td><td>'+('<a href="rider/demo">Winner</a>' if winner else '')+'</td><td>14:50 (08:50 CET)</td></tr></table><h4>National races and other disciplines</h4><table><tr><td><a href="race/gravel/2026/result">Gravel</a></td></tr></table>'
+    def test_calendar_filters_other_disciplines_and_preserves_stage(self):
+        result=pcs.parse_calendar(self.page(),'2026-09-28')
+        self.assertEqual(len(result['races']),1)
+        race=result['races'][0]
+        self.assertEqual(race['path'],'race/demo/2026/stage-2')
+        self.assertEqual(race['status'],'finished')
+        self.assertEqual(race['eta'],'14:50 (08:50 CET)')
+        self.assertEqual(race['date'],'2026-09-28')
+    def test_no_winner_does_not_invent_a_finished_race(self):
+        self.assertEqual(pcs.parse_calendar(self.page(False),'2026-09-28')['races'][0]['status'],'scheduled')
+    def test_wrong_date_and_invalid_dates_rejected(self):
+        for date in ['2026-09-27','2026-02-30','20260928','2026-09-28&extra=1']:
+            with self.assertRaises(pcs.SourceError): pcs.parse_calendar(self.page(),date)
+    def test_calendar_empty_and_changed_markup_differ(self):
+        import re
+        empty=re.sub(r'<tr><td>.*?</tr>','',self.page())
+        self.assertEqual(pcs.parse_calendar(empty,'2026-09-28')['state'],'empty')
+        with self.assertRaises(pcs.SourceError): pcs.parse_calendar('<input name="date" value="2026-09-28">','2026-09-28')
+    def test_preview_fetches_only_normal_race_page(self):
+        html='<ul class="keyvalueList">'+''.join('<li><div class="title">'+k+':</div><div class="value">'+v+'</div></li>' for k,v in [('Date','28 September 2026'),('Start time','11:12 (05:12 CET)'),('Distance','145.6 km'),('Departure','Town A'),('Arrival','Town B')])+'</ul>'
+        with patch.object(pcs,'fetch',return_value=html) as fetch:
+            result=pcs.load_race('race/demo/2026/stage-2',upcoming=True)
+        fetch.assert_called_once_with('race/demo/2026/stage-2')
+        self.assertEqual(result['startTime'],'11:12 (05:12 CET)')
+        self.assertEqual(result['distance'],145.6)
+        self.assertEqual(result['arrival'],'Town B')
+        self.assertNotIn('events',result)
+        self.assertEqual(result['profile'],[])
+
 if __name__=='__main__': unittest.main()

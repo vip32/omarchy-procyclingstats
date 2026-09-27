@@ -12,6 +12,9 @@ Item {
     property string error: ""
     property var races: []
     property var details: ({})
+    property var dayLists: ({})
+    property string today: Model.dayKey(Date.now(),0)
+    property string currentRequestDate: today
     property string fetchedAt: ""
     property bool loading: worker.running
     property var queue: []
@@ -33,11 +36,38 @@ Item {
     property bool demo: false
     onEventNotificationsChanged: eventBaselines = ({})
 
+    function allRaces() {
+        var all = races.slice()
+        Object.keys(dayLists).forEach(function(date) { all = all.concat(dayLists[date].races || []) })
+        return all
+    }
+    function findRace(path) { return allRaces().filter(function(r) {return r.path === path})[0] }
+    function checkDate(now) {
+        var date = Model.dayKey(now,0)
+        if (date === today || demo) return
+        // Drop the old day's polling and snapshots; an in-flight response is
+        // tagged with its start date and cannot populate the new today.
+        today = date
+        races = []; dayLists = ({}); details = ({}); watched = []
+        queue = []; lastRequests = ({}); updateIssues = ({}); eventBaselines = ({})
+        fetchedAt = ""; state = "loading"; error = ""
+    }
+    function watchDay(date) {
+        if ([Model.dayKey(Date.now(),-1),today,Model.dayKey(Date.now(),1)].indexOf(date)<0) return
+        if (date === today) { enqueue(""); return }
+        if (!dayLists[date]) {
+            var next = Object.assign({},dayLists)
+            next[date] = {state:"loading",races:[]}
+            dayLists = next
+        }
+        enqueue("day:"+date)
+    }
     function enqueue(path) {
         if (demo || Date.now() < nextAllowed) return
         var key = path || "overview"
         if ((worker.running && currentPath === path) || queue.indexOf(path) >= 0) return
-        var finished = path && races.some(function(r) {return r.path === path && r.status === "finished"})
+        var race = findRace(path)
+        var finished = race && (race.status === "finished" || race.date > today)
         if (Date.now() - Number(lastRequests[key] || 0) < Model.requestInterval(path, finished, options)) return
         queue = queue.concat([path]).slice(0, 5)
         runNext()
@@ -48,11 +78,14 @@ Item {
         enqueue(path)
     }
     function refresh() {
+        checkDate(Date.now())
         enqueue("")
+        Object.keys(dayLists).forEach(function(date) { enqueue("day:"+date) })
         for (var i = 0; i < watched.length; i++) enqueue(watched[i])
     }
     function runNext() {
         if (worker.running || !queue.length || demo || Date.now() < nextAllowed) return
+        currentRequestDate = today
         currentPath = queue[0]
         queue = queue.slice(1)
         var times = Object.assign({}, lastRequests)
@@ -62,20 +95,38 @@ Item {
         var script = decodeURIComponent(Qt.resolvedUrl("bin/pcs.py").toString().replace(/^file:\/\//, ""))
         worker.command = currentPath ? ["/usr/bin/python3", "-I", script, "race", "--race", currentPath]
                                      : ["/usr/bin/python3", "-I", script, "overview"]
-        if (currentPath && races.some(function(r) {return r.path === currentPath && r.status === "finished"}))
-            worker.command = worker.command.concat(["--finished"])
+        if (currentPath.indexOf("day:") === 0)
+            worker.command = ["/usr/bin/python3", "-I", script, "calendar", "--date", currentPath.slice(4)]
+        else {
+            var race = findRace(currentPath)
+            if (race && race.status === "finished") worker.command = worker.command.concat(["--finished"])
+            else if (race && race.date > today) worker.command = worker.command.concat(["--upcoming"])
+        }
         worker.running = true
     }
     function consume(code) {
         if (demo) return
+        checkDate(Date.now())
+        if (currentRequestDate !== today) { Qt.callLater(refresh); return }
         var result
         try { result = JSON.parse(output) } catch (e) { result = {state: "error", error: "Race data helper failed."} }
         if (code !== 0) result = {state: "error", error: "Race data helper could not run. Check Python 3 is installed."}
-        var race = races.filter(function(r) {return r.path === currentPath})[0]
-        var previousData = currentPath ? details[currentPath] || ({}) : {fetchedAt:fetchedAt}
-        updateIssues = Model.updateIssues(updateIssues,currentPath,result,previousData,race ? race.name : "Selected race",Date.now())
+        var calendar = currentPath.indexOf("day:") === 0
+        var date = calendar ? currentPath.slice(4) : today
+        var race = findRace(currentPath)
+        var previousData = calendar ? dayLists[date] || ({}) : currentPath ? details[currentPath] || ({}) : {fetchedAt:fetchedAt}
+        if (!currentPath && (result.state === "ready" || result.state === "empty")) {
+            result.races = (result.races || []).map(function(r) {return Object.assign({},r,{date:today})})
+            result.retainedRaces = result.races.concat(allRaces().filter(function(r) {return r.date !== today}))
+        }
+        updateIssues = Model.updateIssues(updateIssues,currentPath,result,previousData,calendar ? "Races · "+date : race ? race.name : "Selected race",Date.now())
         receiveEvents(currentPath,result,race)
-        if (currentPath) {
+        if (calendar) {
+            var lists = Object.assign({},dayLists)
+            lists[date] = result.state === "ready" || result.state === "empty" ? result
+                : Object.assign({},previousData,{state:result.state,error:result.error})
+            dayLists = lists
+        } else if (currentPath) {
             var next = Object.assign({}, details)
             if (result.state === "ready") {
                 var prior = next[currentPath] || ({})
@@ -96,7 +147,7 @@ Item {
             if (state === "ready" || state === "empty") {
                 races = result.races || []
                 fetchedAt = result.fetchedAt || ""
-                var paths = races.map(function(r) {return r.path})
+                var paths = allRaces().map(function(r) {return r.path})
                 watched = watched.filter(function(p) {return paths.indexOf(p) >= 0})
                 var retained = {}
                 for (var i = 0; i < paths.length; i++) if (details[paths[i]]) retained[paths[i]] = details[paths[i]]
@@ -118,7 +169,7 @@ Item {
         Qt.callLater(runNext)
     }
     function receiveEvents(path,result,race) {
-        if (!path || demo || !eventNotifications || result.state !== "ready" || ["ready","empty"].indexOf(result.eventsState)<0) return
+        if (!path || !races.some(function(r){return r.path === path}) || demo || !eventNotifications || result.state !== "ready" || ["ready","empty"].indexOf(result.eventsState)<0) return
         var diff = Model.newEvents(eventBaselines[path],result.events || [],Date.now(),Math.max(300000,refreshIntervalSec*3000))
         var next = {}
         // Bound memory to the recently watched races.
@@ -142,6 +193,8 @@ Item {
         demo = enabled
         details = ({})
         races = []
+        dayLists = ({})
+        today = Model.dayKey(Date.now(),0)
         fetchedAt = ""
         error = ""
         watched = []
@@ -162,6 +215,13 @@ Item {
                 var fixture = JSON.parse(text())
                 root.races = fixture.races
                 root.details = fixture.details
+                var lists = {}
+                ;[-1,1].forEach(function(offset) {
+                    var date = Model.dayKey(Date.now(),offset)
+                    var entries = ((fixture.calendar || {})[offset<0 ? "yesterday" : "tomorrow"] || [])
+                    lists[date] = {state:"ready",fetchedAt:new Date().toISOString(),races:entries.map(function(r) {return Object.assign({},r,{date:date})})}
+                })
+                root.dayLists = lists
                 root.state = "ready"
                 root.fetchedAt = new Date().toISOString()
             } catch (e) { root.state = "error"; root.error = "Demo fixture could not be loaded." }
@@ -179,8 +239,7 @@ Item {
         repeat: true
         triggeredOnStart: true
         onTriggered: {
-            root.enqueue("")
-            for (var i=0; i<root.watched.length; i++) root.enqueue(root.watched[i])
+            root.refresh()
         }
     }
     IpcHandler {
@@ -192,7 +251,7 @@ Item {
         function close(): void { if (root.shell) root.shell.hide("io.github.vip32.procyclingstats") }
         function status(): string {
             return JSON.stringify({state:root.state,error:root.error,loading:root.loading,demo:root.demo,
-                                   races:root.races.length,details:Object.keys(root.details),fetchedAt:root.fetchedAt,
+                                   today:root.today,days:root.dayLists,races:root.races.length,details:Object.keys(root.details),fetchedAt:root.fetchedAt,
                                    updateIssues:root.updateIssues,nextAllowed:root.nextAllowed,settings:root.options})
         }
     }

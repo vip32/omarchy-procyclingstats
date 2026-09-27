@@ -101,4 +101,54 @@ TestCase {
         service.enqueue(racePath)
         verify(service.loading)
     }
+    function test_calendar_response_cannot_replace_today() {
+        var yesterday = new Date(Date.now()-86400000)
+        var date = yesterday.getFullYear()+"-"+String(yesterday.getMonth()+1).padStart(2,"0")+"-"+String(yesterday.getDate()).padStart(2,"0")
+        service.currentPath="day:"+date
+        var past={path:"race/past/2026/stage-2",name:"Past",date:date,status:"finished"}
+        deliver({state:"ready",races:[past],fetchedAt:"saved"})
+        compare(service.races[0].path,racePath)
+        compare(service.dayLists[date].races[0].path,past.path)
+        service.watch(past.path)
+        var command=[]
+        for(var i=0;i<service.data.length;i++) if("command" in service.data[i]) command=service.data[i].command
+        verify(command.indexOf("--finished")>=0)
+    }
+    function test_calendar_failure_keeps_snapshot_and_recovers_independently() {
+        service.currentPath="day:"+service.today
+        deliver({state:"ready",races:[race],fetchedAt:"saved"})
+        deliver({state:"blocked",error:"Rejected"})
+        compare(service.dayLists[service.today].races.length,1)
+        compare(service.dayLists[service.today].fetchedAt,"saved")
+        service.currentPath=""
+        deliver({state:"ready",races:[race]})
+        compare(Object.keys(service.updateIssues).length,1)
+        service.currentPath="day:"+service.today
+        deliver({state:"empty",races:[]})
+        compare(Object.keys(service.updateIssues).length,0)
+    }
+    function test_historical_events_never_notify() {
+        service.races=[]
+        service.eventNotifications=true
+        deliver(snapshot("Old"))
+        deliver(snapshot("New historical event"))
+        compare(Quickshell.commands.length,0)
+    }
+    function test_midnight_retires_old_day_and_discards_inflight_response() {
+        service.today="2000-01-01"
+        service.currentRequestDate="2000-01-01"
+        service.currentPath=""
+        deliver({state:"ready",races:[race]})
+        verify(service.today!=="2000-01-01")
+        compare(service.races.length,0)
+        compare(service.watched.length,0)
+    }
+    function test_tomorrow_routes_to_preview_without_events() {
+        var future={path:"race/future/2026/stage-2",name:"Future",date:"9999-01-01",status:"scheduled"}
+        service.dayLists={future:{races:[future]}}
+        service.watch(future.path)
+        var command=[]
+        for(var i=0;i<service.data.length;i++) if("command" in service.data[i]) command=service.data[i].command
+        verify(command.indexOf("--upcoming")>=0)
+    }
 }
