@@ -52,5 +52,8 @@
   source blocks/rate limits still trigger the shared cooldown.
 - 37 tests pass, including event ordering, finish markers, long rider lists,
   deduplication, size limits, script stripping and partial events failure.
+- Live-shell verification: the World Championships event tab displayed 60
+  source events, newest first, with distance markers and wrapped plain text.
+  Captured a fictional event preview and restored live mode and prior view.
 - Deferred: official API integration, all-day calendars beyond PCS's homepage,
   historical race browsing, team/rider pages, push notifications.
