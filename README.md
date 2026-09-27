@@ -117,7 +117,7 @@ The pop-out is a normal Hyprland window: tile, move or resize it with your usual
 window controls. Closing it keeps the current view; click the bike to reopen it.
 Only one detached dashboard opens, and it uses the existing polling service.
 The selected date/race, tab, expanded rider groups and scroll position survive
-detaching and docking (scroll is clamped if the new view is shorter). Navigation
+detaching and docking (scroll is clamped to the available range). Navigation
 state lasts for the current loaded shell session; shell restart or plugin reload
 resets it. Saved settings persist across restarts.
 
