@@ -50,13 +50,15 @@ def main():
     workspace=next(i for i in range(90,110) if i not in used)
     runtime=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))
     recovery=runtime/'omarchy-pcs-demo-recovery'
+    layers=json.loads(run('hyprctl','layers','-j'))
+    shell_pids=sorted({item['pid'] for m in layers.values() for level in m['levels'].values() for item in level if item.get('namespace','').startswith('omarchy')})
     recovery.mkdir(mode=0o700) # refuse stale recovery records
     config=Path.home()/'.config/omarchy/shell.json'
     shutil.copy2(config,recovery/'shell.json')
     install=Path.home()/'.config/omarchy/plugins'/ID
     (recovery/'state.json').write_text(json.dumps({'workspace':original_workspace,'panel':panel_state,
         'installedCommit':run('git','-C',str(install),'rev-parse','HEAD'),
-        'shellPid':run('pgrep','-f','^/usr/bin/quickshell.*omarchy'),
+        'shellPids':shell_pids,
         'cursor':run('hyprctl','cursorpos','-j')},indent=2))
     for sig in (signal.SIGINT,signal.SIGTERM,signal.SIGHUP): signal.signal(sig,interrupted)
     restored=False
@@ -64,7 +66,7 @@ def main():
         wait_for(lambda:not status()['loading'])
         if ipc(ID,'demo','true')!='true': raise RuntimeError('Could not enable demo')
         wait_for(lambda:status()['demo'] and status()['races']==4)
-        run('hyprctl','dispatch','workspace',str(workspace))
+        run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{workspace}" }})')
         mode='compact' if args.compact else 'expand'
         ipc(ID+'.panel',mode)
         wait_for(lambda:status(ID+'.panel')['opened'] and status(ID+'.panel')['expanded'] != args.compact)
@@ -82,8 +84,9 @@ def main():
         try:
             ipc(ID+'.panel','close')
             if ipc(ID,'demo','false')!='true': raise RuntimeError('Could not restore live fetching')
-            run('hyprctl','dispatch','workspace',str(original_workspace))
-            if panel_state['opened']: ipc(ID+'.panel','expand' if panel_state['expanded'] else 'compact')
+            run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{original_workspace}" }})')
+            ipc(ID+'.panel','expand' if panel_state['expanded'] else 'compact')
+            if not panel_state['opened']: ipc(ID+'.panel','close')
             if status()['demo']: raise RuntimeError('Demo remains enabled')
             restored=True
         finally:

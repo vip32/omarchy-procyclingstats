@@ -29,6 +29,9 @@
   live homepage and World Championships data, compact and expanded panels,
   course rendering, disable/enable and shell restart. The installed Qt parser
   accepts every QML file. Hot reload retained old QML once; restart resolved it.
+- A cropped fictional preview was captured with `demo/run`; live fetching and
+  the original workspace were restored. The demo preflight only recognizes the
+  Bash wrapper as fixture-only; actual capture lives in `demo/capture.py`.
 - Not yet verified: real vertical bar and multiple physical monitors. Icon
   geometry uses native orientation-aware BarIconButton; both share one service.
 - Deferred: official API integration, all-day calendars beyond PCS's homepage,

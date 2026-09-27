@@ -11,6 +11,8 @@ professional road cycling races, then select a race for its LiveStats overview.
 - Stochi-inspired bordered rows, compact/expanded panels and native theme colors.
 - One shared poller across monitors. Per-panel navigation and selection.
 
+![Fictional demo of the race overview](preview.png)
+
 An independent, unofficial integration. Race data belongs to
 [ProCyclingStats](https://www.procyclingstats.com/). No team or rider browsing.
 
