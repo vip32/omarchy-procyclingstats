@@ -12,6 +12,22 @@ const cached = {fetchedAt:stamp,eventsFetchedAt:stamp};
 const event = (text,marker='42') => ({text,marker});
 const plain = value => JSON.parse(JSON.stringify(value));
 
+test('next route point uses the closest remaining climb or sprint, independent of source ordering', () => {
+    const detail={kmDone:148.2,keypoints:[{name:'Later sprint',km:181},{name:'Passed climb',km:140},{name:'Next climb',km:163.4}]};
+    assert.deepEqual(plain(model.nextKeypoint(detail)),{name:'Next climb',km:163.4,remaining:15.2});
+    assert.equal(detail.keypoints[0].name,'Later sprint');
+});
+test('missing progress cannot be treated as the start of the route', () => {
+    for(const kmDone of [null,undefined,NaN]) assert.equal(model.nextKeypoint({kmDone,keypoints:[{km:10}]}),null);
+});
+test('zero progress and arriving exactly at a keypoint remain valid', () => {
+    assert.equal(model.nextKeypoint({kmDone:0,keypoints:[{km:10}]}).remaining,10);
+    assert.equal(model.nextKeypoint({kmDone:10,keypoints:[{km:10}]}).remaining,0);
+});
+test('no future route point is invented from missing or passed coordinates', () => {
+    assert.equal(model.nextKeypoint({kmDone:15,keypoints:[{km:null},{},{km:10}]}),null);
+});
+
 test('settings reject malformed values, bound intervals, and default notifications off', () => {
     const s=model.settings({refreshIntervalSec:-1,overviewIntervalSec:60,resultsIntervalSec:Infinity,eventNotifications:'true',notificationDurationSec:0});
     assert.deepEqual(plain(s),{refreshIntervalSec:60,overviewIntervalSec:300,resultsIntervalSec:300,eventNotifications:false,notificationDurationSec:8});

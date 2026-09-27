@@ -313,49 +313,10 @@ Panel {
                             RaceText {width:parent.width;visible:!root.classifications.length;text:root.detail.resultsError || (root.detail.error ? "Results could not be loaded. Open PCS with ↗ in the header." : "Waiting for published results…");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
                             RaceText {width:parent.width;visible:root.detail.stageRace===true && root.detail.gcAvailable===false;text:"General classification is not published on this stage page yet.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
                         }
-                        Column {
+                        RaceOverview {
                             visible:root.detailView==="overview" && !root.finished
-                            width:parent.width;spacing:Style.space(12)
-                        Grid {
-                            width:parent.width;columns:3;spacing:Style.space(8)
-                            Repeater {
-                                model:[
-                                    {label:"KM TO GO",value:root.val(root.detail.kmToGo)},
-                                    {label:"RACE TIME",value:root.detail.elapsed || "—"},
-                                    {label:"AVG. KM/H",value:root.val(root.detail.avgSpeed)},
-                                    {label:"KM DONE",value:root.val(root.detail.kmDone)},
-                                    {label:"DISTANCE",value:root.val(root.detail.distance," km")},
-                                    {label:"START ("+(root.detail.startZone || "local")+")",value:root.detail.start || "—"}
-                                ]
-                                CursorSurface {
-                                    required property var modelData
-                                    width:(parent.width-Style.space(16))/3;height:Style.space(64);bordered:true;foreground:root.foreground
-                                    Column {anchors.fill:parent;anchors.margins:Style.space(10);spacing:Style.space(3)
-                                        RaceText {width:parent.width;text:modelData.label;font.pixelSize:Style.font.caption;color:root.dim}
-                                        RaceText {width:parent.width;text:modelData.value;font.pixelSize:Style.font.subtitle;font.bold:true;color:root.foreground}
-                                    }
-                                }
-                            }
-                        }
-                        PanelSectionHeader {text:"RACE SITUATION · GAPS TO FRONT";foreground:root.foreground}
-                        Repeater {
-                            model:root.detail.groups || []
-                            RiderGroup {required property var modelData;width:parent.width;group:modelData;textColor:root.foreground}
-                        }
-                        RaceText {width:parent.width;visible:!(root.detail.groups || []).length;text:"No group gaps published";color:root.dim;font.pixelSize:Style.font.caption}
-                        PanelSectionHeader {text:"COURSE PROFILE";foreground:root.foreground}
-                        Profile {width:parent.width;height:Style.space(95);points:root.detail.profile || [];progress:root.detail.distance>0 && root.detail.kmDone!==null ? root.detail.kmDone/root.detail.distance : -1;foreground:root.foreground}
-                        RaceText {visible:!(root.detail.profile || []).length;width:parent.width;text:"Course profile unavailable";color:root.dim;font.pixelSize:Style.font.caption}
-                        Row {width:parent.width
-                            RaceText {width:parent.width/2;text:root.val(root.detail.kmDone," km covered");color:root.dim;font.pixelSize:Style.font.caption}
-                            RaceText {width:parent.width/2;text:root.val(root.detail.kmToGo," km remaining");horizontalAlignment:Text.AlignRight;color:root.dim;font.pixelSize:Style.font.caption}
-                        }
-                        PanelSeparator {foreground:root.foreground}
-                        PanelSectionHeader {text:"NEXT ON THE ROUTE";foreground:root.foreground}
-                        Repeater {
-                            model:(root.detail.keypoints || []).filter(function(k){return root.detail.kmDone===null || k.km>=Number(root.detail.kmDone || 0)}).slice(0,3)
-                            RaceText {required property var modelData;width:parent.width;text:modelData.kind+" · "+modelData.name+" · km "+modelData.km+(modelData.gradient ? " · "+modelData.gradient+"%" : "");font.pixelSize:Style.font.caption;color:root.dim}
-                        }
+                            width:parent.width;detail:root.detail;foreground:root.foreground
+                            onEventsRequested:root.detailView="events"
                         }
                     }
                     RaceText {width:parent.width;text:"J/K select · Enter details · T events · R refresh · Esc back";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}

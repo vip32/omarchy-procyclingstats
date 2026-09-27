@@ -68,6 +68,15 @@ function warning(issues, now, nextAllowed, loading) {
 
 function eventKey(event) { return JSON.stringify([event.marker || "", event.text || ""]) }
 
+function nextKeypoint(detail) {
+    if (detail.kmDone === null || detail.kmDone === undefined || !Number.isFinite(Number(detail.kmDone))) return null
+    var done = Number(detail.kmDone)
+    var upcoming = (detail.keypoints || []).filter(function(k) {
+        return k.km !== null && k.km !== undefined && Number.isFinite(Number(k.km)) && Number(k.km) >= done
+    }).sort(function(a,b) {return Number(a.km)-Number(b.km)})
+    return upcoming.length ? Object.assign({},upcoming[0],{remaining:Math.round((Number(upcoming[0].km)-done)*10)/10}) : null
+}
+
 function newEvents(previous, events, now, maxAge) {
     var keys = events.map(eventKey)
     // First fetch, a restart, or a long outage establishes a baseline only.

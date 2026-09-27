@@ -4,17 +4,19 @@ A road-bike icon in the center of the Omarchy Quattro bar. Click it for today's
 professional road cycling races, then select a race for its LiveStats overview.
 
 - Races and Live filters in the header (checkered flag and live indicator), including women's and men's races.
-- Distance remaining and covered, elapsed race time, average speed and start time.
+- A slim summary of distance remaining, elapsed time and average speed (start time before racing).
+- One live overview combines the race situation, latest three events and course profile.
 - Course profile with the current race position.
 - Race situation: front group, chasing groups and peloton, with rider names, bibs
-  and each group’s time gap to the front.
+  and each group’s time gap to the front. Rider names use two columns, with four
+  shown initially per group and a control to expand longer lists.
 - Finished stages open on GC, with a separate stage-results tab. Finished one-day
   races show final results. Winner/leader time and gaps are included; show the
   top 10 or expand the full classification (up to 200 rows).
 - Race-events tab for attacks, dropped riders, abandonments, sprints and finish
   updates, newest first with distance-to-go markers. Shows the latest 15 with
   an option to expand to 60; also available after the race finishes.
-- Upcoming climbs and sprints.
+- The next published climb or sprint, with distance from the current race position.
 - Stochi-inspired bordered rows, compact/expanded panels and native theme colors.
 - One shared poller across monitors. Per-panel navigation and selection.
 - Settings screen for refresh intervals and optional, auto-closing race-event notifications.
