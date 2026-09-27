@@ -16,10 +16,10 @@ Column {
         model:root.showAll ? root.rows : root.rows.slice(0,10)
         CursorSurface {
             required property var modelData
-            width:parent.width;height:Style.space(38);bordered:true;foreground:root.textColor
+            width:parent.width;height:Style.space(32);bordered:true;foreground:root.textColor
             RaceText {id:rank;anchors.left:parent.left;anchors.leftMargin:Style.space(8);anchors.verticalCenter:parent.verticalCenter;width:Style.space(30);text:modelData.rank;color:Qt.darker(root.textColor,1.5);font.pixelSize:Style.font.caption}
-            RaceText {anchors.left:rank.right;anchors.leftMargin:Style.space(8);anchors.right:time.left;anchors.rightMargin:Style.space(8);anchors.verticalCenter:parent.verticalCenter;text:modelData.name;font.bold:modelData.rank==="1";color:root.textColor}
-            RaceText {id:time;anchors.right:parent.right;anchors.rightMargin:Style.space(8);anchors.verticalCenter:parent.verticalCenter;width:Style.space(88);text:modelData.time;horizontalAlignment:Text.AlignRight;color:Color.accent}
+            RaceText {anchors.left:rank.right;anchors.leftMargin:Style.space(8);anchors.right:time.left;anchors.rightMargin:Style.space(8);anchors.verticalCenter:parent.verticalCenter;text:modelData.name;font.pixelSize:Style.font.caption;font.bold:modelData.rank==="1";color:root.textColor}
+            RaceText {id:time;anchors.right:parent.right;anchors.rightMargin:Style.space(8);anchors.verticalCenter:parent.verticalCenter;width:Style.space(88);text:modelData.time;font.pixelSize:Style.font.caption;horizontalAlignment:Text.AlignRight;color:Color.accent}
         }
     }
     RaceText {visible:!root.rows.length;width:parent.width;text:"Results not published yet";color:Qt.darker(root.textColor,1.5)}

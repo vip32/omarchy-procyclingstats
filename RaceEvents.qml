@@ -16,20 +16,20 @@ Column {
         model:root.showAll ? root.events : root.events.slice(0,15)
         CursorSurface {
             required property var modelData
-            width:parent.width;height:Math.max(Style.space(58),body.implicitHeight+Style.space(22))
+            width:parent.width;height:Math.max(Style.space(48),marker.implicitHeight+Style.space(18),body.implicitHeight+Style.space(18))
             bordered:true;foreground:root.textColor
             Column {
                 id:marker
-                x:Style.space(10);y:Style.space(11);width:Style.space(65)
-                RaceText {width:parent.width;text:modelData.marker==="F" ? "FINISH" : modelData.marker || "—";font.bold:true;color:Color.accent;horizontalAlignment:Text.AlignHCenter}
+                x:Style.space(10);y:Style.space(9);width:Style.space(65)
+                RaceText {width:parent.width;text:modelData.marker==="F" ? "FINISH" : modelData.marker || "—";font.pixelSize:Style.font.caption;font.bold:true;color:Color.accent;horizontalAlignment:Text.AlignHCenter}
                 RaceText {width:parent.width;text:/^\d+(\.\d+)?$/.test(modelData.marker) ? "km to go" : "";font.pixelSize:Style.font.caption;color:Qt.darker(root.textColor,1.5);horizontalAlignment:Text.AlignHCenter}
             }
             RaceText {
                 id:body
                 anchors.left:marker.right;anchors.leftMargin:Style.space(12)
                 anchors.right:parent.right;anchors.rightMargin:Style.space(10)
-                y:Style.space(11)
-                text:modelData.text;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.textColor
+                y:Style.space(9)
+                text:modelData.text;font.pixelSize:Style.font.caption;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.textColor
             }
         }
     }

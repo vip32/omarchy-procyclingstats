@@ -15,7 +15,7 @@ CursorSurface {
         id:body
         x:Style.space(10);y:Style.space(10)
         width:parent.width-Style.space(20)
-        spacing:Style.space(7)
+        spacing:Style.space(5)
         Item {
             width:parent.width;height:Style.space(22)
             RaceText {anchors.left:parent.left;anchors.right:gap.left;anchors.rightMargin:Style.space(8);text:(root.group.label || "Group")+(root.group.count ? " · "+root.group.count : "");font.bold:true;color:root.textColor}
@@ -27,7 +27,7 @@ CursorSurface {
                 required property var modelData
                 width:parent.width;spacing:Style.space(10)
                 RaceText {width:Style.space(34);text:modelData.bib || "";font.pixelSize:Style.font.caption;color:Qt.darker(root.textColor,1.5);horizontalAlignment:Text.AlignRight}
-                RaceText {width:parent.width-Style.space(44);text:modelData.name || "";color:root.textColor}
+                RaceText {width:parent.width-Style.space(44);text:modelData.name || "";font.pixelSize:Style.font.caption;color:root.textColor}
             }
         }
         RaceText {visible:root.riders.length===0;width:parent.width;text:"Individual riders not listed by PCS";font.pixelSize:Style.font.caption;color:Qt.darker(root.textColor,1.5)}
