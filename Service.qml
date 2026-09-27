@@ -1,5 +1,7 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
+import "Model.js" as Model
 
 Item {
     id: root
@@ -18,16 +20,26 @@ Item {
     property string currentPath: ""
     property string output: ""
     property int refreshIntervalSec: 60
+    property int overviewIntervalSec: 300
+    property int resultsIntervalSec: 300
+    property bool eventNotifications: false
+    property int notificationDurationSec: 8
+    property var updateIssues: ({})
+    property var eventBaselines: ({})
+    property double lastNotificationTest: 0
+    readonly property var options: Model.settings({refreshIntervalSec:refreshIntervalSec,
+        overviewIntervalSec:overviewIntervalSec,resultsIntervalSec:resultsIntervalSec,
+        eventNotifications:eventNotifications,notificationDurationSec:notificationDurationSec})
     property double nextAllowed: 0
-    property double overviewDue: 0
     property bool demo: false
+    onEventNotificationsChanged: eventBaselines = ({})
 
     function enqueue(path) {
         if (demo || Date.now() < nextAllowed) return
         var key = path || "overview"
         if ((worker.running && currentPath === path) || queue.indexOf(path) >= 0) return
         var finished = path && races.some(function(r) {return r.path === path && r.status === "finished"})
-        if (Date.now() - Number(lastRequests[key] || 0) < (finished ? 300000 : 60000)) return
+        if (Date.now() - Number(lastRequests[key] || 0) < Model.requestInterval(path, finished, options)) return
         queue = queue.concat([path]).slice(0, 5)
         runNext()
     }
@@ -60,6 +72,10 @@ Item {
         var result
         try { result = JSON.parse(output) } catch (e) { result = {state: "error", error: "Race data helper failed."} }
         if (code !== 0) result = {state: "error", error: "Race data helper could not run. Check Python 3 is installed."}
+        var race = races.filter(function(r) {return r.path === currentPath})[0]
+        var previousData = currentPath ? details[currentPath] || ({}) : {fetchedAt:fetchedAt}
+        updateIssues = Model.updateIssues(updateIssues,currentPath,result,previousData,race ? race.name : "Selected race",Date.now())
+        receiveEvents(currentPath,result,race)
         if (currentPath) {
             var next = Object.assign({}, details)
             if (result.state === "ready") {
@@ -81,12 +97,14 @@ Item {
             if (state === "ready" || state === "empty") {
                 races = result.races || []
                 fetchedAt = result.fetchedAt || ""
-                overviewDue = Date.now() + 300000
                 var paths = races.map(function(r) {return r.path})
                 watched = watched.filter(function(p) {return paths.indexOf(p) >= 0})
                 var retained = {}
                 for (var i = 0; i < paths.length; i++) if (details[paths[i]]) retained[paths[i]] = details[paths[i]]
                 details = retained
+                var baselines = {}
+                for (var j=0; j<watched.length; j++) if(eventBaselines[watched[j]]) baselines[watched[j]]=eventBaselines[watched[j]]
+                eventBaselines = baselines
             }
         }
         var failures = [result.state,result.resultsState,result.eventsState]
@@ -100,6 +118,30 @@ Item {
         }
         Qt.callLater(runNext)
     }
+    function receiveEvents(path,result,race) {
+        if (!path || demo || !eventNotifications || result.state !== "ready" || ["ready","empty"].indexOf(result.eventsState)<0) return
+        var diff = Model.newEvents(eventBaselines[path],result.events || [],Date.now(),Math.max(300000,refreshIntervalSec*3000))
+        var next = {}
+        // Bound memory to the recently watched races.
+        for(var i=0;i<watched.length;i++) if(eventBaselines[watched[i]]) next[watched[i]]=eventBaselines[watched[i]]
+        next[path]=diff.baseline
+        eventBaselines=next
+        if(diff.fresh.length && race && (race.status==="live" || result.status==="live" || result.status==="finished"))
+            Quickshell.execDetached(Model.notificationArgs(race.name,diff.fresh,notificationDurationSec))
+    }
+    function testNotification() {
+        if (!eventNotifications || demo || Date.now()-lastNotificationTest<5000) return false
+        lastNotificationTest=Date.now()
+        Quickshell.execDetached(Model.notificationArgs("Test notification",[{marker:"42",text:"Fictional example: a rider attacks from the peloton."}],notificationDurationSec))
+        return true
+    }
+    // Explicit fictional failure preview; cannot mutate live fetch state.
+    function demoWarning(kind) {
+        if (!demo || ["ready","blocked","rate-limited","offline","error","unsupported"].indexOf(kind)<0) return false
+        updateIssues = Model.updateIssues({},"",{state:kind,error:"Fictional connection failure."},{fetchedAt:new Date(Date.now()-180000).toISOString()},"",Date.now())
+        nextAllowed = kind === "blocked" || kind === "rate-limited" ? Date.now()+900000 : 0
+        return true
+    }
     // Explicit fictional demo; never selected automatically on network failure.
     function setDemo(enabled) {
         if (worker.running) return false
@@ -112,6 +154,8 @@ Item {
         watched = []
         lastRequests = ({})
         nextAllowed = 0
+        updateIssues = ({})
+        eventBaselines = ({})
         if (enabled) demoFile.reload()
         else { state = "loading"; refresh() }
         return true
@@ -136,12 +180,13 @@ Item {
         onExited: function(code, status) { root.consume(code) }
     }
     Timer {
-        interval: Math.max(60, Math.min(900, root.refreshIntervalSec)) * 1000
+        // A short scheduler tick allows each source its own bounded interval.
+        interval: 15000
         running: !root.demo
         repeat: true
         triggeredOnStart: true
         onTriggered: {
-            if (Date.now() >= root.overviewDue) root.enqueue("")
+            root.enqueue("")
             for (var i=0; i<root.watched.length; i++) root.enqueue(root.watched[i])
         }
     }
@@ -149,11 +194,14 @@ Item {
         target: "io.github.vip32.procyclingstats"
         function refresh(): void { root.refresh() }
         function demo(enabled: bool): bool { return root.setDemo(enabled) }
+        function demoWarning(kind: string): bool { return root.demoWarning(kind) }
+        function testNotification(): bool { return root.testNotification() }
         function open(): void { if (root.shell) root.shell.summon("io.github.vip32.procyclingstats", "{}") }
         function close(): void { if (root.shell) root.shell.hide("io.github.vip32.procyclingstats") }
         function status(): string {
             return JSON.stringify({state:root.state,error:root.error,loading:root.loading,demo:root.demo,
-                                   races:root.races.length,details:Object.keys(root.details),fetchedAt:root.fetchedAt})
+                                   races:root.races.length,details:Object.keys(root.details),fetchedAt:root.fetchedAt,
+                                   updateIssues:root.updateIssues,nextAllowed:root.nextAllowed,settings:root.options})
         }
     }
 }

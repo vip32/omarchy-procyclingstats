@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.vip32.procyclingstats",
   "name": "ProCyclingStats",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": "vip32",
   "license": "MIT",
   "description": "Professional road cycling races and live race situation.",
@@ -21,7 +21,11 @@
     "allowMultiple": false,
     "defaultSection": "center",
     "defaults": {
-      "refreshIntervalSec": 60
+      "refreshIntervalSec": 60,
+      "overviewIntervalSec": 300,
+      "resultsIntervalSec": 300,
+      "notificationDurationSec": 8,
+      "eventNotifications": false
     },
     "schema": [
       {
@@ -32,6 +36,39 @@
         "max": 900,
         "step": 30,
         "defaultValue": 60
+      },
+      {
+        "key": "overviewIntervalSec",
+        "type": "integer",
+        "label": "Race list refresh (seconds)",
+        "min": 300,
+        "max": 3600,
+        "step": 60,
+        "defaultValue": 300
+      },
+      {
+        "key": "resultsIntervalSec",
+        "type": "integer",
+        "label": "Finished results refresh (seconds)",
+        "min": 300,
+        "max": 3600,
+        "step": 60,
+        "defaultValue": 300
+      },
+      {
+        "key": "notificationDurationSec",
+        "type": "integer",
+        "label": "Notification duration (seconds)",
+        "min": 5,
+        "max": 30,
+        "step": 1,
+        "defaultValue": 8
+      },
+      {
+        "key": "eventNotifications",
+        "type": "boolean",
+        "label": "Race-event notifications",
+        "defaultValue": false
       }
     ]
   }

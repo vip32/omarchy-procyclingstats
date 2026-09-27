@@ -17,6 +17,8 @@ professional road cycling races, then select a race for its LiveStats overview.
 - Upcoming climbs and sprints.
 - Stochi-inspired bordered rows, compact/expanded panels and native theme colors.
 - One shared poller across monitors. Per-panel navigation and selection.
+- Settings screen for refresh intervals and optional, auto-closing race-event notifications.
+- Persistent connection warning and bar badge when updates fail or PCS rejects requests.
 
 ![Fictional demo of the race overview](preview.png)
 
@@ -41,7 +43,10 @@ access may vary. Blocked access and rate limits are displayed explicitly, with a
 in the browser when automatic access is unavailable.
 
 Live race pages refresh every 60 seconds by default. The homepage refreshes every
-5 minutes. Explicit refresh is subject to the same minimum interval. Up to three
+5 minutes. The Settings screen (gear button or comma key) controls live updates
+(60–900 seconds), the race list (5–60 minutes), finished results (5–60 minutes),
+and notification duration (5–30 seconds). Changes save automatically to this
+widget’s entry in `shell.json`. Explicit refresh respects these intervals. Up to three
 recently selected races stay warm; requests are serialized, capped at 2 MB, and
 have an 18-second total deadline. Finished results refresh every 5 minutes.
 GC is read from the selected stage’s own GC tab, not a guessed final standings
@@ -50,6 +55,20 @@ previous events with their own timestamp and error, while race metrics and GC
 remain usable. Previous data
 remains visible with an error and its timestamp after a failed refresh. Source
 snapshot timestamps are used where available; the position is never extrapolated.
+
+Failed updates show a warning badge on the bike and a banner pinned above the
+scrolling content. It identifies the affected source, last successful fetch and
+retry countdown. A failure stays visible during retries and clears only when that
+source recovers; an unrelated successful request cannot hide it. Missing optional
+coverage is shown in the relevant tab without claiming a connection failure.
+
+Race-event notifications are off by default. Enable them in Settings for up to
+three recently opened races, including while the panel is closed. The initial
+fetch after enabling or restarting establishes a baseline without replaying the
+backlog. Only new events notify; each poll groups them into one notification per
+race (three event summaries plus a count). After a long outage, the baseline
+resets. Notifications use Omarchy’s native service with an explicit expiry and
+respect Do Not Disturb. The Settings screen includes a fictional test notification.
 
 ## Install this checkout
 
@@ -89,6 +108,8 @@ installed clone leaves the development checkout untouched.
 | E | Toggle compact/expanded view |
 | T | Switch between Overview and Race events |
 | O | Open the current race view on PCS |
+| Gear / comma | Open Settings |
+| H/L in Settings | Decrease/increase selected setting |
 | Esc | Back to list, then close |
 
 Set `refreshIntervalSec` directly on the bar entry (60–900 seconds):
@@ -98,6 +119,9 @@ Set `refreshIntervalSec` directly on the bar entry (60–900 seconds):
 ```
 
 ## Development
+
+Portable tests require Python 3 and Node.js (18+). QtTest, when installed, also
+exercises the service with stubbed processes and notifications.
 
 ```sh
 ./tests/run

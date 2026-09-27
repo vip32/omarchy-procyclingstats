@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "Model.js" as Model
 
 Panel {
     id: root
@@ -17,7 +18,11 @@ Panel {
     readonly property var rows: filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races
     readonly property var selected: rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
     readonly property var detail: selected && service ? service.details[selected.path] || ({}) : ({})
-    readonly property int refreshSeconds: Math.max(60,Math.min(900,Number(setting("refreshIntervalSec",60))||60))
+    readonly property var preferences: Model.settings(settings)
+    readonly property var connection: Model.warning(service ? service.updateIssues : {},now,service ? service.nextAllowed : 0,service ? service.loading : false)
+    readonly property color warningColor: bar ? bar.urgent : Color.urgent
+    property bool settingsOpen: false
+    property string settingsError: ""
     readonly property bool finished: (selected && selected.status === "finished") || detail.status === "finished"
     readonly property var classifications: detail.classifications || []
     readonly property var classification: classifications.filter(function(c){return c.kind === classificationKind})[0] || classifications[0] || ({})
@@ -36,7 +41,17 @@ Panel {
     }
     function val(n, unit) {return n === null || n === undefined ? "—" : String(n) + (unit || "")}
     function titleStatus(s) { return ({live:"LIVE",finished:"FINISHED",upcoming:"UPCOMING",scheduled:"SCHEDULED",unknown:"STATUS UNKNOWN"})[s] || "WAITING" }
-    function configure() { if (service) service.refreshIntervalSec = refreshSeconds }
+    function configure() {
+        if(service) for(var key in preferences) service[key]=preferences[key]
+    }
+    function persistSettings(changes) {
+        if(Object.keys(changes).every(function(k){return preferences[k]===changes[k]})) return
+        var entry=Object.assign({},settings || {},changes,{id:moduleName})
+        if(bar && bar.shell && bar.shell.updateEntryInline(moduleName,entry)) {
+            settings=entry
+            settingsError=""
+        } else settingsError="Could not save settings. Please try again."
+    }
     function select(index, show) {
         cursorIndex = Math.max(0,Math.min(rows.length-1,index))
         if(show) expanded = true
@@ -60,7 +75,8 @@ Panel {
         Quickshell.execDetached(["/usr/bin/xdg-open","https://www.procyclingstats.com/" + path])
     }
     onServiceChanged: configure()
-    onRefreshSecondsChanged: configure()
+    onPreferencesChanged: configure()
+    onSettingsOpenChanged: Qt.callLater(function(){scroller.contentY=0})
     onFilterChanged: { cursorIndex = 0; expanded = false }
     onSelectedChanged: {
         var path = selected ? selected.path : ""
@@ -71,7 +87,7 @@ Panel {
     onOpenedChanged: {
         if(opened) {now=Date.now(); configure(); if(service){service.refresh();if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
     }
-    Timer { interval:30000; running:root.opened; repeat:true; onTriggered:root.now=Date.now() }
+    Timer { interval:15000; running:root.opened || root.connection.visible; repeat:true; onTriggered:root.now=Date.now() }
     IpcHandler {
         target: "io.github.vip32.procyclingstats.panel"
         function open(): void { root.open() }
@@ -79,6 +95,8 @@ Panel {
         function expand(): void { root.open(); root.select(root.cursorIndex, true) }
         function events(): void { root.open(); root.select(root.cursorIndex,true); root.detailView="events" }
         function setDetailView(view: string): void { root.detailView=view==="events" ? "events" : "overview" }
+        function settings(): void { root.settingsOpen=true;root.open() }
+        function showRaces(): void { root.settingsOpen=false }
         function compact(): void { root.expanded = false; root.open() }
         function selectRace(index: int): void { root.filter = "Today"; root.open(); root.select(index, true) }
         function restoreView(filterName: string, path: string, expanded: bool, opened: bool): void {
@@ -94,6 +112,7 @@ Panel {
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
                 classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",
+                warning:root.connection,settingsOpen:root.settingsOpen,settings:root.preferences,
                 demo:root.demo, vertical:root.bar ? root.bar.vertical : false})
         }
     }
@@ -104,19 +123,23 @@ Panel {
         id: button
         anchors.fill: parent
         bar: root.bar
-        iconComponent: Component { RaceBike {color:button.foreground} }
-        tooltipText: "ProCyclingStats · road cycling\n" + (root.demo ? "DEMO — fictional races" : root.service && root.service.error ? root.service.error : root.races.filter(function(r){return r.status === "live"}).length + " live · " + root.races.length + " races today") + "\nLeft click: races · Right click: PCS · Middle click: refresh"
+        iconComponent: Component { RaceBike {color:root.connection.visible ? root.warningColor : button.foreground} }
+        tooltipText: "ProCyclingStats · road cycling\n" + (root.connection.visible ? root.connection.title+"\n"+root.connection.text : root.demo ? "DEMO — fictional races" : root.service && root.service.error ? root.service.error : root.races.filter(function(r){return r.status === "live"}).length + " live · " + root.races.length + " races today") + "\nLeft click: races · Right click: PCS · Middle click: refresh"
         onPressed: function(code) {
             if(code===Qt.LeftButton)root.toggle()
             else if(code===Qt.RightButton)root.openSource()
             else if(code===Qt.MiddleButton && root.service)root.service.refresh()
         }
         Rectangle {
-            visible: root.races.some(function(r){return r.status === "live"}) && !root.demo && root.service && root.service.state === "ready"
+            visible: !root.connection.visible && root.races.some(function(r){return r.status === "live"}) && !root.demo && root.service && root.service.state === "ready"
             width: Style.space(4); height:width; radius:width/2
             color: Color.accent
             anchors.right:parent.right; anchors.top:parent.top
             anchors.topMargin:Style.space(4); anchors.rightMargin:Style.space(2)
+        }
+        RaceText {
+            visible:root.connection.visible;text:"!";font.bold:true;color:root.warningColor
+            font.pixelSize:Style.font.caption;anchors.right:parent.right;anchors.top:parent.top
         }
     }
     KeyboardPanel {
@@ -127,25 +150,40 @@ Panel {
         open:root.opened
         centerOnBar:false
         focusTarget:keys
-        contentWidth:panel.fittedContentWidth(Style.space(root.expanded ? 590 : 420))
-        contentHeight:panel.fittedContentHeight(column.implicitHeight,Style.space(root.expanded ? 720 : 560))
+        contentWidth:panel.fittedContentWidth(Style.space(root.expanded || root.settingsOpen ? 590 : 420))
+        contentHeight:panel.fittedContentHeight(column.implicitHeight+connectionBanner.height+(connectionBanner.visible ? Style.space(12) : 0),Style.space(root.expanded || root.settingsOpen ? 720 : 560))
         PanelKeyCatcher {
             id:keys
             anchors.fill:parent
-            onMoveRequested:function(dx,dy){if(dy!==0)root.select(root.cursorIndex+dy,root.expanded)}
-            onActivateRequested:root.select(root.cursorIndex,true)
-            onCloseRequested:{if(root.expanded)root.expanded=false;else root.close()}
+            onMoveRequested:function(dx,dy){if(root.settingsOpen)settingsPage.move(dx,dy);else if(dy!==0)root.select(root.cursorIndex+dy,root.expanded)}
+            onActivateRequested:{if(root.settingsOpen)settingsPage.activate();else root.select(root.cursorIndex,true)}
+            onCloseRequested:{if(root.settingsOpen)root.settingsOpen=false;else if(root.expanded)root.expanded=false;else root.close()}
             onTabRequested:function(direction){root.switchPanel(direction)}
             onTextKey:function(text){
                 var k=text.toLowerCase()
+                if(k===","){root.settingsOpen=!root.settingsOpen;return}
+                if(root.settingsOpen)return
                 if(k==="r" && root.service)root.service.refresh()
                 if(k==="o")root.openSource()
                 if(k==="t" && root.expanded)root.detailView=root.detailView==="events" ? "overview" : "events"
                 if(k==="e" && root.selected){root.expanded=!root.expanded;root.select(root.cursorIndex,root.expanded)}
             }
+            BorderSurface {
+                id:connectionBanner
+                visible:root.connection.visible
+                width:parent.width;height:visible ? warningText.implicitHeight+Style.space(20) : 0
+                color:"transparent";radius:Style.cornerRadius
+                borderSpec:Border.controlSpec("normal",root.warningColor,root.warningColor)
+                Column {
+                    id:warningText;x:Style.space(10);y:Style.space(10);width:parent.width-Style.space(20);spacing:Style.space(4)
+                    RaceText {width:parent.width;text:"⚠ "+root.connection.title;font.bold:true;color:root.warningColor}
+                    RaceText {width:parent.width;text:root.connection.text;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.warningColor;font.pixelSize:Style.font.caption}
+                }
+            }
             Flickable {
                 id:scroller
-                anchors.fill:parent
+                anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom
+                anchors.top:connectionBanner.bottom;anchors.topMargin:connectionBanner.visible ? Style.space(12) : 0
                 contentWidth:width
                 contentHeight:column.implicitHeight
                 clip:true
@@ -163,16 +201,25 @@ Panel {
                             anchors.right:actions.left;anchors.rightMargin:Style.space(8)
                             anchors.verticalCenter:parent.verticalCenter
                             spacing:Style.space(2)
-                            RaceText {width:parent.width;text:"ProCyclingStats";font.pixelSize:Style.font.title;font.bold:true;color:root.foreground}
+                            RaceText {width:parent.width;text:root.settingsOpen ? "Settings" : "ProCyclingStats";font.pixelSize:Style.font.title;font.bold:true;color:root.foreground}
                             RaceText {width:parent.width;text:root.demo ? "DEMO · fictional road races" : root.service && root.service.loading ? "Refreshing races…" : "Road cycling · " + root.age(root.service ? root.service.fetchedAt : "");font.pixelSize:Style.font.caption;color:root.dim}
                         }
                         Row {
                             id:actions;anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(6)
                             Button {text:"↻";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:if(root.service)root.service.refresh()}
+                            Button {text:root.settingsOpen ? "←" : "⚙";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:root.settingsOpen=!root.settingsOpen}
                             Button {visible:root.expanded;text:"↙";tooltipText:"Back to today’s races";bordered:true;foreground:root.foreground;onClicked:root.expanded=false}
                         }
                     }
                     PanelSeparator {foreground:root.foreground}
+                    SettingsPage {
+                        id:settingsPage;width:parent.width;visible:root.settingsOpen
+                        values:root.preferences;foreground:root.foreground;feedback:root.settingsError
+                        onChanged:function(changes){root.persistSettings(changes)}
+                        onTestRequested:if(root.service)root.service.testNotification()
+                    }
+                    Column {
+                    width:parent.width;spacing:Style.spacing.panelGap;visible:!root.settingsOpen
                     Row {
                         width:parent.width;spacing:Style.space(6)
                         Repeater {
@@ -308,6 +355,7 @@ Panel {
                         RaceText {anchors.verticalCenter:parent.verticalCenter;width:parent.width-Style.space(140);text:root.demo ? "FICTIONAL DEMO · no live data" : "Source: ProCyclingStats";font.pixelSize:Style.font.caption;color:root.dim}
                     }
                     RaceText {width:parent.width;text:"J/K select · Enter details · T events · R refresh · Esc back";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}
+                    }
                 }
             }
         }

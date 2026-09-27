@@ -36,6 +36,8 @@ def main():
     p.add_argument('--output',type=Path,default=ROOT/'preview.png')
     p.add_argument('--compact',action='store_true')
     p.add_argument('--events',action='store_true',help='Capture the race-events tab')
+    p.add_argument('--settings',action='store_true',help='Capture the settings screen')
+    p.add_argument('--warning',choices=['blocked','rate-limited','offline'],help='Show a fictional connection warning')
     p.add_argument('--race-index',type=int,default=0,choices=range(4))
     args=p.parse_args()
     for cmd in ('omarchy-shell','hyprctl','grim'):
@@ -70,9 +72,12 @@ def main():
         wait_for(lambda:status()['demo'] and status()['races']==4)
         run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{workspace}" }})')
         mode='compact' if args.compact else 'expand'
+        ipc(ID+'.panel','showRaces')
         ipc(ID+'.panel','selectRace',str(args.race_index))
         ipc(ID+'.panel',mode)
         ipc(ID+'.panel','setDetailView','events' if args.events else 'overview')
+        if args.settings: ipc(ID+'.panel','settings')
+        if args.warning: ipc(ID,'demoWarning',args.warning)
         wait_for(lambda:status(ID+'.panel')['opened'] and status(ID+'.panel')['expanded'] != args.compact)
         geometry=status(ID+'.panel')['geometry']
         # Wait only for the native panel fade-in after readiness is established.
@@ -92,6 +97,8 @@ def main():
             wait_for(lambda:not status()['loading'])
             ipc(ID+'.panel','restoreView',panel_state.get('filter','Today'),panel_state['selected'],str(panel_state['expanded']).lower(),str(panel_state['opened']).lower())
             ipc(ID+'.panel','setDetailView',panel_state.get('detailView','overview'))
+            if panel_state.get('settingsOpen'): ipc(ID+'.panel','settings')
+            else: ipc(ID+'.panel','showRaces')
             if status()['demo']: raise RuntimeError('Demo remains enabled')
             restored=True
         finally:
