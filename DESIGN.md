@@ -101,3 +101,7 @@
   Today refreshes preserve adjacent-day failures and cached details. Historical events never notify.
 - 74 behavioral tests: 42 Python, 21 JavaScript, 11 QtTest; includes DST/year rollover,
   calendar source validation, independent recovery, midnight and notification scope.
+
+- Installed-shell verification: yesterday returned six races; CRO Race stage 5
+  opened its published GC (104 riders) with 60 events. Tomorrow returned two stages.
+  Fictional list and preview screenshots were visually reviewed.

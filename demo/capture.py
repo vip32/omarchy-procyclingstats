@@ -82,7 +82,7 @@ def main():
         wait_for(lambda:status(ID+'.panel')['opened'] and status(ID+'.panel')['expanded'] != args.compact)
         geometry=status(ID+'.panel')['geometry']
         # Wait only for the native panel fade-in after readiness is established.
-        time.sleep(.2)
+        time.sleep(.6)
         if not status(ID+'.panel')['demo']: raise RuntimeError('Refusing to capture non-demo data')
         mon=monitors[0]
         x,y=round(geometry['x']+mon['x']),round(geometry['y']+mon['y'])

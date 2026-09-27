@@ -26,6 +26,8 @@ professional road cycling races, then select a race for its LiveStats overview.
 
 ![Fictional demo of the race overview](preview.png)
 
+[Tomorrow’s races](screenshots/tomorrow-list.png) · [Race preview](screenshots/tomorrow-preview.png)
+
 [Settings preview](screenshots/settings.png) · [Connection warning preview](screenshots/warning.png)
 
 An independent, unofficial integration. Race data belongs to
