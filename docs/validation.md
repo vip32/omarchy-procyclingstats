@@ -1,11 +1,11 @@
 # Candidate validation
 
-Candidate: version **0.8.0**, prepared **2026-09-27**. Exact final source identity
+Candidate: version **0.8.1**, prepared **2026-09-27**. Exact final source identity
 and raw local reports are in `.git/submission-candidate/` of the preparation checkout.
 
 | Check | Evidence / scope |
 | --- | --- |
-| Portable suite | 88 behavioral tests: 46 Python, 26 JavaScript, 16 QtTest service cases |
+| Portable suite | 98 behavioral tests: 53 Python, 28 JavaScript, 17 QtTest service cases |
 | Native manifest validation | `omarchy plugin validate .` on Omarchy 4.0.4-1 |
 | QML syntax | Qt 6.11.2 `qmlformat` parses the production QML files |
 | Advisory static review | No reported security findings; collected process output and process execution require human capability review |

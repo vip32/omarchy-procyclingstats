@@ -15,7 +15,8 @@ Race coverage depends on the public data PCS makes available.
 - **Yesterday, today and tomorrow:** results, current races and upcoming stages.
 - **One race overview:** distance remaining, race time, average speed, groups and
   rider splits, latest events, course profile and the next published climb or sprint.
-- **Finished races:** final results and the selected stage’s GC, with time gaps.
+- **Finished races:** course profile, distance, winner’s time and average speed,
+  alongside final results and the selected stage’s GC with time gaps.
 - **Race events:** attacks, sprints, dropped riders, abandonments and finish updates.
 - **Your races:** 13 independent category checkboxes and a minimum race level.
   Choose ProSeries+ to hide Class 1 and Class 2 races. All categories and levels
@@ -128,7 +129,9 @@ See [filters, refresh intervals and notifications](docs/settings.md).
 PCS coverage varies by race. Missing metrics show an em dash; unavailable riders,
 GC, events or profiles are labelled explicitly. Image-only profiles may require
 opening PCS. Start-time text is shown as published, including its timezone; ETA
-means expected finish. Race position is never extrapolated.
+means expected finish. Race position is never extrapolated. Finished-race time
+is the published winner’s time for that race or stage, not accumulated GC time
+or the live clock. Average speed is the published winner’s average.
 
 Blocked or rate-limited access triggers a 15-minute cooldown. Previous data stays
 visible with its timestamp and warning. Changing HTML can require an adapter update.

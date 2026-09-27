@@ -4,7 +4,7 @@
 
 **Draft body:** [marketplace-issue.md](marketplace-issue.md)
 
-**Plugin:** `io.github.vip32.procyclingstats`, version `0.8.0`.
+**Plugin:** `io.github.vip32.procyclingstats`, version `0.8.1`.
 **Category:** Widgets. **Tags:** Bar, Quickshell. **Suggested tag:** Sports.
 
 The source repository is public at

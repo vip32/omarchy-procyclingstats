@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.8.0 — submission candidate
+## 0.8.1 — submission candidate
+
+- Show finished-race distance, winner time, average speed and available course
+  profile above results and GC, in both popup and detached window.
+- Prefer published result metrics over the live clock; retrieve missing profile
+  geometry from LiveStats and preserve cached profiles with visible failure warnings.
+
+## 0.8.0 — window support
 
 - Pop the dashboard out into a normal tiled desktop window and dock it back with
   the header button or `P`, retaining the existing view and rider expansion state.

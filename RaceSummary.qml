@@ -1,0 +1,37 @@
+import QtQuick
+import qs.Commons
+import qs.Ui
+
+Column {
+    id:root
+    property var detail: ({})
+    property color foreground: Color.foreground
+    readonly property color dim: Qt.darker(foreground,1.5)
+    readonly property bool hasProfile: (detail.profile || []).length>1
+    spacing:Style.space(10)
+    function value(n,unit) {return n===null || n===undefined ? "—" : String(n)+(unit || "")}
+
+    Row {
+        width:parent.width;spacing:Style.space(12)
+        Repeater {
+            model:[
+                {label:"DISTANCE",value:root.value(root.detail.distance," km")},
+                {label:"WINNER TIME",value:root.detail.elapsed || "—"},
+                {label:"AVG. KM/H",value:root.value(root.detail.avgSpeed)}
+            ]
+            Column {
+                required property var modelData
+                width:(parent.width-Style.space(24))/3;spacing:Style.space(3)
+                RaceText {width:parent.width;text:modelData.label;font.pixelSize:Style.font.caption;color:root.dim}
+                RaceText {width:parent.width;text:modelData.value;font.pixelSize:Style.font.subtitle;font.bold:true;color:root.foreground}
+            }
+        }
+    }
+    Profile {width:parent.width;height:Style.space(58);visible:root.hasProfile;points:root.detail.profile || [];foreground:root.foreground}
+    RaceText {
+        width:parent.width;visible:!root.hasProfile || !!root.detail.profileError
+        text:root.hasProfile ? "Profile · previous data" : root.detail.state==="loading" || !root.detail.state ? "Loading profile…" : "Profile unavailable · open PCS with ↗"
+        font.pixelSize:Style.font.caption;color:root.dim
+    }
+    PanelSeparator {foreground:root.foreground}
+}

@@ -71,6 +71,18 @@ test('missing optional events do not claim the connection is down', () => {
     const issues=model.updateIssues({},path,{state:'ready',eventsState:'unavailable'},cached,race.name,now);
     assert.equal(model.warning(issues,now,0,false).visible,false);
 });
+test('profile rejection keeps its own warning until that source recovers', () => {
+    let issues=model.updateIssues({},path,{state:'ready',profileState:'blocked'}, {profileFetchedAt:stamp},race.name,now);
+    issues=model.updateIssues(issues,path,{state:'ready',eventsState:'ready',classifications:[]},cached,race.name,now+1);
+    assert.match(model.warning(issues,now,0,false).text,/Course profile/);
+    assert.equal(issues[path+'/profile'].lastSuccess,stamp);
+    issues=model.updateIssues(issues,path,{state:'ready',profileState:'ready'},cached,race.name,now+2);
+    assert.equal(Object.keys(issues).length,0);
+});
+test('missing optional profile is not a connection failure', () => {
+    const issues=model.updateIssues({},path,{state:'ready',profileState:'unavailable'},cached,race.name,now);
+    assert.equal(model.warning(issues,now,0,false).visible,false);
+});
 test('results-only failures clear with published classification and retired races are pruned', () => {
     let issues=model.updateIssues({},path,{state:'ready',resultsState:'error'},cached,race.name,now);
     assert.equal(Object.keys(issues).length,1);

@@ -20,6 +20,12 @@ credentials, analytics or automatic package installation is used.
 
 Requests are serialized. HTML is limited to 2 MB, the parser to 60,000 nodes,
 output to 180 KB, and each helper invocation to an 18-second total deadline.
+Finished results read distance and winner average from race information and the
+winner time from that race or stage’s result table. If the results page lacks
+profile geometry, one bounded `/live` request retrieves it without using its clock.
+Image-only profiles still require opening PCS. A rejected profile request retains
+results and triggers the same shared cooldown and warning as other update failures.
+
 Race paths are validated, fields are bounded, and Python isolated mode avoids
 loading user-site modules. Remote HTML is parsed into plain text, never executed.
 

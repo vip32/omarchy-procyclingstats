@@ -70,6 +70,15 @@ TestCase {
         deliver(snapshot("While disabled"))
         compare(Quickshell.commands.length,1)
     }
+    function test_profile_failure_preserves_shape_and_triggers_cooldown() {
+        deliver({state:"ready",profile:[[0,70],[50,10],[100,70]],profileState:"ready",profileFetchedAt:"saved"})
+        deliver({state:"ready",distance:160,profile:[],profileState:"blocked",profileError:"Rejected"})
+        compare(service.details[racePath].distance,160)
+        compare(service.details[racePath].profile.length,3)
+        compare(service.details[racePath].profileFetchedAt,"saved")
+        compare(Object.keys(service.updateIssues).length,1)
+        verify(service.nextAllowed>Date.now()+890000)
+    }
     function test_failed_event_fetch_never_notifies() {
         service.eventNotifications=true
         deliver(snapshot("Old event"))

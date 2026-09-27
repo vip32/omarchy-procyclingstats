@@ -2288,11 +2288,11 @@
       "name": "Valley Tour \u00b7 Stage 2 (ITT)",
       "status": "finished",
       "date": "",
-      "kmToGo": 42.6,
-      "kmDone": 148.2,
-      "distance": 190.8,
-      "avgSpeed": 43.8,
-      "elapsed": "3:23:01",
+      "kmToGo": 0,
+      "kmDone": 160.1,
+      "distance": 160.1,
+      "avgSpeed": 50.0,
+      "elapsed": "3:12:08",
       "start": "13:00",
       "elevation": 620,
       "profile": [
@@ -2864,18 +2864,19 @@
           "marker": "51",
           "text": "A small group is caught by the peloton."
         }
-      ]
+      ],
+      "profileState": "ready"
     },
     "race/demo-city-circuit/2026/result": {
       "state": "ready",
       "name": "City Circuit \u00b7 Road race",
       "status": "finished",
       "date": "",
-      "kmToGo": 42.6,
-      "kmDone": 148.2,
-      "distance": 190.8,
-      "avgSpeed": 43.8,
-      "elapsed": "3:23:01",
+      "kmToGo": 0,
+      "kmDone": 160.1,
+      "distance": 160.1,
+      "avgSpeed": 50.0,
+      "elapsed": "3:12:08",
       "start": "13:00",
       "elevation": 620,
       "profile": [
@@ -3417,18 +3418,19 @@
           "marker": "51",
           "text": "A small group is caught by the peloton."
         }
-      ]
+      ],
+      "profileState": "ready"
     },
     "race/demo-valley-tour/2026/stage-1": {
       "state": "ready",
       "name": "Valley Tour \u00b7 Stage 2 (ITT)",
       "status": "finished",
       "date": "",
-      "kmToGo": 42.6,
-      "kmDone": 148.2,
-      "distance": 190.8,
-      "avgSpeed": 43.8,
-      "elapsed": "3:23:01",
+      "kmToGo": 0,
+      "kmDone": 160.1,
+      "distance": 160.1,
+      "avgSpeed": 50.0,
+      "elapsed": "3:12:08",
       "start": "13:00",
       "elevation": 620,
       "profile": [
@@ -4000,7 +4002,8 @@
           "marker": "51",
           "text": "A small group is caught by the peloton."
         }
-      ]
+      ],
+      "profileState": "ready"
     },
     "race/demo-harbour-classic/2026/result": {
       "state": "ready",

@@ -35,6 +35,9 @@ def results_page(gc=True):
     overall=result_table([('1','OverallWinner','21:30:00','21:30:00'),('2','OverallSecond','0:04','0:04')])
     return '<title>Fictional stage results</title><ul class="resultTabs"><li><a data-id="s">STAGE</a></li>'+('<li><a data-id="g">GC</a></li>' if gc else '')+'<li><a data-id="y">YOUTH</a></li></ul><div class="resTab" data-id="s">'+stage+'</div>'+('<div class="resTab hide" data-id="g">'+overall+'</div>' if gc else '')+'<div class="resTab hide" data-id="y">'+result_table([('1','YoungWinner','20:00:00','20:00:00')])+'</div>'
 
+def race_info_page():
+    return '<ul class="keyvalueList">'+''.join('<li><div class="title">'+k+':</div><div class="value">'+v+'</div></li>' for k,v in [('Date','27 September 2026'),('Distance','160 km'),('Avg. speed winner','48.0 km/h')])+'</ul>'
+
 class Parsing(unittest.TestCase):
     def test_overview_deduplicates_live_stage_and_eta(self):
         races=pcs.parse_overview(HOME)['races']
@@ -137,16 +140,61 @@ class Classifications(unittest.TestCase):
         self.assertEqual(d['classifications'][0]['rows'],[])
     def test_unavailable_results_are_not_an_empty_success(self):
         with self.assertRaises(pcs.SourceError):pcs.parse_results('<html>No results</html>','race/demo/2026/result')
-    def test_finished_hint_fetches_results_without_livestats(self):
+    def test_finished_hint_fetches_results_and_optional_profile(self):
         with patch.object(pcs,'fetch',return_value=results_page()) as fetch:
             d=pcs.load_race('race/demo/2026/stage-6',True)
-            self.assertEqual([c.args[0] for c in fetch.call_args_list],['race/demo/2026/stage-6','race/demo/2026/stage-6/live/race-events'])
+            self.assertEqual([c.args[0] for c in fetch.call_args_list],['race/demo/2026/stage-6','race/demo/2026/stage-6/live','race/demo/2026/stage-6/live/race-events'])
             self.assertTrue(d['gcAvailable'])
     def test_live_to_finished_fetches_results(self):
         with patch.object(pcs,'fetch',side_effect=[live(dict(DATA,race_status='finished')),results_page(),'<ul class="timeline3"></ul>']):
             d=pcs.load_race('race/demo/2026/stage-6')
             self.assertEqual(d['status'],'finished')
             self.assertTrue(d['gcAvailable'])
+            self.assertEqual(d['elapsed'],'3:20:00')
+    def test_finished_summary_uses_stage_winner_and_published_metrics(self):
+        d=pcs.parse_results(results_page()+race_info_page(),'race/demo/2026/stage-6')
+        self.assertEqual(d['elapsed'],'3:20:00')
+        self.assertEqual(d['distance'],160)
+        self.assertEqual(d['avgSpeed'],48)
+        self.assertEqual(d['date'],'27 September 2026')
+    def test_missing_finished_metrics_stay_unknown(self):
+        d=pcs.parse_results(result_table([]),'race/demo/2026/result')
+        self.assertEqual(d['elapsed'],'')
+        self.assertIsNone(d['distance'])
+        self.assertIsNone(d['avgSpeed'])
+        self.assertEqual(d['profileState'],'unavailable')
+    def test_gc_time_is_never_used_when_stage_winner_is_missing(self):
+        html=results_page().replace('data-id="s">STAGE','data-id="absent">STAGE')
+        d=pcs.parse_results(html,'race/demo/2026/stage-6')
+        self.assertEqual(d['elapsed'],'')
+        self.assertTrue(d['gcAvailable'])
+    def test_profile_on_results_page_needs_no_extra_fetch(self):
+        page=results_page()+live()
+        with patch.object(pcs,'fetch',side_effect=[page,'<ul class="timeline3"></ul>']) as fetch:
+            d=pcs.load_race('race/demo/2026/stage-6',True)
+        self.assertGreater(len(d['profile']),1)
+        self.assertEqual(d['profileState'],'ready')
+        self.assertEqual(fetch.call_count,2)
+    def test_finished_profile_fallback_never_uses_running_live_clock(self):
+        with patch.object(pcs,'fetch',side_effect=[results_page()+race_info_page(),live(),'<ul class="timeline3"></ul>']):
+            d=pcs.load_race('race/demo/2026/stage-6',True)
+        self.assertGreater(len(d['profile']),1)
+        self.assertEqual(d['elapsed'],'3:20:00')
+        self.assertEqual(d['distance'],160)
+        self.assertEqual(d['avgSpeed'],48)
+    def test_profile_failure_does_not_lose_results_and_rejection_stops_requests(self):
+        for state in ('blocked','rate-limited'):
+            with self.subTest(state=state),patch.object(pcs,'fetch',side_effect=[results_page(),pcs.SourceError(state,'Rejected')]) as fetch:
+                d=pcs.load_race('race/demo/2026/stage-6',True)
+            self.assertEqual(d['state'],'ready')
+            self.assertTrue(d['gcAvailable'])
+            self.assertEqual(d['profileState'],state)
+            self.assertEqual(fetch.call_count,2)
+    def test_unavailable_profile_still_loads_events(self):
+        with patch.object(pcs,'fetch',side_effect=[results_page(),pcs.SourceError('unavailable','No live coverage'),'<ul class="timeline3"></ul>']):
+            d=pcs.load_race('race/demo/2026/stage-6',True)
+        self.assertEqual(d['profileState'],'unavailable')
+        self.assertEqual(d['eventsState'],'empty')
     def test_results_failure_preserves_finish_snapshot(self):
         with patch.object(pcs,'fetch',side_effect=[live(dict(DATA,race_status='finished')),pcs.SourceError('blocked','Blocked'),pcs.SourceError('blocked','Blocked')]):
             d=pcs.load_race('race/demo/2026/stage-6')
@@ -198,7 +246,7 @@ class Events(unittest.TestCase):
         self.assertEqual(d['kmToGo'],42.6)
         self.assertEqual(d['eventsState'],'offline')
     def test_events_attached_to_finished_classification(self):
-        with patch.object(pcs,'fetch',side_effect=[results_page(),'<ul class="timeline3">'+self.event('F','Race finished.')+'</ul>']):
+        with patch.object(pcs,'fetch',side_effect=[results_page(),live(),'<ul class="timeline3">'+self.event('F','Race finished.')+'</ul>']):
             d=pcs.load_race('race/demo/2026/stage-6',True)
         self.assertTrue(d['gcAvailable'])
         self.assertEqual(d['events'][0]['text'],'Race finished.')

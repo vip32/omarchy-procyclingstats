@@ -251,18 +251,25 @@ def parse_calendar(html, date):
         raise SourceError('unsupported', 'PCS calendar format changed; races could not be read.')
     return dict(state='ready' if races else 'empty', date=date, races=list(races.values())[:60])
 
-def parse_preview(html, path):
-    doc = checked_html(html)
+def race_info(doc):
     values = {}
     for group in doc.nodes('ul', 'keyvalueList'):
         for row in group.nodes('li'):
             key = txt(row.first(cls='title')).rstrip(':').lower()
             values[key] = txt(row.first(cls='value'))
+    return values
+
+def metric(value, maximum=10000):
+    match = re.match(r'^(\d+(?:[.,]\d+)?)\b', value)
+    return number(match[1].replace(',', '.'), maximum) if match else None
+
+def parse_preview(html, path):
+    doc = checked_html(html)
+    values = race_info(doc)
     if not values.get('date'):
         raise SourceError('unsupported', 'PCS race preview could not be read.')
-    distance = re.match(r'^(\d+(?:\.\d+)?)', values.get('distance', ''))
     return dict(state='ready', path=path, status='upcoming', date=values['date'],
-        startTime=values.get('start time', ''), distance=number(distance[1]) if distance else None,
+        startTime=values.get('start time', ''), distance=metric(values.get('distance', '')),
         departure=values.get('departure', ''), arrival=values.get('arrival', ''),
         profile=profile(doc))
 
@@ -381,9 +388,31 @@ def parse_results(html,path):
         if table is None: raise SourceError('unavailable','PCS has not published results for this race yet.')
         classifications=[dict(kind='result',title='Stage results' if stage else 'Final results',rows=result_rows(table))]
     classifications.sort(key=lambda c:0 if c['kind']=='gc' else 1)
+    info=race_info(doc)
+    # The selected stage's winner time is independent of the GC's accumulated time.
+    winner=next((r for c in classifications if c['kind']=='result' for r in c['rows'] if r['rank']=='1'),{})
+    elapsed=winner.get('time','')
+    if elapsed=='—': elapsed=''
+    points=profile(doc)
     return dict(state='ready',path=path,name=txt(doc.first('title')),status='finished',
                 classifications=classifications,gcAvailable=any(c['kind']=='gc' for c in classifications),
-                stageRace=stage,groups=[],profile=[],keypoints=[])
+                stageRace=stage,groups=[],profile=points,keypoints=[],date=info.get('date',''),
+                distance=metric(info.get('distance','')),elapsed=elapsed,
+                avgSpeed=metric(info.get('avg. speed winner',''),150),
+                profileState='ready' if points else 'unavailable',
+                profileFetchedAt=dt.datetime.now(dt.timezone.utc).isoformat() if points else '')
+
+def attach_finished_profile(result,path):
+    if result['profile']: return result
+    try:
+        doc=checked_html(fetch(path+'/live'))
+        course=doc.first(cls='bigProfile')
+        result['profile']=profile(course) if course else []
+        result['profileState']='ready' if result['profile'] else 'unavailable'
+        if result['profile']: result['profileFetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat()
+    except SourceError as e:
+        result.update(profileState=e.state,profileError=e.message)
+    return result
 
 def parse_events(html):
     doc=checked_html(html)
@@ -421,12 +450,22 @@ def load_race(path,finished=False,upcoming=False):
     if upcoming:
         return parse_preview(fetch(path),path)
     if finished:
-        return attach_events(parse_results(fetch(path),path),path)
+        result=attach_finished_profile(parse_results(fetch(path),path),path)
+        if result['profileState'] in ('blocked','rate-limited'):
+            result.update(eventsState=result['profileState'],eventsError='Event refresh deferred after PCS rejected the profile request.')
+            return result
+        return attach_events(result,path)
     result=parse_race(fetch(path+'/live'),path)
     if result['status']=='finished':
         try:
             results=parse_results(fetch(path),path)
             result.update({k:results[k] for k in ('classifications','gcAvailable','stageRace')})
+            result['elapsed']=results['elapsed']
+            for key in ('distance','avgSpeed','date'):
+                if results[key] is not None and results[key]!='': result[key]=results[key]
+            if results['profile']: result['profile']=results['profile']
+            result['profileState']='ready' if result['profile'] else 'unavailable'
+            result['profileFetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat() if result['profile'] else ''
         except SourceError as e:
             result['resultsError']=e.message
             result['resultsState']=e.state

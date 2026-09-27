@@ -151,6 +151,10 @@ Item {
                     result.events = prior.events
                     result.eventsFetchedAt = prior.eventsFetchedAt || ""
                 }
+                if (result.profileError && prior.profile && prior.profile.length) {
+                    result.profile = prior.profile
+                    result.profileFetchedAt = prior.profileFetchedAt || prior.fetchedAt || ""
+                }
                 next[currentPath] = result
             }
             else {
@@ -175,7 +179,7 @@ Item {
                 eventBaselines = baselines
             }
         }
-        var failures = [result.state,result.resultsState,result.eventsState,result.metadataState]
+        var failures = [result.state,result.resultsState,result.eventsState,result.metadataState,result.profileState]
         var failureState = failures.indexOf("blocked") >= 0 ? "blocked" : failures.indexOf("rate-limited") >= 0 ? "rate-limited" : result.resultsState || result.state
         if (["blocked", "rate-limited"].indexOf(failureState) >= 0) {
             nextAllowed = Date.now() + 900000

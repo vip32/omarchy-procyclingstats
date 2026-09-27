@@ -442,6 +442,7 @@ Panel {
                         Column {
                             visible:root.detailView==="overview" && root.finished
                             width:parent.width;spacing:Style.space(10)
+                            RaceSummary {width:parent.width;detail:root.detail;foreground:root.foreground}
                             Row {
                                 width:parent.width;spacing:Style.space(6)
                                 visible:root.classifications.length>1

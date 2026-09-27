@@ -42,6 +42,7 @@ function updateIssues(previous, path, result, cached, label, now) {
     if (!path && result.metadataState) update("/metadata", result.metadataState, result.metadataError, cached.metadataFetchedAt, "Race categories and levels")
     if (path && result.state === "ready") {
         update("/events", result.eventsState, result.eventsError, cached.eventsFetchedAt, "Race events · " + label)
+        update("/profile", result.profileState, result.profileError, cached.profileFetchedAt, "Course profile · " + label)
         // A finished results response may omit resultsState on success.
         update("/results", result.resultsState || (result.classifications ? "ready" : ""),
             result.resultsError, cached.fetchedAt, "Results · " + label)

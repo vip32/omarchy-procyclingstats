@@ -1,7 +1,7 @@
 # Architecture
 
 `io.github.vip32.procyclingstats` is one root Omarchy Quattro plugin with a
-bar-widget and shared service. Version 0.8.0 is the first submission candidate.
+bar-widget and shared service. Version 0.8.1 is the current submission candidate.
 
 - `BarWidget.qml` owns panel navigation, local selection and the shell-hosted
   Settings page. The same live content tree is reparented between the bar popup
@@ -31,7 +31,10 @@ excluded only when a restricted filter requires it. Metadata and events have
 independent failure warnings and last-success timestamps. Partial failures retain
 known values without presenting them as freshly retrieved.
 
-Finished stages request the selected stage’s own GC. Upcoming races read the
+Finished stages request the selected stage’s own GC. Their compact summary uses
+the race or stage winner time, never GC time; distance and average come from the
+published race information. A missing profile can be read from the same race’s
+LiveStats page, without trusting its potentially still-running clock. Upcoming races read the
 normal race page without fetching old event history. Rider data has no standalone
 browsing surface. Profiles and race positions are displayed only from source data.
 
