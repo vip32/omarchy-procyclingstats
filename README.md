@@ -111,7 +111,7 @@ installed clone leaves the development checkout untouched.
 | J/K or arrows | Select race |
 | E | Toggle compact/expanded view |
 | T | Switch between Overview and Race events |
-| O | Open the current race view on PCS |
+| Header ↗ / O | Open the current race view on PCS |
 | Gear / comma | Open Settings |
 | H/L in Settings | Decrease/increase selected setting |
 | Esc | Back to list, then close |

@@ -224,6 +224,7 @@ Panel {
                             Button {text:"\uf11e";tooltipText:"Races (1)";Accessible.name:"Races";selected:root.filter==="Races" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
                             Button {text:"◉";tooltipText:"Live races (2)";Accessible.name:"Live races";selected:root.filter==="Live" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Live")}
                             Button {text:"↻";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:if(root.service)root.service.refresh()}
+                            Button {text:"↗";tooltipText:"Open PCS in browser (O)";Accessible.name:"Open ProCyclingStats in browser";bordered:true;foreground:root.foreground;onClicked:root.openSource()}
                             Button {text:root.settingsOpen ? "←" : "⚙";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:{if(root.settingsOpen)root.showFilter("Races");else root.settingsOpen=true}}
                             Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to races";bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
                         }
@@ -277,7 +278,7 @@ Panel {
                         }
                         RaceText {
                             width:parent.width;visible:root.rows.length===0
-                            text:root.service && root.service.error ? "Race data is unavailable. You can still open PCS below." : root.service && root.service.state==="loading" ? "Loading today’s races…" : root.filter==="Live" ? "No live races listed right now." : "No races listed today."
+                            text:root.service && root.service.error ? "Race data is unavailable. Use ↗ in the header to open PCS." : root.service && root.service.state==="loading" ? "Loading today’s races…" : root.filter==="Live" ? "No live races listed right now." : "No races listed today."
                             color:root.dim;wrapMode:Text.WordWrap;elide:Text.ElideNone
                         }
                     }
@@ -310,7 +311,7 @@ Panel {
                                 }
                             }
                             Classification {width:parent.width;visible:root.classifications.length>0;classification:root.classification;textColor:root.foreground}
-                            RaceText {width:parent.width;visible:!root.classifications.length;text:root.detail.resultsError || (root.detail.error ? "Results could not be loaded. Open PCS below." : "Waiting for published results…");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
+                            RaceText {width:parent.width;visible:!root.classifications.length;text:root.detail.resultsError || (root.detail.error ? "Results could not be loaded. Open PCS with ↗ in the header." : "Waiting for published results…");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
                             RaceText {width:parent.width;visible:root.detail.stageRace===true && root.detail.gcAvailable===false;text:"General classification is not published on this stage page yet.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
                         }
                         Column {
@@ -357,12 +358,6 @@ Panel {
                             RaceText {required property var modelData;width:parent.width;text:modelData.kind+" · "+modelData.name+" · km "+modelData.km+(modelData.gradient ? " · "+modelData.gradient+"%" : "");font.pixelSize:Style.font.caption;color:root.dim}
                         }
                         }
-                    }
-                    PanelSeparator {foreground:root.foreground}
-                    Row {
-                        width:parent.width;spacing:Style.space(10)
-                        Button {text:"Open PCS ↗";bordered:true;foreground:root.foreground;onClicked:root.openSource()}
-                        RaceText {anchors.verticalCenter:parent.verticalCenter;width:parent.width-Style.space(140);text:root.demo ? "FICTIONAL DEMO · no live data" : "Source: ProCyclingStats";font.pixelSize:Style.font.caption;color:root.dim}
                     }
                     RaceText {width:parent.width;text:"J/K select · Enter details · T events · R refresh · Esc back";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}
                     }
