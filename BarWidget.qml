@@ -18,6 +18,10 @@ Panel {
     readonly property var selected: rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
     readonly property var detail: selected && service ? service.details[selected.path] || ({}) : ({})
     readonly property int refreshSeconds: Math.max(60,Math.min(900,Number(setting("refreshIntervalSec",60))||60))
+    readonly property bool finished: (selected && selected.status === "finished") || detail.status === "finished"
+    readonly property var classifications: detail.classifications || []
+    readonly property var classification: classifications.filter(function(c){return c.kind === classificationKind})[0] || classifications[0] || ({})
+    property string classificationKind: "gc"
     property string filter: "Today"
     property int cursorIndex: 0
     property bool expanded: false
@@ -56,7 +60,7 @@ Panel {
     onServiceChanged: configure()
     onRefreshSecondsChanged: configure()
     onFilterChanged: { cursorIndex = 0; expanded = false }
-    onSelectedChanged: if(opened && expanded && service && selected) service.watch(selected.path)
+    onSelectedChanged: { classificationKind = "gc"; if(opened && expanded && service && selected) service.watch(selected.path) }
     onOpenedChanged: {
         if(opened) {now=Date.now(); configure(); if(service)service.refresh(); Qt.callLater(function(){keys.forceActiveFocus()})}
     }
@@ -67,10 +71,20 @@ Panel {
         function close(): void { root.close() }
         function expand(): void { root.open(); root.select(root.cursorIndex, true) }
         function compact(): void { root.expanded = false; root.open() }
+        function selectRace(index: int): void { root.filter = "Today"; root.open(); root.select(index, true) }
+        function restoreView(filterName: string, path: string, expanded: bool, opened: bool): void {
+            root.filter = filterName === "Live" ? "Live" : "Today"
+            var i = root.rows.findIndex(function(r){return r.path === path})
+            root.cursorIndex = Math.max(0,i)
+            root.expanded = expanded
+            if(opened) root.open(); else root.close()
+        }
         function status(): string {
             return JSON.stringify({opened:root.opened, expanded:root.expanded, serviceReady:!!root.service,
-                rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
+                filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
+                riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
+                classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",
                 demo:root.demo, vertical:root.bar ? root.bar.vertical : false})
         }
     }
@@ -204,8 +218,26 @@ Panel {
                         visible:root.expanded && !!root.selected
                         width:parent.width;spacing:Style.space(12)
                         RaceText {width:parent.width;text:root.selected ? root.selected.name : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
-                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || "",root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "LiveStats unavailable" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
+                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || "",root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "Race data unavailable" : root.finished ? "Loading results…" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
                         RaceText {width:parent.width;visible:!!root.detail.error;text:(root.detail.fetchedAt ? "Previous snapshot · " : "")+(root.detail.error || "");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Color.urgent}
+                        Column {
+                            visible:root.finished
+                            width:parent.width;spacing:Style.space(10)
+                            Row {
+                                width:parent.width;spacing:Style.space(6)
+                                visible:root.classifications.length>1
+                                Repeater {
+                                    model:root.classifications
+                                    Button {required property var modelData;width:(parent.width-Style.space(6)*(root.classifications.length-1))/Math.max(1,root.classifications.length);text:modelData.kind==="gc" ? "GC" : "Stage results";selected:root.classification.kind===modelData.kind;bordered:true;foreground:root.foreground;onClicked:root.classificationKind=modelData.kind}
+                                }
+                            }
+                            Classification {width:parent.width;visible:root.classifications.length>0;classification:root.classification;textColor:root.foreground}
+                            RaceText {width:parent.width;visible:!root.classifications.length;text:root.detail.resultsError || (root.detail.error ? "Results could not be loaded. Open PCS below." : "Waiting for published results…");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
+                            RaceText {width:parent.width;visible:root.detail.stageRace===true && root.detail.gcAvailable===false;text:"General classification is not published on this stage page yet.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
+                        }
+                        Column {
+                            visible:!root.finished
+                            width:parent.width;spacing:Style.space(12)
                         Grid {
                             width:parent.width;columns:3;spacing:Style.space(8)
                             Repeater {
@@ -227,6 +259,12 @@ Panel {
                                 }
                             }
                         }
+                        PanelSectionHeader {text:"RACE SITUATION · GAPS TO FRONT";foreground:root.foreground}
+                        Repeater {
+                            model:root.detail.groups || []
+                            RiderGroup {required property var modelData;width:parent.width;group:modelData;textColor:root.foreground}
+                        }
+                        RaceText {width:parent.width;visible:!(root.detail.groups || []).length;text:"No group gaps published";color:root.dim;font.pixelSize:Style.font.caption}
                         PanelSectionHeader {text:"COURSE PROFILE";foreground:root.foreground}
                         Profile {width:parent.width;height:Style.space(95);points:root.detail.profile || [];progress:root.detail.distance>0 && root.detail.kmDone!==null ? root.detail.kmDone/root.detail.distance : -1;foreground:root.foreground}
                         RaceText {visible:!(root.detail.profile || []).length;width:parent.width;text:"Course profile unavailable";color:root.dim;font.pixelSize:Style.font.caption}
@@ -235,21 +273,11 @@ Panel {
                             RaceText {width:parent.width/2;text:root.val(root.detail.kmToGo," km remaining");horizontalAlignment:Text.AlignRight;color:root.dim;font.pixelSize:Style.font.caption}
                         }
                         PanelSeparator {foreground:root.foreground}
-                        PanelSectionHeader {text:"RACE SITUATION";foreground:root.foreground}
-                        Repeater {
-                            model:root.detail.groups || []
-                            CursorSurface {
-                                required property var modelData
-                                width:parent.width;height:Style.space(43);bordered:true;foreground:root.foreground
-                                RaceText {anchors.left:parent.left;anchors.leftMargin:Style.space(10);anchors.right:gap.left;anchors.rightMargin:Style.space(8);anchors.verticalCenter:parent.verticalCenter;text:modelData.label+(modelData.count ? " · "+modelData.count+" in group" : "");color:root.foreground}
-                                RaceText {id:gap;anchors.right:parent.right;anchors.rightMargin:Style.space(10);anchors.verticalCenter:parent.verticalCenter;text:(modelData.gap || "—")+(modelData.uncertain ? " ?" : "");font.bold:true;color:Color.accent}
-                            }
-                        }
-                        RaceText {width:parent.width;visible:!(root.detail.groups || []).length;text:root.detail.status==="finished" ? "Race finished" : "No group gaps published";color:root.dim;font.pixelSize:Style.font.caption}
                         PanelSectionHeader {text:"NEXT ON THE ROUTE";foreground:root.foreground}
                         Repeater {
                             model:(root.detail.keypoints || []).filter(function(k){return root.detail.kmDone===null || k.km>=Number(root.detail.kmDone || 0)}).slice(0,3)
                             RaceText {required property var modelData;width:parent.width;text:modelData.kind+" · "+modelData.name+" · km "+modelData.km+(modelData.gradient ? " · "+modelData.gradient+"%" : "");font.pixelSize:Style.font.caption;color:root.dim}
+                        }
                         }
                     }
                     PanelSeparator {foreground:root.foreground}

@@ -1,6 +1,6 @@
 # Design and verification
 
-- ID: `io.github.vip32.procyclingstats`, version 0.1.0.
+- ID: `io.github.vip32.procyclingstats`, version 0.2.0.
 - Hosted kinds: `bar-widget` (`BarWidget.qml`) and `service` (`Service.qml`).
 - UI: native Omarchy `Panel`, `KeyboardPanel`, `BarIconButton`, `CursorSurface`;
   custom Canvas road bike and profile. Stochi informs the visual layout.
@@ -13,7 +13,8 @@
 - Network: HTTPS to `www.procyclingstats.com` only, same-origin redirects only.
   No credentials, privilege, remote code execution or challenge bypass.
 - Limits: 2 MB per response while receiving, 18-second wall deadline, 60 races,
-  12 groups, 220 profile points, 40 keypoints and 180 KB JSON output.
+  12 groups with up to 30 named riders each, two classifications of up to
+  200 rows, 220 profile points, 40 keypoints and 180 KB JSON output.
 - Rendering: all external text uses plain text. CSS profiles become bounded
   numeric coordinates; embedded JSON is parsed, never evaluated as JavaScript.
 - Failure states: loading, ready, empty, blocked, rate-limited, offline,
@@ -22,7 +23,7 @@
 - IPC service: `status`, `refresh`, `open`, `close`, `demo(bool)`.
 - IPC panel: `.panel` target with `open`, `close`, `expand`, `compact`, `status`.
 - Portable tests: homepage deduplication, nested yesterday exclusion, all key
-  race metrics, zero vs missing values, no rider records, uncertainty, timezone,
+  race metrics, zero vs missing values, group riders and bibs, uncertainty, timezone,
   HTML challenge recognition, invalid URLs, redirect restriction, response cap,
   network failure distinctions, deadline and CLI injection handling.
 - Observed on Omarchy 4.0.4-1: discovery, center placement, singleton lookup,
@@ -34,5 +35,12 @@
   Bash wrapper as fixture-only; actual capture lives in `demo/capture.py`.
 - Not yet verified: real vertical bar and multiple physical monitors. Icon
   geometry uses native orientation-aware BarIconButton; both share one service.
+- Rider names are scoped to live race groups; splits are group gaps to the front,
+  never the unrelated per-rider GC deficits in the source HTML.
+- Finished stage views default to the stage page’s explicitly labeled GC tab.
+  Stage and one-day results are labeled separately; missing GC stays explicit.
+- 30 tests pass, including live-to-finished transitions, partial results failure,
+  correct tab selection, same-time markers and rider limits. Checked real CRO Race
+  GC and Paris-Chauny final results, plus saved live groups with named riders.
 - Deferred: official API integration, all-day calendars beyond PCS's homepage,
   historical race browsing, team/rider pages, push notifications.

@@ -209,8 +209,19 @@ def parse_race(html, path):
             raw=txt(gap_node)
             gap=re.search(r'\+\d{1,2}:\d{2}(?::\d{2})?',raw)
             label=txt(g.first(cls='groupname')) or ('Front of race' if i==0 else 'Group '+str(i+1))
-            count=sum(1 for a in g.nodes('a') if a.attrs.get('href','').startswith('rider/'))
-            groups.append(dict(label=label,gap=gap[0] if gap else '',count=count,
+            riders=[]
+            seen=set()
+            for a in g.nodes('a'):
+                href=a.attrs.get('href','')
+                if not href.startswith('rider/') or href in seen: continue
+                seen.add(href)
+                row=a.parent
+                while row is not g and row.parent and row.tag != 'li': row=row.parent
+                bib=txt(row.first(cls='bib')) if row is not g else ''
+                if len(riders)<30: riders.append(dict(name=txt(a),bib=clean(bib,8)))
+            count=len(seen)
+            groups.append(dict(label=label,gap=gap[0] if gap else '',count=count,riders=riders,
+                               omitted=max(0,count-len(riders)),
                                uncertain=(gap_node.attrs['data-uncertain']=='1') if gap_node is not None and 'data-uncertain' in gap_node.attrs else '??' in raw))
     keypoints=[]
     for kp in (data.get('keypoints') or [])[:120]:
@@ -227,6 +238,76 @@ def parse_race(html, path):
                 groups=groups,keypoints=keypoints[:40],profile=profile(doc.first(cls='bigProfile') or doc),
                 sourceAt=dt.datetime.fromtimestamp(data['cur_ts'],dt.timezone.utc).isoformat()
                 if number(data.get('cur_ts'),4102444800) is not None else '')
+
+def result_rows(table):
+    """Read header-selected columns; hidden numeric times resolve PCS ditto marks."""
+    headers=[txt(h).lower() for h in table.nodes('th')]
+    if 'rider' not in headers or 'time' not in headers: return []
+    rider_index,time_index=headers.index('rider'),headers.index('time')
+    bib_index=headers.index('bib') if 'bib' in headers else -1
+    rows=[]
+    previous_gap=None
+    for tr in table.nodes('tr'):
+        cells=[c for c in tr.children if isinstance(c,Node) and c.tag=='td']
+        if len(cells)<=max(rider_index,time_index): continue
+        a=next((a for a in cells[rider_index].nodes('a') if a.attrs.get('href','').startswith('rider/')),None)
+        if not a: continue
+        rank=clean(txt(cells[0]),8)
+        time_cell=cells[time_index]
+        hidden=time_cell.first(cls='hide')
+        raw=txt(hidden) or txt(time_cell.first('font')) or txt(time_cell)
+        timing=re.search(r'(?<![0-9])([+]?\d{1,3}:\d{2}(?::\d{2})?(?:[.,]\d+)?)',raw)
+        if timing:
+            time_text=timing[1]
+            if rank=='1': display=time_text.lstrip('+'); previous_gap='0:00'
+            else: display='+'+time_text.lstrip('+'); previous_gap=time_text.lstrip('+')
+        elif raw.strip() in (',,','s.t.','same time') and previous_gap is not None:
+            display='+'+previous_gap
+        else:
+            display='—'
+        rows.append(dict(rank=rank,name=txt(a),bib=txt(cells[bib_index]) if bib_index>=0 else '',time=display))
+        if len(rows)>=200: break
+    return rows
+
+def parse_results(html,path):
+    doc=checked_html(html)
+    navigation=doc.first(cls='resultTabs')
+    tabs={}
+    if navigation:
+        for a in navigation.nodes('a'):
+            label=txt(a).upper()
+            if label in ('GC','STAGE','RESULT','RESULTS'):
+                tabs[a.attrs.get('data-id','')]='gc' if label=='GC' else 'result'
+    containers={n.attrs.get('data-id'):n for n in doc.nodes(cls='resTab')}
+    classifications=[]
+    stage=path.split('/')[-1].startswith('stage-')
+    for tab_id,kind in tabs.items():
+        container=containers.get(tab_id)
+        table=container.first('table','results') if container else None
+        if table is None: continue
+        classifications.append(dict(kind=kind,title='General classification' if kind=='gc' else 'Stage results' if stage else 'Final results',rows=result_rows(table)))
+    if not classifications:
+        # A standalone one-day results page has no GC, and must never be labeled GC.
+        table=doc.first('table','results')
+        if table is None: raise SourceError('unavailable','PCS has not published results for this race yet.')
+        classifications=[dict(kind='result',title='Stage results' if stage else 'Final results',rows=result_rows(table))]
+    classifications.sort(key=lambda c:0 if c['kind']=='gc' else 1)
+    return dict(state='ready',path=path,name=txt(doc.first('title')),status='finished',
+                classifications=classifications,gcAvailable=any(c['kind']=='gc' for c in classifications),
+                stageRace=stage,groups=[],profile=[],keypoints=[])
+
+def load_race(path,finished=False):
+    if finished:
+        return parse_results(fetch(path),path)
+    result=parse_race(fetch(path+'/live'),path)
+    if result['status']=='finished':
+        try:
+            results=parse_results(fetch(path),path)
+            result.update({k:results[k] for k in ('classifications','gcAvailable','stageRace')})
+        except SourceError as e:
+            result['resultsError']=e.message
+            result['resultsState']=e.state
+    return result
 
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -266,6 +347,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode',choices=['overview','race'])
     parser.add_argument('--race',default='')
+    parser.add_argument('--finished',action='store_true',help='Read published results and stage GC instead of LiveStats')
     parser.add_argument('--html',type=Path,help='Parse a saved public page offline; no network request')
     args=parser.parse_args()
     signal.signal(signal.SIGALRM,deadline)
@@ -274,9 +356,9 @@ def main():
         path=race_path(args.race) if args.mode=='race' else ''
         if args.html:
             with args.html.open('rb') as stream: html=bounded_read(stream).decode('utf-8',errors='replace')
+            result=(parse_results(html,path) if args.finished else parse_race(html,path)) if path else parse_overview(html)
         else:
-            html=fetch(path+'/live' if path else '')
-        result=parse_race(html,path) if path else parse_overview(html)
+            result=load_race(path,args.finished) if path else parse_overview(fetch(''))
         result['fetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat()
         result['savedPage']=bool(args.html)
     except SourceError as e:

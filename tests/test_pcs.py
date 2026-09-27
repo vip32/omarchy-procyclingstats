@@ -25,6 +25,16 @@ def live(data=DATA):
 <div class="bigProfile"><div class="xyProfile" style="clip-path: polygon(0 100%,0% 70%,50% 10%,100% 70%,100% 100%);"></div></div>
 <div class="situCont"><ul><li class="group"><div class="groupname">Breakaway</div><div class="time" data-uncertain="1">+0:00??</div><a href="rider/fictional">Fictional Person</a></li><li class="group"><div class="groupname">Peloton</div><div class="time">+1:12</div></li></ul></div>'''
 
+def result_table(rows):
+    return '<table class="results"><thead><th>Rnk</th><th>BIB</th><th>Rider</th><th>Time</th></thead><tbody>'+''.join(
+        '<tr><td>'+rank+'</td><td>12</td><td><a href="rider/'+name.lower()+'">'+name+'</a></td><td class="time"><font>'+display+'</font><span class="hide">'+hidden+'</span></td></tr>'
+        for rank,name,display,hidden in rows)+'</tbody></table>'
+
+def results_page(gc=True):
+    stage=result_table([('1','StageWinner','3:20:00','3:20:00'),('2','StageSecond',',,','0:00')])
+    overall=result_table([('1','OverallWinner','21:30:00','21:30:00'),('2','OverallSecond','0:04','0:04')])
+    return '<title>Fictional stage results</title><ul class="resultTabs"><li><a data-id="s">STAGE</a></li>'+('<li><a data-id="g">GC</a></li>' if gc else '')+'<li><a data-id="y">YOUTH</a></li></ul><div class="resTab" data-id="s">'+stage+'</div>'+('<div class="resTab hide" data-id="g">'+overall+'</div>' if gc else '')+'<div class="resTab hide" data-id="y">'+result_table([('1','YoungWinner','20:00:00','20:00:00')])+'</div>'
+
 class Parsing(unittest.TestCase):
     def test_overview_deduplicates_live_stage_and_eta(self):
         races=pcs.parse_overview(HOME)['races']
@@ -43,14 +53,14 @@ class Parsing(unittest.TestCase):
         with self.assertRaises(pcs.SourceError) as cm: pcs.parse_overview('<title>Just a moment...</title>')
         self.assertEqual(cm.exception.state,'blocked')
         self.assertEqual(pcs.parse_overview(HOME+'<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script>')['state'],'ready')
-    def test_real_metrics_and_no_rider_records(self):
+    def test_real_metrics_and_group_riders_without_startlist(self):
         race=pcs.parse_race(live(),'race/demo/2026/stage-2')
         self.assertEqual(race['kmToGo'],42.6)
         self.assertEqual(race['elapsed'],'3:23:01')
         self.assertEqual(race['groups'][0]['count'],1)
         self.assertTrue(race['groups'][0]['uncertain'])
         self.assertEqual(race['groups'][1]['gap'],'+1:12')
-        self.assertNotIn('Fictional Person',json.dumps(race))
+        self.assertEqual(race['groups'][0]['riders'][0]['name'],'Fictional Person')
         self.assertNotIn('PRIVATE IN TEST',json.dumps(race))
         self.assertEqual(race['keypoints'][0]['gradient'],6.8)
         self.assertGreaterEqual(len(race['profile']),3)
@@ -99,5 +109,59 @@ class Parsing(unittest.TestCase):
     def test_cli_argument_injection_rejected_as_data(self):
         result=subprocess.run([sys.executable,'-I',str(ROOT/'bin/pcs.py'),'race','--race','https://evil.invalid/'],capture_output=True,text=True,timeout=3)
         self.assertEqual(json.loads(result.stdout)['state'],'unsupported')
+
+class Classifications(unittest.TestCase):
+    def test_gc_selected_by_tab_not_table_order(self):
+        d=pcs.parse_results(results_page(),'race/demo/2026/stage-6')
+        self.assertEqual([x['kind'] for x in d['classifications']],['gc','result'])
+        self.assertEqual(d['classifications'][0]['rows'][0]['name'],'OverallWinner')
+        self.assertEqual(d['classifications'][0]['rows'][1]['time'],'+0:04')
+        self.assertNotIn('YoungWinner',json.dumps(d))
+    def test_ditto_uses_hidden_numeric_gap(self):
+        d=pcs.parse_results(results_page(),'race/demo/2026/stage-6')
+        self.assertEqual(d['classifications'][1]['rows'][1]['time'],'+0:00')
+    def test_ditto_without_hidden_uses_previous_gap(self):
+        t=pcs.checked_html(result_table([('1','First','4:00:00',''),('2','Second','0:08',''),('3','Third',',,','')])).first('table')
+        self.assertEqual(pcs.result_rows(t)[2]['time'],'+0:08')
+    def test_one_day_final_results_never_labeled_gc(self):
+        d=pcs.parse_results(result_table([('1','Winner','5:00:00','')]),'race/demo/2026/result')
+        self.assertFalse(d['gcAvailable'])
+        self.assertFalse(d['stageRace'])
+        self.assertEqual(d['classifications'][0]['title'],'Final results')
+    def test_missing_gc_stays_explicit(self):
+        d=pcs.parse_results(results_page(False),'race/demo/2026/stage-1')
+        self.assertFalse(d['gcAvailable'])
+        self.assertEqual(d['classifications'][0]['title'],'Stage results')
+    def test_empty_table_is_pending_results(self):
+        d=pcs.parse_results(result_table([]),'race/demo/2026/result')
+        self.assertEqual(d['classifications'][0]['rows'],[])
+    def test_unavailable_results_are_not_an_empty_success(self):
+        with self.assertRaises(pcs.SourceError):pcs.parse_results('<html>No results</html>','race/demo/2026/result')
+    def test_finished_hint_fetches_results_without_livestats(self):
+        with patch.object(pcs,'fetch',return_value=results_page()) as fetch:
+            d=pcs.load_race('race/demo/2026/stage-6',True)
+            fetch.assert_called_once_with('race/demo/2026/stage-6')
+            self.assertTrue(d['gcAvailable'])
+    def test_live_to_finished_fetches_results(self):
+        with patch.object(pcs,'fetch',side_effect=[live(dict(DATA,race_status='finished')),results_page()]):
+            d=pcs.load_race('race/demo/2026/stage-6')
+            self.assertEqual(d['status'],'finished')
+            self.assertTrue(d['gcAvailable'])
+    def test_results_failure_preserves_finish_snapshot(self):
+        with patch.object(pcs,'fetch',side_effect=[live(dict(DATA,race_status='finished')),pcs.SourceError('blocked','Blocked')]):
+            d=pcs.load_race('race/demo/2026/stage-6')
+            self.assertEqual(d['status'],'finished')
+            self.assertEqual(d['resultsState'],'blocked')
+            self.assertEqual(d['elapsed'],'3:23:01')
+    def test_group_riders_bib_and_gc_gap_not_mixed(self):
+        html=live().replace('<a href="rider/fictional">Fictional Person</a>','<ul><li><div class="bib">42</div><a href="rider/fictional">Fictional Person</a><div class="gc">+20:00</div></li></ul>')
+        d=pcs.parse_race(html,'race/demo/2026/result')
+        self.assertEqual(d['groups'][0]['riders'][0]['bib'],'42')
+        self.assertEqual(d['groups'][0]['gap'],'+0:00')
+    def test_group_rider_bound(self):
+        html=live().replace('<a href="rider/fictional">Fictional Person</a>',''.join('<a href="rider/f'+str(i)+'">Fictional '+str(i)+'</a>' for i in range(45)))
+        d=pcs.parse_race(html,'race/demo/2026/result')
+        self.assertEqual(len(d['groups'][0]['riders']),30)
+        self.assertEqual(d['groups'][0]['omitted'],15)
 
 if __name__=='__main__': unittest.main()

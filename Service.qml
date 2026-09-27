@@ -26,7 +26,8 @@ Item {
         if (demo || Date.now() < nextAllowed) return
         var key = path || "overview"
         if ((worker.running && currentPath === path) || queue.indexOf(path) >= 0) return
-        if (Date.now() - Number(lastRequests[key] || 0) < 60000) return
+        var finished = path && races.some(function(r) {return r.path === path && r.status === "finished"})
+        if (Date.now() - Number(lastRequests[key] || 0) < (finished ? 300000 : 60000)) return
         queue = queue.concat([path]).slice(0, 5)
         runNext()
     }
@@ -50,6 +51,8 @@ Item {
         var script = decodeURIComponent(Qt.resolvedUrl("bin/pcs.py").toString().replace(/^file:\/\//, ""))
         worker.command = currentPath ? ["/usr/bin/python3", "-I", script, "race", "--race", currentPath]
                                      : ["/usr/bin/python3", "-I", script, "overview"]
+        if (currentPath && races.some(function(r) {return r.path === currentPath && r.status === "finished"}))
+            worker.command = worker.command.concat(["--finished"])
         worker.running = true
     }
     function consume(code) {
@@ -79,7 +82,8 @@ Item {
                 details = retained
             }
         }
-        if (["blocked", "rate-limited"].indexOf(result.state) >= 0) {
+        var failureState = result.resultsState || result.state
+        if (["blocked", "rate-limited"].indexOf(failureState) >= 0) {
             nextAllowed = Date.now() + 900000
             queue = []
         } else if (["offline", "error", "unsupported"].indexOf(result.state) >= 0 && !currentPath) {

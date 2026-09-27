@@ -35,6 +35,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,default=ROOT/'preview.png')
     p.add_argument('--compact',action='store_true')
+    p.add_argument('--race-index',type=int,default=0,choices=range(4))
     args=p.parse_args()
     for cmd in ('omarchy-shell','hyprctl','grim'):
         if not shutil.which(cmd): p.error('Missing '+cmd)
@@ -68,6 +69,7 @@ def main():
         wait_for(lambda:status()['demo'] and status()['races']==4)
         run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{workspace}" }})')
         mode='compact' if args.compact else 'expand'
+        ipc(ID+'.panel','selectRace',str(args.race_index))
         ipc(ID+'.panel',mode)
         wait_for(lambda:status(ID+'.panel')['opened'] and status(ID+'.panel')['expanded'] != args.compact)
         geometry=status(ID+'.panel')['geometry']
@@ -85,8 +87,8 @@ def main():
             ipc(ID+'.panel','close')
             if ipc(ID,'demo','false')!='true': raise RuntimeError('Could not restore live fetching')
             run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{original_workspace}" }})')
-            ipc(ID+'.panel','expand' if panel_state['expanded'] else 'compact')
-            if not panel_state['opened']: ipc(ID+'.panel','close')
+            wait_for(lambda:not status()['loading'])
+            ipc(ID+'.panel','restoreView',panel_state.get('filter','Today'),panel_state['selected'],str(panel_state['expanded']).lower(),str(panel_state['opened']).lower())
             if status()['demo']: raise RuntimeError('Demo remains enabled')
             restored=True
         finally:

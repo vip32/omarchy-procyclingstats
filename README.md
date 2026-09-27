@@ -6,7 +6,11 @@ professional road cycling races, then select a race for its LiveStats overview.
 - Today and Live filters, including women's and men's races.
 - Distance remaining and covered, elapsed race time, average speed and start time.
 - Course profile with the current race position.
-- Race situation: front group, chasing groups and peloton, with time gaps.
+- Race situation: front group, chasing groups and peloton, with rider names, bibs
+  and each group’s time gap to the front.
+- Finished stages open on GC, with a separate stage-results tab. Finished one-day
+  races show final results. Winner/leader time and gaps are included; show the
+  top 10 or expand the full classification (up to 200 rows).
 - Upcoming climbs and sprints.
 - Stochi-inspired bordered rows, compact/expanded panels and native theme colors.
 - One shared poller across monitors. Per-panel navigation and selection.
@@ -14,7 +18,8 @@ professional road cycling races, then select a race for its LiveStats overview.
 ![Fictional demo of the race overview](preview.png)
 
 An independent, unofficial integration. Race data belongs to
-[ProCyclingStats](https://www.procyclingstats.com/). No team or rider browsing.
+[ProCyclingStats](https://www.procyclingstats.com/). Riders appear within race situations and classifications; there is no separate
+team or rider browsing.
 
 ## Requirements and data access
 
@@ -34,7 +39,9 @@ in the browser when automatic access is unavailable.
 Live race pages refresh every 60 seconds by default. The homepage refreshes every
 5 minutes. Explicit refresh is subject to the same minimum interval. Up to three
 recently selected races stay warm; requests are serialized, capped at 2 MB, and
-have an 18-second total deadline. Missing metrics show an em dash. Previous data
+have an 18-second total deadline. Finished results refresh every 5 minutes.
+GC is read from the selected stage’s own GC tab, not a guessed final standings
+page. If PCS has not published GC or group members, the panel says so. Missing metrics show an em dash. Previous data
 remains visible with an error and its timestamp after a failed refresh. Source
 snapshot timestamps are used where available; the position is never extrapolated.
 
@@ -89,6 +96,7 @@ Set `refreshIntervalSec` directly on the bar entry (60–900 seconds):
 ./tests/run
 python3 -I bin/pcs.py overview
 python3 -I bin/pcs.py race --race race/world-championship/2026/result
+python3 -I bin/pcs.py race --race race/tour-of-croatia/2026/stage-6 --finished
 python3 -I bin/pcs.py race --race race/example/2026/result --html saved-page.html
 omarchy-shell io.github.vip32.procyclingstats status
 omarchy-shell io.github.vip32.procyclingstats.panel status
