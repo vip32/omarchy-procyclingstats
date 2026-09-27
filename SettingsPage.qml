@@ -10,7 +10,6 @@ Column {
     property string feedback: ""
     property int cursorIndex: 0
     signal changed(var changes)
-    signal testRequested()
     spacing: Style.space(12)
     readonly property var fields: [
         {key:"refreshIntervalSec",label:"Live races & events",min:60,max:900,step:30},
@@ -63,7 +62,6 @@ Column {
         checked:root.values.eventNotifications;hasCursor:root.cursorIndex===4;foreground:root.foreground
         onClicked:{root.cursorIndex=4;root.changed({eventNotifications:!root.values.eventNotifications})}
     }
-    Button {text:"Send test notification";bordered:true;foreground:root.foreground;enabled:root.values.eventNotifications;onClicked:root.testRequested()}
     RaceText {width:parent.width;text:"Notifications close automatically and respect Do Not Disturb. New events in one refresh are grouped into one notification per race.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Qt.darker(root.foreground,1.5);font.pixelSize:Style.font.caption}
     RaceText {width:parent.width;text:root.feedback || "Changes save automatically. PCS cooldowns still apply.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.feedback ? Color.urgent : Qt.darker(root.foreground,1.5);font.pixelSize:Style.font.caption}
     RaceText {width:parent.width;text:"J/K select · H/L adjust · Enter change · Esc back";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Qt.darker(root.foreground,1.5);font.pixelSize:Style.font.caption}

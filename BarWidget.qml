@@ -234,7 +234,6 @@ Panel {
                         id:settingsPage;width:parent.width;visible:root.settingsOpen
                         values:root.preferences;foreground:root.foreground;feedback:root.settingsError
                         onChanged:function(changes){root.persistSettings(changes)}
-                        onTestRequested:if(root.service)root.service.testNotification()
                     }
                     Column {
                     width:parent.width;spacing:Style.spacing.panelGap;visible:!root.settingsOpen

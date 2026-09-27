@@ -26,7 +26,6 @@ Item {
     property int notificationDurationSec: 8
     property var updateIssues: ({})
     property var eventBaselines: ({})
-    property double lastNotificationTest: 0
     readonly property var options: Model.settings({refreshIntervalSec:refreshIntervalSec,
         overviewIntervalSec:overviewIntervalSec,resultsIntervalSec:resultsIntervalSec,
         eventNotifications:eventNotifications,notificationDurationSec:notificationDurationSec})
@@ -129,12 +128,6 @@ Item {
         if(diff.fresh.length && race && (race.status==="live" || result.status==="live" || result.status==="finished"))
             Quickshell.execDetached(Model.notificationArgs(race.name,diff.fresh,notificationDurationSec))
     }
-    function testNotification() {
-        if (!eventNotifications || demo || Date.now()-lastNotificationTest<5000) return false
-        lastNotificationTest=Date.now()
-        Quickshell.execDetached(Model.notificationArgs("Test notification",[{marker:"42",text:"Fictional example: a rider attacks from the peloton."}],notificationDurationSec))
-        return true
-    }
     // Explicit fictional failure preview; cannot mutate live fetch state.
     function demoWarning(kind) {
         if (!demo || ["ready","blocked","rate-limited","offline","error","unsupported"].indexOf(kind)<0) return false
@@ -195,7 +188,6 @@ Item {
         function refresh(): void { root.refresh() }
         function demo(enabled: bool): bool { return root.setDemo(enabled) }
         function demoWarning(kind: string): bool { return root.demoWarning(kind) }
-        function testNotification(): bool { return root.testNotification() }
         function open(): void { if (root.shell) root.shell.summon("io.github.vip32.procyclingstats", "{}") }
         function close(): void { if (root.shell) root.shell.hide("io.github.vip32.procyclingstats") }
         function status(): string {

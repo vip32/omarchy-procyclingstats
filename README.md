@@ -70,7 +70,7 @@ fetch after enabling or restarting establishes a baseline without replaying the
 backlog. Only new events notify; each poll groups them into one notification per
 race (three event summaries plus a count). After a long outage, the baseline
 resets. Notifications use Omarchy’s native service with an explicit expiry and
-respect Do Not Disturb. The Settings screen includes a fictional test notification.
+respect Do Not Disturb.
 
 ## Install this checkout
 

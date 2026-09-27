@@ -78,7 +78,6 @@ TestCase {
     function test_demo_never_sends_notifications() {
         service.eventNotifications=true
         service.demo=true
-        verify(!service.testNotification())
         service.receiveEvents(racePath,snapshot("Demo event"),race)
         compare(Quickshell.commands.length,0)
         verify(service.demoWarning("blocked"))
