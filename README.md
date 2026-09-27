@@ -8,8 +8,8 @@ professional road cycling races, then select a race for its LiveStats overview.
 - One live overview combines the race situation, latest three events and course profile.
 - Course profile with the current race position.
 - Race situation: front group, chasing groups and peloton, with rider names, bibs
-  and each group’s time gap to the front. Rider names use two columns, with four
-  shown initially per group and a control to expand longer lists.
+  and each group’s time gap to the front. Each group has a short rider summary;
+  click it to expand the full named rider list with bib numbers in two columns.
 - Finished stages open on GC, with a separate stage-results tab. Finished one-day
   races show final results. Winner/leader time and gaps are included; show the
   top 10 or expand the full classification (up to 200 rows).

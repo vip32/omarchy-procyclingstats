@@ -72,7 +72,7 @@ Column {
     }
     RaceText {
         width:parent.width;visible:!!root.nextPoint
-        text:root.nextPoint ? "Next · "+root.nextPoint.name+" · in "+root.nextPoint.remaining+" km"+(root.nextPoint.length ? " · "+root.nextPoint.length+" km" : "")+(root.nextPoint.gradient ? " at "+root.nextPoint.gradient+"%" : "") : ""
+        text:root.nextPoint ? "Next "+String(root.nextPoint.kind || "").toLowerCase()+" · "+root.nextPoint.name+" · in "+root.nextPoint.remaining+" km"+(root.nextPoint.length ? " · "+root.nextPoint.length+" km" : "")+(root.nextPoint.gradient ? " at "+root.nextPoint.gradient+"%" : "") : ""
         font.pixelSize:Style.font.caption;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground
     }
 }
