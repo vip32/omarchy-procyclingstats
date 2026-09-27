@@ -23,7 +23,7 @@ def status(target=ID):
     return json.loads(ipc(target,'status'))
 
 def wait_for(predicate):
-    until=time.monotonic()+12
+    until=time.monotonic()+25
     while time.monotonic()<until:
         if predicate(): return
         time.sleep(.1)
@@ -38,10 +38,11 @@ def main():
     p.add_argument('--compact',action='store_true')
     p.add_argument('--events',action='store_true',help='Capture the race-events tab')
     p.add_argument('--settings',action='store_true',help='Capture the settings screen')
+    p.add_argument('--settings-section',choices=['filters','refresh'],default='filters')
     p.add_argument('--warning',choices=['blocked','rate-limited','offline'],help='Show a fictional connection warning')
     p.add_argument('--race-index',type=int,default=0,choices=range(4))
     args=p.parse_args()
-    for cmd in ('omarchy-shell','hyprctl','grim'):
+    for cmd in ('omarchy-shell','hyprctl','grim','git'):
         if not shutil.which(cmd): p.error('Missing '+cmd)
     panel_state=status(ID+'.panel')
     if status()['demo']: p.error('Demo is already active; restore it first with demo false')
@@ -54,17 +55,19 @@ def main():
     used={w['id'] for w in json.loads(run('hyprctl','workspaces','-j'))}
     workspace=next(i for i in range(90,110) if i not in used)
     runtime=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))
-    recovery=runtime/'omarchy-pcs-demo-recovery'
+    stale=list(runtime.glob('omarchy-pcs-demo-recovery*'))
+    if stale: p.error('Stale recovery state: '+', '.join(str(p) for p in stale))
+    recovery=Path(tempfile.mkdtemp(prefix='omarchy-pcs-demo-recovery-',dir=runtime))
     layers=json.loads(run('hyprctl','layers','-j'))
     shell_pids=sorted({item['pid'] for m in layers.values() for level in m['levels'].values() for item in level if item.get('namespace','').startswith('omarchy')})
-    recovery.mkdir(mode=0o700) # refuse stale recovery records
     config=Path.home()/'.config/omarchy/shell.json'
     shutil.copy2(config,recovery/'shell.json')
     install=Path.home()/'.config/omarchy/plugins'/ID
+    original_cursor=json.loads(run('hyprctl','cursorpos','-j'))
     (recovery/'state.json').write_text(json.dumps({'workspace':original_workspace,'panel':panel_state,
         'installedCommit':run('git','-C',str(install),'rev-parse','HEAD'),
         'shellPids':shell_pids,
-        'cursor':run('hyprctl','cursorpos','-j')},indent=2))
+        'cursor':original_cursor},indent=2))
     for sig in (signal.SIGINT,signal.SIGTERM,signal.SIGHUP): signal.signal(sig,interrupted)
     restored=False
     try:
@@ -77,7 +80,7 @@ def main():
         ipc(ID+'.panel','selectRace',str(args.race_index))
         ipc(ID+'.panel',mode)
         ipc(ID+'.panel','setDetailView','events' if args.events else 'overview')
-        if args.settings: ipc(ID+'.panel','settings')
+        if args.settings: ipc(ID+'.panel','settingsSection',args.settings_section)
         if args.warning: ipc(ID,'demoWarning',args.warning)
         wait_for(lambda:status(ID+'.panel')['opened'] and status(ID+'.panel')['expanded'] != args.compact)
         geometry=status(ID+'.panel')['geometry']
@@ -95,6 +98,7 @@ def main():
             ipc(ID+'.panel','close')
             if ipc(ID,'demo','false')!='true': raise RuntimeError('Could not restore live fetching')
             run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{original_workspace}" }})')
+            run('hyprctl','dispatch',f'hl.dsp.cursor.move({{ x = {original_cursor["x"]}, y = {original_cursor["y"]} }})')
             wait_for(lambda:not status()['loading'])
             ipc(ID+'.panel','showRaces')
             ipc(ID+'.panel','showDay',str(panel_state.get('dayOffset',0)))
@@ -102,6 +106,8 @@ def main():
             ipc(ID+'.panel','restoreView',panel_state.get('filter','Races'),panel_state['selected'],str(panel_state['expanded']).lower(),str(panel_state['opened']).lower())
             ipc(ID+'.panel','setDetailView',panel_state.get('detailView','overview'))
             if panel_state.get('settingsOpen'): ipc(ID+'.panel','settings')
+            ipc(ID+'.panel','restoreScroll',str(panel_state.get('scrollY',0)),str(panel_state.get('settingsCursor',0)))
+            if not panel_state['opened']: ipc(ID+'.panel','close')
             if status()['demo']: raise RuntimeError('Demo remains enabled')
             restored=True
         finally:

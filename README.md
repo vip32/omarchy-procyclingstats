@@ -1,177 +1,132 @@
 # ProCyclingStats for Omarchy
 
-A road-bike icon in the center of the Omarchy Quattro bar. Click it for today's
-professional road cycling races, then select a race for its LiveStats overview.
+A compact road-cycling dashboard for the Omarchy Quattro bar. Follow the race
+situation, time gaps and latest events without keeping a browser window open.
 
-- Settings filters: 13 independent race-category checkboxes (including TT and mixed), all enabled by default.
-- Minimum level: All, Class 2+, Class 1+, ProSeries+, or WorldTour; applies to one-day and stage races.
-- Compact yesterday / today / tomorrow navigation. Click the date to return to today; Live always shows today.
-- Tomorrow shows published start time, distance and route, plus the profile when extractable.
-- Races and Live filters in the header (checkered flag and live indicator), including women's and men's races.
-- A slim summary of distance remaining, elapsed time and average speed (start time before racing).
-- One live overview combines the race situation, latest three events and course profile.
-- Course profile with the current race position.
-- Race situation: front group, chasing groups and peloton, with rider names, bibs
-  and each group’s time gap to the front. Each group has a short rider summary;
-  click it to expand the full named rider list with bib numbers in two columns.
-- Finished stages open on GC, with a separate stage-results tab. Finished one-day
-  races show final results. Winner/leader time and gaps are included; show the
-  top 10 or expand the full classification (up to 200 rows).
-- Race-events tab for attacks, dropped riders, abandonments, sprints and finish
-  updates, newest first with distance-to-go markers. Shows the latest 15 with
-  an option to expand to 60; also available after the race finishes.
-- The next published climb or sprint, with distance from the current race position.
-- Stochi-inspired bordered rows, compact/expanded panels and native theme colors.
-- One shared poller across monitors. Per-panel navigation and selection.
-- Settings screen for refresh intervals and optional, auto-closing race-event notifications.
-- Persistent connection warning and bar badge when updates fail or PCS rejects requests.
+**Unofficial integration.** Not affiliated with or endorsed by ProCyclingStats.
+Race coverage depends on the public data PCS makes available.
 
-![Fictional demo of the race overview](preview.png)
+![Live race overview with fictional demo data](preview.png)
 
-[Tomorrow’s races](screenshots/tomorrow-list.png) · [Race preview](screenshots/tomorrow-preview.png)
+## Features
 
-[Settings preview](screenshots/settings.png) · [Connection warning preview](screenshots/warning.png)
+- **Yesterday, today and tomorrow:** results, current races and upcoming stages.
+- **One race overview:** distance remaining, race time, average speed, groups and
+  rider splits, latest events, course profile and the next published climb or sprint.
+- **Finished races:** final results and the selected stage’s GC, with time gaps.
+- **Race events:** attacks, sprints, dropped riders, abandonments and finish updates.
+- **Your races:** 13 independent category checkboxes and a minimum race level.
+  Choose ProSeries+ to hide Class 1 and Class 2 races. All categories and levels
+  are included by default.
+- **Optional notifications:** new events from followed races, with automatic expiry.
+- **Honest connection status:** visible warnings, last-success timestamps and
+  backoff when updates fail or PCS rejects access.
 
-An independent, unofficial integration. Race data belongs to
-[ProCyclingStats](https://www.procyclingstats.com/). Riders appear within race situations and classifications; there is no separate
-team or rider browsing.
+The bike icon sits in the center of the bar by default. Colors and typography
+follow your Omarchy theme. Rider and team information appears only in race context.
 
-## Requirements and data access
+## Screenshots
 
-Omarchy 4 Quattro, Python 3 (standard library only), and `xdg-open` to open PCS.
-No API key, paid service, browser automation or extra Python packages.
-The adapter reads the public PCS homepage, date-specific UCI road calendar, race previews, `/race/.../live`, stage results and
-`/race/.../live/race-events` HTML.
-PCS's [official API](https://www.procyclingstats.com/info/api) is available by
-request; its public page does not advertise a free tier. This plugin uses HTML,
-not that API.
+All screenshots show the actual plugin using committed fictional fixtures.
 
-Network verification on 2026-09-27 succeeded for today's six races and the live
-World Championships. An earlier plain curl request returned Cloudflare HTTP 403;
-access may vary. Blocked access and rate limits are displayed explicitly, with a
-15-minute cooldown. This plugin does not solve or bypass challenges. Open PCS
-in the browser when automatic access is unavailable.
+| Races | Categories and level |
+| --- | --- |
+| ![Date navigation and race list](screenshots/compact.png) | ![Race filters in Settings](screenshots/settings.png) |
 
-Live race pages refresh every 60 seconds by default. The homepage refreshes every
-5 minutes, as do visited adjacent-day lists. Preview refreshes use the results interval.
-Each day has a separate in-memory cache; local midnight resets the date window and
-rejects in-flight responses from the old day. Future start times retain PCS’s published
-time-zone text. Expected finish times remain labelled ETA, never start time.
-Image-only profiles may be unavailable in the panel; use the PCS header link.
-The Settings screen (gear button or comma key) controls live updates
-(60–900 seconds), the race list (5–60 minutes), finished results (5–60 minutes),
-and notification duration (5–30 seconds). Changes save automatically to this
-widget’s entry in `shell.json`. Explicit refresh respects these intervals. Up to three
-recently selected races stay warm; requests are serialized, capped at 2 MB, and
-have an 18-second total deadline. Finished results refresh every 5 minutes.
-GC is read from the selected stage’s own GC tab, not a guessed final standings
-page. If PCS has not published GC or group members, the panel says so. Missing metrics show an em dash. Race events refresh with the race snapshot. A failed events request keeps the
-previous events with their own timestamp and error, while race metrics and GC
-remain usable. Previous data
-remains visible with an error and its timestamp after a failed refresh. Source
-snapshot timestamps are used where available; the position is never extrapolated.
+| Finished-stage GC | Tomorrow’s preview |
+| --- | --- |
+| ![General classification](screenshots/gc.png) | ![Upcoming race information](screenshots/tomorrow-preview.png) |
 
-Failed updates show a warning badge on the bike and a banner pinned above the
-scrolling content. It identifies the affected source, last successful fetch and
-retry countdown. A failure stays visible during retries and clears only when that
-source recovers; an unrelated successful request cannot hide it. Missing optional
-coverage is shown in the relevant tab without claiming a connection failure.
+[Race events](screenshots/events.png) · [Refresh and notifications](screenshots/refresh-settings.png)
+· [Connection warning](screenshots/warning.png) · [Tomorrow’s list](screenshots/tomorrow-list.png)
 
-Race filters apply to every date, the Live list, bar counts and event notifications.
-For example, **ProSeries+** keeps `1.Pro` / `2.Pro` and men's/women's WorldTour,
-while hiding `1.1` / `2.1` and lower classes. Championship codes (`WC`, `NC`, `CC`,
-`JC`, `JOJ`, `JR`, `OG`) remain eligible at every level, subject to category filters.
-Nations Cups and other unranked classes remain available under All. Category
-checkboxes distinguish road races from explicitly labelled ITT/TTT, time-trial,
-prologue or mixed-relay entries. Today's homepage is enriched with the date-specific
-calendar; the default setting preserves races even if metadata is missing.
-Restricting a category or level hides entries lacking that required metadata.
-An active-filter count and a specific empty message make this visible.
-Category and level selections save automatically; selecting None is supported.
+## Requirements
 
-Race-event notifications are off by default. Enable them in Settings for up to
-three recently opened races from today, including while the panel is closed. The initial
-fetch after enabling or restarting establishes a baseline without replaying the
-backlog. Only new events notify; each poll groups them into one notification per
-race (three event summaries plus a count). After a long outage, the baseline
-resets. Notifications use Omarchy’s native service with an explicit expiry and
-respect Do Not Disturb.
+- **Omarchy 4 Quattro.** Tested locally with Omarchy **4.0.4-1** and Qt **6.11.2**,
+  on one Wayland laptop display. Other versions and multiple monitors are unverified.
+- **Python 3**, standard library only, available as `/usr/bin/python3`.
+- **xdg-utils** for `/usr/bin/xdg-open`, used only when opening PCS in your browser.
+- Network access to `https://www.procyclingstats.com`.
 
-## Install this checkout
+No account or API key is required. The plugin reads public HTML; it does not use
+PCS’s API or bypass browser challenges. See [data access and permissions](docs/data-access.md).
+
+## Install
+
+Until a public repository is published, install from this Git checkout:
 
 ```sh
 omarchy plugin add /absolute/path/to/omarchy-procyclingstats --yes --enable
 omarchy bar move io.github.vip32.procyclingstats --section center
 ```
 
-The local installation clones this repository. After committing changes here:
+After publication, the first argument can be the public GitHub repository URL.
+The plugin ID is `io.github.vip32.procyclingstats`.
+
+Update using the repository from which it was installed:
 
 ```sh
 omarchy plugin update io.github.vip32.procyclingstats --yes
 ```
 
-Omarchy normally hot-reloads changes. If QML remains cached, `omarchy restart shell`
-loads the updated code. No separate Quickshell instance or background daemon.
+Omarchy normally reloads changes automatically. If QML remains cached, run
+`omarchy restart shell`.
 
-To disable or remove:
+Disable or remove:
 
 ```sh
 omarchy plugin disable io.github.vip32.procyclingstats
 omarchy plugin remove io.github.vip32.procyclingstats --yes
 ```
 
-The plugin creates no persistent runtime cache or credentials. Removing the
-installed clone leaves the development checkout untouched.
+Removal deletes the installed clone. A separate source checkout and screenshots
+exported by the developer demo remain yours. The plugin keeps no persistent race
+cache, credentials or background service outside the shell.
 
-## Controls
+## Use
 
-| Input | Action |
+Click the bike, choose a date, then select a race. Click a group to expand its
+riders and bib numbers. Finished stages open on GC; switch to stage results when
+needed. The header’s flag always returns to the race list; Live returns to today.
+
+| Control | Action |
 | --- | --- |
-| Left click bike | Open or close races |
-| Flag / 1 / Back to races | Return to the full race list from any view |
-| Live indicator / 2 | Show Live races |
-| Right click bike | Open PCS in browser |
-| Middle click bike / R | Refresh, subject to cooldown |
-| Click race / Enter | Expand race overview |
-| J/K or arrows | Select race |
-| E | Toggle compact/expanded view |
-| T | Switch between Overview and Race events |
-| Header ↗ / O | Open the current race view on PCS |
-| Gear / comma | Open Settings |
-| H/L in Settings | Decrease/increase selected setting |
-| Esc | Back to list, then close |
+| Bike: left / right / middle click | Toggle dashboard / open PCS / refresh |
+| Flag / `1` | Return to the full list for the selected date |
+| Live indicator / `2` | Today’s live races |
+| `←` / `→` in the list | Yesterday / today / tomorrow |
+| Click the date | Return to today |
+| `J` / `K` or `↓` / `↑` | Select a race or setting |
+| Enter / click a race | Open its details |
+| `T` in race details | Overview / race events |
+| Header ↗ / `O` | Open the selected view on PCS |
+| Gear / comma | Settings |
+| `H` / `L` in Settings | Decrease / increase, uncheck / check |
+| Enter in Settings | Toggle a category or adjust the selected setting |
+| `R` | Refresh, respecting configured intervals and cooldowns |
+| Esc | Back, then close |
 
-Set `refreshIntervalSec` directly on the bar entry (60–900 seconds):
+Settings save automatically to the widget’s entry in `~/.config/omarchy/shell.json`.
+See [filters, refresh intervals and notifications](docs/settings.md).
 
-```json
-{ "id": "io.github.vip32.procyclingstats", "refreshIntervalSec": 60 }
-```
+## Data limitations
 
-## Development
+PCS coverage varies by race. Missing metrics show an em dash; unavailable riders,
+GC, events or profiles are labelled explicitly. Image-only profiles may require
+opening PCS. Start-time text is shown as published, including its timezone; ETA
+means expected finish. Race position is never extrapolated.
 
-Portable tests require Python 3 and Node.js (18+). QtTest, when installed, also
-exercises the service with stubbed processes and notifications.
+Blocked or rate-limited access triggers a 15-minute cooldown. Previous data stays
+visible with its timestamp and warning. Changing HTML can require an adapter update.
 
-```sh
-./tests/run
-python3 -I bin/pcs.py overview
-python3 -I bin/pcs.py race --race race/world-championship/2026/result
-python3 -I bin/pcs.py race --race race/tour-of-croatia/2026/stage-6 --finished
-python3 -I bin/pcs.py race --race race/example/2026/result --html saved-page.html
-omarchy-shell io.github.vip32.procyclingstats status
-omarchy-shell io.github.vip32.procyclingstats.panel status
-omarchy-shell io.github.vip32.procyclingstats.panel events
-```
+## Development and support
 
-`--html` is an explicit offline parser diagnostic. Its output is marked
-`savedPage: true`; it is never loaded automatically into the live widget.
+Run `./tests/run` for portable validation and parser/model tests. QtTest adds
+service tests when available. [Development and reproducible screenshots](docs/development.md)
+describes the fictional demo and its restoration behavior.
 
-The deterministic demo is opt-in through `omarchy-shell io.github.vip32.procyclingstats
-demo true` and is visibly labeled fictional. `demo false` clears all fixtures and
-returns to normal fetching. `demo/run` captures a cropped preview and restores
-normal operation; see its `--help`.
+Report reproducible issues through the Issues tab of the repository hosting this
+checkout. Include the plugin version, Omarchy version, race URL and error shown;
+omit private shell configuration. See [SECURITY.md](SECURITY.md) for sensitive reports.
 
-Parser selectors were checked against the public saved HTML in
-[victorsmits/pcs](https://github.com/victorsmits/pcs/tree/main/tests/fixtures/pcs)
-and against live PCS responses. Third-party archived pages are not distributed
-with this project. Tests use small synthetic pages and fictional races.
+[MIT license](LICENSE) · [Release notes](CHANGELOG.md) · [Submission preparation](docs/submission.md)

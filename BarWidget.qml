@@ -25,7 +25,7 @@ Panel {
     readonly property var rows: filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races
     readonly property var selected: rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
     readonly property var detail: selected && service ? service.details[selected.path] || ({}) : ({})
-    readonly property var preferences: Model.settings(settings)
+    readonly property var preferences: Model.settings(demo ? {} : settings)
     readonly property var connection: Model.warning(service ? service.updateIssues : {},now,service ? service.nextAllowed : 0,service ? service.loading : false)
     readonly property color warningColor: bar ? bar.urgent : Color.urgent
     property bool settingsOpen: false
@@ -75,6 +75,7 @@ Panel {
         }
     }
     function persistSettings(changes) {
+        if(demo) {settingsError="Demo settings are read-only.";return}
         if(Object.keys(changes).every(function(k){return preferences[k]===changes[k]})) return
         var entry=Object.assign({},settings || {},changes,{id:moduleName})
         if(bar && bar.shell && bar.shell.updateEntryInline(moduleName,entry)) {
@@ -106,6 +107,7 @@ Panel {
     }
     onServiceChanged: configure()
     onPreferencesChanged: {configure();cursorIndex=0;expanded=false}
+    onDemoChanged: settingsError=""
     onSettingsOpenChanged: Qt.callLater(function(){scroller.contentY=0})
     onFilterChanged: { cursorIndex = 0; expanded = false }
     onSelectedChanged: {
@@ -131,6 +133,15 @@ Panel {
         function events(): void { root.open(); root.select(root.cursorIndex,true); root.detailView="events" }
         function setDetailView(view: string): void { root.detailView=view==="events" ? "events" : "overview" }
         function settings(): void { root.settingsOpen=true;root.open() }
+        function settingsSection(section: string): void {
+            root.settingsOpen=true;root.open()
+            settingsPage.cursorIndex=section==="refresh" ? settingsPage.fieldsStart : 0
+            Qt.callLater(function(){settingsPage.reveal(settingsPage.cursorItem())})
+        }
+        function restoreScroll(offset: int, cursor: int): void {
+            settingsPage.cursorIndex=Math.max(0,Math.min(settingsPage.notificationIndex,cursor))
+            Qt.callLater(function(){scroller.contentY=Math.max(0,Math.min(offset,Math.max(0,scroller.contentHeight-scroller.height)))})
+        }
         function showDay(offset: int): void { root.showDay(offset) }
         function showRaces(): void { root.showFilter("Races") }
         function compact(): void { root.expanded = false; root.open() }
@@ -148,7 +159,7 @@ Panel {
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
                 classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",
-                filtersActive:root.filtersActive,unfilteredRows:root.unfilteredRaces.length,settingsCursor:settingsPage.cursorIndex,warning:root.connection,settingsOpen:root.settingsOpen,settings:root.preferences,
+                filtersActive:root.filtersActive,unfilteredRows:root.unfilteredRaces.length,settingsCursor:settingsPage.cursorIndex,scrollY:Math.round(scroller.contentY),warning:root.connection,settingsOpen:root.settingsOpen,settings:root.preferences,
                 demo:root.demo, vertical:root.bar ? root.bar.vertical : false})
         }
     }
