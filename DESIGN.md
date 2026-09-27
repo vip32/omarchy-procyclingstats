@@ -1,15 +1,18 @@
 # Design and verification
 
-- ID: `io.github.vip32.procyclingstats`, version 0.3.0.
+- ID: `io.github.vip32.procyclingstats`, version 0.4.0.
 - Hosted kinds: `bar-widget` (`BarWidget.qml`) and `service` (`Service.qml`).
 - UI: native Omarchy `Panel`, `KeyboardPanel`, `BarIconButton`, `CursorSurface`;
   custom Canvas road bike and profile. Stochi informs the visual layout.
 - Per-panel state: Today/Live filter, selected row, expanded state, scroll.
 - Shared state: today's races, timestamped race snapshots, serialized fetch queue,
   request timestamps, cooldown and three most recently requested race pages.
-- Settings: inline `refreshIntervalSec` in `shell.json`; no other durable state.
+- Settings: live/list/results intervals, notification toggle and expiry saved inline
+  in `shell.json` through the scoped host API; no parallel settings store.
 - Commands: `/usr/bin/python3 -I` with argument arrays, `/usr/bin/xdg-open` after URL
-  validation. Python uses only its standard library. No shell interpolation.
+  validation. Native notifications use `/usr/bin/omarchy notification send` with
+  bounded, prefixed positional data, escaped body markup and explicit expiry.
+  Python uses only its standard library. No shell interpolation.
 - Network: HTTPS to `www.procyclingstats.com` only, same-origin redirects only.
   No credentials, privilege, remote code execution or challenge bypass.
 - Limits: 2 MB per response while receiving, 18-second wall deadline, 60 races,
@@ -56,4 +59,19 @@
   source events, newest first, with distance markers and wrapped plain text.
   Captured a fictional event preview and restored live mode and prior view.
 - Deferred: official API integration, all-day calendars beyond PCS's homepage,
-  historical race browsing, team/rider pages, push notifications.
+  historical race browsing, team/rider pages.
+
+- Connection issues are tracked separately for the homepage, each race, events
+  and results. Unrelated success cannot clear an issue. A persistent banner and
+  urgent bar badge show stale-data risk, last successful fetch and retry timing.
+- One 15-second scheduler tick applies independent bounded intervals; requests
+  remain serialized and respect the shared block/rate-limit cooldown.
+- Notifications are opt-in, deduplicated by marker and text, and baseline on first
+  fetch, re-enable, restart or long outage. At most one bounded notification per
+  race per poll. Memory is bounded to recent watched races and 180 event keys.
+- Current tests: 37 Python parser tests, 14 JavaScript model tests, and 6 QtTest
+  service scenarios (plus setup/cleanup) pass. QtTest stubs processes and native
+  notification execution; it does not claim real shell integration.
+- Observed live: keyboard edits persisted all five settings through the host API;
+  a native fictional notification requested 7000 ms, appeared on screen and moved
+  to Omarchy history after 7.1 seconds without manual dismissal.

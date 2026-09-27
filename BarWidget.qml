@@ -88,6 +88,11 @@ Panel {
         if(opened) {now=Date.now(); configure(); if(service){service.refresh();if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
     }
     Timer { interval:15000; running:root.opened || root.connection.visible; repeat:true; onTriggered:root.now=Date.now() }
+    Connections {
+        target:root.service
+        function onUpdateIssuesChanged() {root.now=Date.now()}
+        function onNextAllowedChanged() {root.now=Date.now()}
+    }
     IpcHandler {
         target: "io.github.vip32.procyclingstats.panel"
         function open(): void { root.open() }
@@ -177,7 +182,7 @@ Panel {
                 Column {
                     id:warningText;x:Style.space(10);y:Style.space(10);width:parent.width-Style.space(20);spacing:Style.space(4)
                     RaceText {width:parent.width;text:"⚠ "+root.connection.title;font.bold:true;color:root.warningColor}
-                    RaceText {width:parent.width;text:root.connection.text;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.warningColor;font.pixelSize:Style.font.caption}
+                    RaceText {width:parent.width;text:root.connection.text;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground;font.pixelSize:Style.font.caption}
                 }
             }
             Flickable {
@@ -208,7 +213,7 @@ Panel {
                             id:actions;anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(6)
                             Button {text:"↻";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:if(root.service)root.service.refresh()}
                             Button {text:root.settingsOpen ? "←" : "⚙";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:root.settingsOpen=!root.settingsOpen}
-                            Button {visible:root.expanded;text:"↙";tooltipText:"Back to today’s races";bordered:true;foreground:root.foreground;onClicked:root.expanded=false}
+                            Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to today’s races";bordered:true;foreground:root.foreground;onClicked:root.expanded=false}
                         }
                     }
                     PanelSeparator {foreground:root.foreground}

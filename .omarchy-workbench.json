@@ -28,6 +28,14 @@
       "required": true
     },
     {
+      "name": "node",
+      "argv": [
+        "node",
+        "--version"
+      ],
+      "required": true
+    },
+    {
       "name": "omarchy",
       "argv": [
         "omarchy",
