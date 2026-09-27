@@ -22,6 +22,8 @@ professional road cycling races, then select a race for its LiveStats overview.
 
 ![Fictional demo of the race overview](preview.png)
 
+[Settings preview](screenshots/settings.png) · [Connection warning preview](screenshots/warning.png)
+
 An independent, unofficial integration. Race data belongs to
 [ProCyclingStats](https://www.procyclingstats.com/). Riders appear within race situations and classifications; there is no separate
 team or rider browsing.

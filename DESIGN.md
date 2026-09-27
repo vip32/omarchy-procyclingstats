@@ -75,3 +75,6 @@
 - Observed live: keyboard edits persisted all five settings through the host API;
   a native fictional notification requested 7000 ms, appeared on screen and moved
   to Omarchy history after 7.1 seconds without manual dismissal.
+- Settings survived a shell restart. Verification restored default intervals
+  (60/300/300 seconds), notification duration (8 seconds), and notifications off.
+  Fictional settings and warning previews were captured; normal data fetching resumed.
