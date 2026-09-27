@@ -1,6 +1,6 @@
 # Design and verification
 
-- ID: `io.github.vip32.procyclingstats`, version 0.4.1.
+- ID: `io.github.vip32.procyclingstats`, version 0.4.2.
 - Hosted kinds: `bar-widget` (`BarWidget.qml`) and `service` (`Service.qml`).
 - UI: native Omarchy `Panel`, `KeyboardPanel`, `BarIconButton`, `CursorSurface`;
   custom Canvas road bike and profile. Stochi informs the visual layout.

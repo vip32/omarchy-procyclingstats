@@ -41,9 +41,11 @@ Panel {
     }
     function val(n, unit) {return n === null || n === undefined ? "—" : String(n) + (unit || "")}
     function showFilter(name) {
-        filter=name === "Live" ? "Live" : "Races"
         settingsOpen=false
         expanded=false
+        filter=name === "Live" ? "Live" : "Races"
+        cursorIndex=0
+        detailView="overview"
         Qt.callLater(function(){scroller.contentY=0})
     }
     function titleStatus(s) { return ({live:"LIVE",finished:"FINISHED",upcoming:"UPCOMING",scheduled:"SCHEDULED",unknown:"STATUS UNKNOWN"})[s] || "WAITING" }
@@ -107,7 +109,7 @@ Panel {
         function events(): void { root.open(); root.select(root.cursorIndex,true); root.detailView="events" }
         function setDetailView(view: string): void { root.detailView=view==="events" ? "events" : "overview" }
         function settings(): void { root.settingsOpen=true;root.open() }
-        function showRaces(): void { root.settingsOpen=false }
+        function showRaces(): void { root.showFilter("Races") }
         function compact(): void { root.expanded = false; root.open() }
         function selectRace(index: int): void { root.filter = "Races"; root.open(); root.select(index, true) }
         function restoreView(filterName: string, path: string, expanded: bool, opened: bool): void {
@@ -173,9 +175,9 @@ Panel {
             onTextKey:function(text){
                 var k=text.toLowerCase()
                 if(k===","){root.settingsOpen=!root.settingsOpen;return}
+                if(k==="1"){root.showFilter("Races");return}
+                if(k==="2"){root.showFilter("Live");return}
                 if(root.settingsOpen)return
-                if(k==="1")root.showFilter("Races")
-                if(k==="2")root.showFilter("Live")
                 if(k==="r" && root.service)root.service.refresh()
                 if(k==="o")root.openSource()
                 if(k==="t" && root.expanded)root.detailView=root.detailView==="events" ? "overview" : "events"
@@ -219,11 +221,11 @@ Panel {
                         }
                         Row {
                             id:actions;anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(6)
-                            Button {text:"\uf11e";tooltipText:"Races (1)";Accessible.name:"Races";selected:root.filter==="Races" && !root.settingsOpen;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
-                            Button {text:"◉";tooltipText:"Live races (2)";Accessible.name:"Live races";selected:root.filter==="Live" && !root.settingsOpen;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Live")}
+                            Button {text:"\uf11e";tooltipText:"Races (1)";Accessible.name:"Races";selected:root.filter==="Races" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
+                            Button {text:"◉";tooltipText:"Live races (2)";Accessible.name:"Live races";selected:root.filter==="Live" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Live")}
                             Button {text:"↻";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:if(root.service)root.service.refresh()}
-                            Button {text:root.settingsOpen ? "←" : "⚙";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:root.settingsOpen=!root.settingsOpen}
-                            Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to races";bordered:true;foreground:root.foreground;onClicked:root.expanded=false}
+                            Button {text:root.settingsOpen ? "←" : "⚙";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:{if(root.settingsOpen)root.showFilter("Races");else root.settingsOpen=true}}
+                            Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to races";bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
                         }
                     }
                     PanelSeparator {foreground:root.foreground}

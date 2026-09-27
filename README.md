@@ -103,7 +103,7 @@ installed clone leaves the development checkout untouched.
 | Input | Action |
 | --- | --- |
 | Left click bike | Open or close races |
-| Flag / 1 | Show Races |
+| Flag / 1 / Back to races | Return to the full race list from any view |
 | Live indicator / 2 | Show Live races |
 | Right click bike | Open PCS in browser |
 | Middle click bike / R | Refresh, subject to cooldown |

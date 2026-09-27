@@ -95,10 +95,10 @@ def main():
             if ipc(ID,'demo','false')!='true': raise RuntimeError('Could not restore live fetching')
             run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{original_workspace}" }})')
             wait_for(lambda:not status()['loading'])
+            ipc(ID+'.panel','showRaces')
             ipc(ID+'.panel','restoreView',panel_state.get('filter','Races'),panel_state['selected'],str(panel_state['expanded']).lower(),str(panel_state['opened']).lower())
             ipc(ID+'.panel','setDetailView',panel_state.get('detailView','overview'))
             if panel_state.get('settingsOpen'): ipc(ID+'.panel','settings')
-            else: ipc(ID+'.panel','showRaces')
             if status()['demo']: raise RuntimeError('Demo remains enabled')
             restored=True
         finally:
