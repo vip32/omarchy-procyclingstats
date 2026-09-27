@@ -457,6 +457,9 @@ def load_race(path,finished=False,upcoming=False):
         return attach_events(result,path)
     result=parse_race(fetch(path+'/live'),path)
     if result['status']=='finished':
+        # LiveStats clocks can keep advancing after the finish. Never label that
+        # clock as the winner's time, even if the published results request fails.
+        result['elapsed']=''
         try:
             results=parse_results(fetch(path),path)
             result.update({k:results[k] for k in ('classifications','gcAvailable','stageRace')})

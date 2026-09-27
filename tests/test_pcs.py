@@ -200,7 +200,8 @@ class Classifications(unittest.TestCase):
             d=pcs.load_race('race/demo/2026/stage-6')
             self.assertEqual(d['status'],'finished')
             self.assertEqual(d['resultsState'],'blocked')
-            self.assertEqual(d['elapsed'],'3:23:01')
+            self.assertEqual(d['elapsed'],'')
+            self.assertEqual(d['distance'],190.8)
     def test_group_riders_bib_and_gc_gap_not_mixed(self):
         html=live().replace('<a href="rider/fictional">Fictional Person</a>','<ul><li><div class="bib">42</div><a href="rider/fictional">Fictional Person</a><div class="gc">+20:00</div></li></ul>')
         d=pcs.parse_race(html,'race/demo/2026/result')
