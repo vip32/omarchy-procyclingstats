@@ -1,6 +1,6 @@
 # Design and verification
 
-- ID: `io.github.vip32.procyclingstats`, version 0.2.0.
+- ID: `io.github.vip32.procyclingstats`, version 0.3.0.
 - Hosted kinds: `bar-widget` (`BarWidget.qml`) and `service` (`Service.qml`).
 - UI: native Omarchy `Panel`, `KeyboardPanel`, `BarIconButton`, `CursorSurface`;
   custom Canvas road bike and profile. Stochi informs the visual layout.
@@ -14,7 +14,8 @@
   No credentials, privilege, remote code execution or challenge bypass.
 - Limits: 2 MB per response while receiving, 18-second wall deadline, 60 races,
   12 groups with up to 30 named riders each, two classifications of up to
-  200 rows, 220 profile points, 40 keypoints and 180 KB JSON output.
+  200 rows, 60 events with 900-character text, 220 profile points, 40 keypoints
+  and 180 KB JSON output. All requests share the 18-second operation deadline.
 - Rendering: all external text uses plain text. CSS profiles become bounded
   numeric coordinates; embedded JSON is parsed, never evaluated as JavaScript.
 - Failure states: loading, ready, empty, blocked, rate-limited, offline,
@@ -44,5 +45,12 @@
   GC and Paris-Chauny final results, plus saved live groups with named riders.
   Observed the live CRO Race GC panel with 103 rows, and captured both fictional
   rider-group and GC views. Demo exit restored live mode and the previous view.
+- Race events come from the dedicated `/live/race-events` endpoint. Parse only
+  the event body and marker, excluding timers, page navigation and scripts.
+  Keep source order, deduplicate exact marker/body matches, and bound the feed.
+- Events failures preserve successful race data and timestamped prior events;
+  source blocks/rate limits still trigger the shared cooldown.
+- 37 tests pass, including event ordering, finish markers, long rider lists,
+  deduplication, size limits, script stripping and partial events failure.
 - Deferred: official API integration, all-day calendars beyond PCS's homepage,
   historical race browsing, team/rider pages, push notifications.

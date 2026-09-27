@@ -35,6 +35,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,default=ROOT/'preview.png')
     p.add_argument('--compact',action='store_true')
+    p.add_argument('--events',action='store_true',help='Capture the race-events tab')
     p.add_argument('--race-index',type=int,default=0,choices=range(4))
     args=p.parse_args()
     for cmd in ('omarchy-shell','hyprctl','grim'):
@@ -71,6 +72,7 @@ def main():
         mode='compact' if args.compact else 'expand'
         ipc(ID+'.panel','selectRace',str(args.race_index))
         ipc(ID+'.panel',mode)
+        ipc(ID+'.panel','setDetailView','events' if args.events else 'overview')
         wait_for(lambda:status(ID+'.panel')['opened'] and status(ID+'.panel')['expanded'] != args.compact)
         geometry=status(ID+'.panel')['geometry']
         # Wait only for the native panel fade-in after readiness is established.
@@ -89,6 +91,7 @@ def main():
             run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{original_workspace}" }})')
             wait_for(lambda:not status()['loading'])
             ipc(ID+'.panel','restoreView',panel_state.get('filter','Today'),panel_state['selected'],str(panel_state['expanded']).lower(),str(panel_state['opened']).lower())
+            ipc(ID+'.panel','setDetailView',panel_state.get('detailView','overview'))
             if status()['demo']: raise RuntimeError('Demo remains enabled')
             restored=True
         finally:

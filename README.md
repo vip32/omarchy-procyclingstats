@@ -11,6 +11,9 @@ professional road cycling races, then select a race for its LiveStats overview.
 - Finished stages open on GC, with a separate stage-results tab. Finished one-day
   races show final results. Winner/leader time and gaps are included; show the
   top 10 or expand the full classification (up to 200 rows).
+- Race-events tab for attacks, dropped riders, abandonments, sprints and finish
+  updates, newest first with distance-to-go markers. Shows the latest 15 with
+  an option to expand to 60; also available after the race finishes.
 - Upcoming climbs and sprints.
 - Stochi-inspired bordered rows, compact/expanded panels and native theme colors.
 - One shared poller across monitors. Per-panel navigation and selection.
@@ -25,7 +28,8 @@ team or rider browsing.
 
 Omarchy 4 Quattro, Python 3 (standard library only), and `xdg-open` to open PCS.
 No API key, paid service, browser automation or extra Python packages.
-The adapter reads the public PCS homepage and `/race/.../live` HTML.
+The adapter reads the public PCS homepage, `/race/.../live`, stage results and
+`/race/.../live/race-events` HTML.
 PCS's [official API](https://www.procyclingstats.com/info/api) is available by
 request; its public page does not advertise a free tier. This plugin uses HTML,
 not that API.
@@ -41,7 +45,9 @@ Live race pages refresh every 60 seconds by default. The homepage refreshes ever
 recently selected races stay warm; requests are serialized, capped at 2 MB, and
 have an 18-second total deadline. Finished results refresh every 5 minutes.
 GC is read from the selected stage’s own GC tab, not a guessed final standings
-page. If PCS has not published GC or group members, the panel says so. Missing metrics show an em dash. Previous data
+page. If PCS has not published GC or group members, the panel says so. Missing metrics show an em dash. Race events refresh with the race snapshot. A failed events request keeps the
+previous events with their own timestamp and error, while race metrics and GC
+remain usable. Previous data
 remains visible with an error and its timestamp after a failed refresh. Source
 snapshot timestamps are used where available; the position is never extrapolated.
 
@@ -81,7 +87,8 @@ installed clone leaves the development checkout untouched.
 | Click race / Enter | Expand race overview |
 | J/K or arrows | Select race |
 | E | Toggle compact/expanded view |
-| O | Open selected race on PCS |
+| T | Switch between Overview and Race events |
+| O | Open the current race view on PCS |
 | Esc | Back to list, then close |
 
 Set `refreshIntervalSec` directly on the bar entry (60–900 seconds):
@@ -100,6 +107,7 @@ python3 -I bin/pcs.py race --race race/tour-of-croatia/2026/stage-6 --finished
 python3 -I bin/pcs.py race --race race/example/2026/result --html saved-page.html
 omarchy-shell io.github.vip32.procyclingstats status
 omarchy-shell io.github.vip32.procyclingstats.panel status
+omarchy-shell io.github.vip32.procyclingstats.panel events
 ```
 
 `--html` is an explicit offline parser diagnostic. Its output is marked

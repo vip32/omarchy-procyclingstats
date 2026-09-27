@@ -140,15 +140,15 @@ class Classifications(unittest.TestCase):
     def test_finished_hint_fetches_results_without_livestats(self):
         with patch.object(pcs,'fetch',return_value=results_page()) as fetch:
             d=pcs.load_race('race/demo/2026/stage-6',True)
-            fetch.assert_called_once_with('race/demo/2026/stage-6')
+            self.assertEqual([c.args[0] for c in fetch.call_args_list],['race/demo/2026/stage-6','race/demo/2026/stage-6/live/race-events'])
             self.assertTrue(d['gcAvailable'])
     def test_live_to_finished_fetches_results(self):
-        with patch.object(pcs,'fetch',side_effect=[live(dict(DATA,race_status='finished')),results_page()]):
+        with patch.object(pcs,'fetch',side_effect=[live(dict(DATA,race_status='finished')),results_page(),'<ul class="timeline3"></ul>']):
             d=pcs.load_race('race/demo/2026/stage-6')
             self.assertEqual(d['status'],'finished')
             self.assertTrue(d['gcAvailable'])
     def test_results_failure_preserves_finish_snapshot(self):
-        with patch.object(pcs,'fetch',side_effect=[live(dict(DATA,race_status='finished')),pcs.SourceError('blocked','Blocked')]):
+        with patch.object(pcs,'fetch',side_effect=[live(dict(DATA,race_status='finished')),pcs.SourceError('blocked','Blocked'),pcs.SourceError('blocked','Blocked')]):
             d=pcs.load_race('race/demo/2026/stage-6')
             self.assertEqual(d['status'],'finished')
             self.assertEqual(d['resultsState'],'blocked')
@@ -163,5 +163,44 @@ class Classifications(unittest.TestCase):
         d=pcs.parse_race(html,'race/demo/2026/result')
         self.assertEqual(len(d['groups'][0]['riders']),30)
         self.assertEqual(d['groups'][0]['omitted'],15)
+
+class Events(unittest.TestCase):
+    def event(self,marker,text):
+        return '<li class="event"><div class="bol">'+marker+'</div><div class="stat"><span class="timeago">2m</span><div class="textCont">'+text+'</div></div></li>'
+    def test_events_order_markers_and_plain_text(self):
+        html='<ul class="timeline3">'+self.event('42.6','Attack by <a href="rider/fictional">Alex Veld</a>.')+self.event('43','Group caught.')+'</ul>'
+        d=pcs.parse_events(html)
+        self.assertEqual(d['eventsState'],'ready')
+        self.assertEqual(d['events'][0],{'marker':'42.6','text':'Attack by Alex Veld.'})
+        self.assertEqual(d['events'][1]['marker'],'43')
+        self.assertNotIn('2m',json.dumps(d))
+    def test_empty_vs_unavailable_or_changed(self):
+        self.assertEqual(pcs.parse_events('<ul class="timeline3"></ul>')['eventsState'],'empty')
+        for html in ['<html>Unavailable</html>','<ul class="timeline3"><li>Unknown markup</li></ul>']:
+            with self.assertRaises(pcs.SourceError):pcs.parse_events(html)
+    def test_finish_marker_and_long_rider_list(self):
+        text='Fictional rider list '+('Alex Veld, '*40)
+        d=pcs.parse_events('<ul class="timeline3">'+self.event('F',text)+'</ul>')
+        self.assertEqual(d['events'][0]['marker'],'F')
+        self.assertGreater(len(d['events'][0]['text']),240)
+    def test_bound_and_deduplication(self):
+        html='<ul class="timeline3">'+self.event('1','same')*3+''.join(self.event(str(i),'Event '+str(i)) for i in range(80))+'</ul>'
+        d=pcs.parse_events(html)
+        self.assertEqual(len(d['events']),60)
+        self.assertEqual(sum(e['text']=='same' for e in d['events']),1)
+    def test_script_and_style_not_rendered(self):
+        d=pcs.parse_events('<ul class="timeline3">'+self.event('25','Attack<script>bad()</script><style>bad</style>')+'</ul>')
+        self.assertEqual(d['events'][0]['text'],'Attack')
+    def test_events_failure_preserves_race_metrics(self):
+        with patch.object(pcs,'fetch',side_effect=[live(),pcs.SourceError('offline','Offline')]):
+            d=pcs.load_race('race/demo/2026/result')
+        self.assertEqual(d['state'],'ready')
+        self.assertEqual(d['kmToGo'],42.6)
+        self.assertEqual(d['eventsState'],'offline')
+    def test_events_attached_to_finished_classification(self):
+        with patch.object(pcs,'fetch',side_effect=[results_page(),'<ul class="timeline3">'+self.event('F','Race finished.')+'</ul>']):
+            d=pcs.load_race('race/demo/2026/stage-6',True)
+        self.assertTrue(d['gcAvailable'])
+        self.assertEqual(d['events'][0]['text'],'Race finished.')
 
 if __name__=='__main__': unittest.main()

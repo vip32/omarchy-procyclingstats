@@ -22,6 +22,8 @@ Panel {
     readonly property var classifications: detail.classifications || []
     readonly property var classification: classifications.filter(function(c){return c.kind === classificationKind})[0] || classifications[0] || ({})
     property string classificationKind: "gc"
+    property string detailView: "overview"
+    property string lastSelectedPath: ""
     property string filter: "Today"
     property int cursorIndex: 0
     property bool expanded: false
@@ -53,14 +55,19 @@ Panel {
         })
     }
     function openSource() {
-        var path = selected ? selected.path + (selected.status === "live" || selected.status === "upcoming" ? "/live" : "") : ""
-        if(path && !/^race\/[a-z0-9-]+\/\d{4}\/(result|stage-\d+[a-z]?)(\/live)?$/.test(path)) return
+        var path = selected ? selected.path + (expanded && detailView === "events" ? "/live/race-events" : selected.status === "live" || selected.status === "upcoming" ? "/live" : "") : ""
+        if(path && !/^race\/[a-z0-9-]+\/\d{4}\/(result|stage-\d+[a-z]?)(\/live(\/race-events)?)?$/.test(path)) return
         Quickshell.execDetached(["/usr/bin/xdg-open","https://www.procyclingstats.com/" + path])
     }
     onServiceChanged: configure()
     onRefreshSecondsChanged: configure()
     onFilterChanged: { cursorIndex = 0; expanded = false }
-    onSelectedChanged: { classificationKind = "gc"; if(opened && expanded && service && selected) service.watch(selected.path) }
+    onSelectedChanged: {
+        var path = selected ? selected.path : ""
+        if(path !== lastSelectedPath) {classificationKind="gc";detailView="overview";lastSelectedPath=path}
+        if(opened && expanded && service && selected) service.watch(selected.path)
+    }
+    onDetailViewChanged: Qt.callLater(function(){scroller.contentY=0})
     onOpenedChanged: {
         if(opened) {now=Date.now(); configure(); if(service){service.refresh();if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
     }
@@ -70,6 +77,8 @@ Panel {
         function open(): void { root.open() }
         function close(): void { root.close() }
         function expand(): void { root.open(); root.select(root.cursorIndex, true) }
+        function events(): void { root.open(); root.select(root.cursorIndex,true); root.detailView="events" }
+        function setDetailView(view: string): void { root.detailView=view==="events" ? "events" : "overview" }
         function compact(): void { root.expanded = false; root.open() }
         function selectRace(index: int): void { root.filter = "Today"; root.open(); root.select(index, true) }
         function restoreView(filterName: string, path: string, expanded: bool, opened: bool): void {
@@ -81,7 +90,7 @@ Panel {
         }
         function status(): string {
             return JSON.stringify({opened:root.opened, expanded:root.expanded, serviceReady:!!root.service,
-                filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
+                detailView:root.detailView, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
                 classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",
@@ -131,6 +140,7 @@ Panel {
                 var k=text.toLowerCase()
                 if(k==="r" && root.service)root.service.refresh()
                 if(k==="o")root.openSource()
+                if(k==="t" && root.expanded)root.detailView=root.detailView==="events" ? "overview" : "events"
                 if(k==="e" && root.selected){root.expanded=!root.expanded;root.select(root.cursorIndex,root.expanded)}
             }
             Flickable {
@@ -220,8 +230,19 @@ Panel {
                         RaceText {width:parent.width;text:root.selected ? root.selected.name : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
                         RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || "",root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "Race data unavailable" : root.finished ? "Loading results…" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
                         RaceText {width:parent.width;visible:!!root.detail.error;text:(root.detail.fetchedAt ? "Previous snapshot · " : "")+(root.detail.error || "");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Color.urgent}
+                        Row {
+                            width:parent.width;spacing:Style.space(6)
+                            Button {width:(parent.width-Style.space(6))/2;text:"Overview";selected:root.detailView==="overview";bordered:true;foreground:root.foreground;onClicked:root.detailView="overview"}
+                            Button {width:(parent.width-Style.space(6))/2;text:"Race events";selected:root.detailView==="events";bordered:true;foreground:root.foreground;onClicked:root.detailView="events"}
+                        }
                         Column {
-                            visible:root.finished
+                            visible:root.detailView==="events"
+                            width:parent.width;spacing:Style.space(10)
+                            RaceText {width:parent.width;text:root.demo ? "Fictional race events" : root.detail.eventsFetchedAt ? root.age(root.detail.eventsFetchedAt) : "";color:root.dim;font.pixelSize:Style.font.caption}
+                            RaceEvents {width:parent.width;events:root.detail.events || [];state:root.detail.eventsState || "";error:root.detail.eventsError || (root.detail.error ? "Events could not be refreshed." : "");textColor:root.foreground}
+                        }
+                        Column {
+                            visible:root.detailView==="overview" && root.finished
                             width:parent.width;spacing:Style.space(10)
                             Row {
                                 width:parent.width;spacing:Style.space(6)
@@ -236,7 +257,7 @@ Panel {
                             RaceText {width:parent.width;visible:root.detail.stageRace===true && root.detail.gcAvailable===false;text:"General classification is not published on this stage page yet.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
                         }
                         Column {
-                            visible:!root.finished
+                            visible:root.detailView==="overview" && !root.finished
                             width:parent.width;spacing:Style.space(12)
                         Grid {
                             width:parent.width;columns:3;spacing:Style.space(8)
@@ -286,7 +307,7 @@ Panel {
                         Button {text:"Open PCS ↗";bordered:true;foreground:root.foreground;onClicked:root.openSource()}
                         RaceText {anchors.verticalCenter:parent.verticalCenter;width:parent.width-Style.space(140);text:root.demo ? "FICTIONAL DEMO · no live data" : "Source: ProCyclingStats";font.pixelSize:Style.font.caption;color:root.dim}
                     }
-                    RaceText {width:parent.width;text:"J/K select · Enter details · R refresh · Esc back";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}
+                    RaceText {width:parent.width;text:"J/K select · Enter details · T events · R refresh · Esc back";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}
                 }
             }
         }

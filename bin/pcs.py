@@ -36,7 +36,7 @@ class Node:
             stack.extend(reversed(n.children))
     def first(self, tag=None, cls=None):
         return next(self.nodes(tag, cls), None)
-    def text(self):
+    def text(self, limit=240):
         parts, stack = [], list(reversed(self.children))
         while stack:
             n = stack.pop()
@@ -44,7 +44,7 @@ class Node:
                 parts.append(n)
             elif n.tag not in ('script', 'style'):
                 stack.extend(reversed(n.children))
-        return clean(' '.join(parts))
+        return clean(' '.join(parts),limit)
 
 class Tree(HTMLParser):
     def __init__(self, html):
@@ -296,9 +296,41 @@ def parse_results(html,path):
                 classifications=classifications,gcAvailable=any(c['kind']=='gc' for c in classifications),
                 stageRace=stage,groups=[],profile=[],keypoints=[])
 
+def parse_events(html):
+    doc=checked_html(html)
+    timeline=next((n for n in doc.nodes('ul') if any(c.startswith('timeline') for c in n.attrs.get('class','').split())),None)
+    if timeline is None:
+        raise SourceError('unavailable','Race events are not available on PCS for this race.')
+    events=[]
+    seen=set()
+    for row in timeline.children:
+        if not isinstance(row,Node) or row.tag!='li': continue
+        content=row.first(cls='textCont')
+        if content is None: continue
+        text=content.text(900)
+        text=re.sub(r'\s+([.,;!?])',r'\1',text)
+        if not text: continue
+        marker=clean(txt(row.first(cls='bol')),24)
+        key=(marker,text)
+        if key in seen: continue
+        seen.add(key)
+        events.append(dict(marker=marker,text=text))
+        if len(events)>=60: break
+    if not events and any(isinstance(n,Node) and n.tag=='li' for n in timeline.children):
+        raise SourceError('unsupported','PCS race-events format changed; updates could not be read.')
+    return dict(eventsState='ready' if events else 'empty',events=events,
+                eventsFetchedAt=dt.datetime.now(dt.timezone.utc).isoformat())
+
+def attach_events(result,path):
+    try:
+        result.update(parse_events(fetch(path+'/live/race-events')))
+    except SourceError as e:
+        result.update(eventsState=e.state,eventsError=e.message)
+    return result
+
 def load_race(path,finished=False):
     if finished:
-        return parse_results(fetch(path),path)
+        return attach_events(parse_results(fetch(path),path),path)
     result=parse_race(fetch(path+'/live'),path)
     if result['status']=='finished':
         try:
@@ -307,7 +339,7 @@ def load_race(path,finished=False):
         except SourceError as e:
             result['resultsError']=e.message
             result['resultsState']=e.state
-    return result
+    return attach_events(result,path)
 
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -345,7 +377,7 @@ def deadline(*_):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode',choices=['overview','race'])
+    parser.add_argument('mode',choices=['overview','race','events'])
     parser.add_argument('--race',default='')
     parser.add_argument('--finished',action='store_true',help='Read published results and stage GC instead of LiveStats')
     parser.add_argument('--html',type=Path,help='Parse a saved public page offline; no network request')
@@ -353,12 +385,12 @@ def main():
     signal.signal(signal.SIGALRM,deadline)
     signal.alarm(18)
     try:
-        path=race_path(args.race) if args.mode=='race' else ''
+        path=race_path(args.race) if args.mode in ('race','events') else ''
         if args.html:
             with args.html.open('rb') as stream: html=bounded_read(stream).decode('utf-8',errors='replace')
-            result=(parse_results(html,path) if args.finished else parse_race(html,path)) if path else parse_overview(html)
+            result=parse_events(html) if args.mode=='events' else (parse_results(html,path) if args.finished else parse_race(html,path)) if path else parse_overview(html)
         else:
-            result=load_race(path,args.finished) if path else parse_overview(fetch(''))
+            result=parse_events(fetch(path+'/live/race-events')) if args.mode=='events' else load_race(path,args.finished) if path else parse_overview(fetch(''))
         result['fetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat()
         result['savedPage']=bool(args.html)
     except SourceError as e:

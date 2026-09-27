@@ -62,7 +62,14 @@ Item {
         if (code !== 0) result = {state: "error", error: "Race data helper could not run. Check Python 3 is installed."}
         if (currentPath) {
             var next = Object.assign({}, details)
-            if (result.state === "ready") next[currentPath] = result
+            if (result.state === "ready") {
+                var prior = next[currentPath] || ({})
+                if (result.eventsError && prior.events) {
+                    result.events = prior.events
+                    result.eventsFetchedAt = prior.eventsFetchedAt || ""
+                }
+                next[currentPath] = result
+            }
             else {
                 var previous = next[currentPath] || ({})
                 next[currentPath] = Object.assign({}, previous, {state:result.state, error:result.error})
@@ -82,7 +89,8 @@ Item {
                 details = retained
             }
         }
-        var failureState = result.resultsState || result.state
+        var failures = [result.state,result.resultsState,result.eventsState]
+        var failureState = failures.indexOf("blocked") >= 0 ? "blocked" : failures.indexOf("rate-limited") >= 0 ? "rate-limited" : result.resultsState || result.state
         if (["blocked", "rate-limited"].indexOf(failureState) >= 0) {
             nextAllowed = Date.now() + 900000
             queue = []

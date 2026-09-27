@@ -1739,7 +1739,34 @@
           "gradient": null
         }
       ],
-      "path": "race/demo-coastal-classic/2026/result"
+      "path": "race/demo-coastal-classic/2026/result",
+      "eventsState": "ready",
+      "events": [
+        {
+          "marker": "42.6",
+          "text": "Attack by Alex Veld from the breakaway."
+        },
+        {
+          "marker": "43",
+          "text": "The chasing group closes to 28 seconds behind the leaders."
+        },
+        {
+          "marker": "44.2",
+          "text": "Noah Laurent and Elias Berg join the front group."
+        },
+        {
+          "marker": "46",
+          "text": "The peloton reaches the final circuit, 1:12 behind the breakaway."
+        },
+        {
+          "marker": "49.5",
+          "text": "Luca Marin takes the final intermediate sprint."
+        },
+        {
+          "marker": "51",
+          "text": "A small group is caught by the peloton."
+        }
+      ]
     },
     "race/demo-alpine-tour/2026/stage-4": {
       "state": "ready",
@@ -2227,7 +2254,34 @@
           "gradient": null
         }
       ],
-      "path": "race/demo-alpine-tour/2026/stage-4"
+      "path": "race/demo-alpine-tour/2026/stage-4",
+      "eventsState": "ready",
+      "events": [
+        {
+          "marker": "42.6",
+          "text": "Attack by Alex Veld from the breakaway."
+        },
+        {
+          "marker": "43",
+          "text": "The chasing group closes to 28 seconds behind the leaders."
+        },
+        {
+          "marker": "44.2",
+          "text": "Noah Laurent and Elias Berg join the front group."
+        },
+        {
+          "marker": "46",
+          "text": "The peloton reaches the final circuit, 1:12 behind the breakaway."
+        },
+        {
+          "marker": "49.5",
+          "text": "Luca Marin takes the final intermediate sprint."
+        },
+        {
+          "marker": "51",
+          "text": "A small group is caught by the peloton."
+        }
+      ]
     },
     "race/demo-valley-tour/2026/stage-2": {
       "state": "ready",
@@ -2779,6 +2833,37 @@
             }
           ]
         }
+      ],
+      "eventsState": "ready",
+      "events": [
+        {
+          "marker": "F",
+          "text": "The race has finished. Final results are available."
+        },
+        {
+          "marker": "42.6",
+          "text": "Attack by Alex Veld from the breakaway."
+        },
+        {
+          "marker": "43",
+          "text": "The chasing group closes to 28 seconds behind the leaders."
+        },
+        {
+          "marker": "44.2",
+          "text": "Noah Laurent and Elias Berg join the front group."
+        },
+        {
+          "marker": "46",
+          "text": "The peloton reaches the final circuit, 1:12 behind the breakaway."
+        },
+        {
+          "marker": "49.5",
+          "text": "Luca Marin takes the final intermediate sprint."
+        },
+        {
+          "marker": "51",
+          "text": "A small group is caught by the peloton."
+        }
       ]
     },
     "race/demo-city-circuit/2026/result": {
@@ -3300,6 +3385,37 @@
               "time": "+0:00"
             }
           ]
+        }
+      ],
+      "eventsState": "ready",
+      "events": [
+        {
+          "marker": "F",
+          "text": "The race has finished. Final results are available."
+        },
+        {
+          "marker": "42.6",
+          "text": "Attack by Alex Veld from the breakaway."
+        },
+        {
+          "marker": "43",
+          "text": "The chasing group closes to 28 seconds behind the leaders."
+        },
+        {
+          "marker": "44.2",
+          "text": "Noah Laurent and Elias Berg join the front group."
+        },
+        {
+          "marker": "46",
+          "text": "The peloton reaches the final circuit, 1:12 behind the breakaway."
+        },
+        {
+          "marker": "49.5",
+          "text": "Luca Marin takes the final intermediate sprint."
+        },
+        {
+          "marker": "51",
+          "text": "A small group is caught by the peloton."
         }
       ]
     }
