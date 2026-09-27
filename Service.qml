@@ -8,6 +8,14 @@ Item {
     property string omarchyPath: ""
     property var shell: null
     property var manifest: null
+    // One detached dashboard across all bar instances/monitors.
+    property QtObject windowOwner: null
+    function claimWindow(owner) {
+        if(windowOwner && windowOwner !== owner) return false
+        windowOwner=owner
+        return true
+    }
+    function releaseWindow(owner) { if(windowOwner === owner) windowOwner=null }
     property string state: "loading"
     property string error: ""
     property var races: []

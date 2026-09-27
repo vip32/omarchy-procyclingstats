@@ -11,6 +11,11 @@ Column {
     readonly property var nextPoint: Model.nextKeypoint(detail)
     readonly property var latest: (detail.events || []).slice(0,3)
     spacing:Style.space(10)
+    function expandedGroupCount() {
+        var count=0
+        for(var i=0;i<groupRepeater.count;i++) if(groupRepeater.itemAt(i).showAll)count++
+        return count
+    }
     function value(n,unit) {return n===null || n===undefined ? "—" : String(n)+(unit || "")}
 
     Row {
@@ -34,6 +39,7 @@ Column {
     Column {
         width:parent.width;spacing:Style.space(6)
         Repeater {
+            id:groupRepeater
             model:root.detail.groups || []
             RiderGroup {required property var modelData;width:parent.width;group:modelData;racePath:root.detail.path || "";textColor:root.foreground}
         }

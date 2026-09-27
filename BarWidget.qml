@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -39,6 +40,52 @@ Panel {
     property string filter: "Races"
     property int cursorIndex: 0
     property bool expanded: false
+    property bool detached: false
+    readonly property bool dashboardVisible: opened || (detached && dashboardWindow.visible)
+    function restorePosition(offset) {
+        Qt.callLater(function(){
+            scroller.contentY=Math.max(0,Math.min(offset,Math.max(0,scroller.contentHeight-scroller.height)))
+            if(dashboardVisible) keys.forceActiveFocus()
+        })
+    }
+    function focusWindow() {
+        dashboardWindow.visible=true
+        dashboardWindow.minimized=false
+        Qt.callLater(function(){
+            var nativeWindow=windowMount.Window.window
+            if(nativeWindow) nativeWindow.requestActivate()
+            keys.forceActiveFocus()
+        })
+    }
+    function showDashboard() {
+        if(service && service.windowOwner && service.windowOwner !== root) {service.windowOwner.focusWindow();return}
+        if(detached) focusWindow()
+        else controller.show()
+    }
+    function hideDashboard() {
+        if(service && service.windowOwner && service.windowOwner !== root) {service.windowOwner.hideDashboard();return}
+        if(detached) dashboardWindow.visible=false
+        controller.hide()
+    }
+    function detachDashboard() {
+        if(service && !service.claimWindow(root)) {service.windowOwner.focusWindow();return}
+        var offset=scroller.contentY
+        detached=true
+        controller.hide()
+        focusWindow()
+        restorePosition(offset)
+    }
+    function dockDashboard() {
+        if(service && service.windowOwner && service.windowOwner !== root) {service.windowOwner.dockDashboard();return}
+        var offset=scroller.contentY
+        detached=false
+        dashboardWindow.visible=false
+        if(service)service.releaseWindow(root)
+        controller.show()
+        restorePosition(offset)
+    }
+    function toggleWindow() {if(detached)dockDashboard();else detachDashboard()}
+    Component.onDestruction: {if(service)service.releaseWindow(root)}
     property double now: Date.now()
 
     function age(stamp) {
@@ -116,13 +163,13 @@ Panel {
     onSelectedChanged: {
         var path = selected ? selected.path : ""
         if(path !== lastSelectedPath) {classificationKind="gc";detailView="overview";lastSelectedPath=path}
-        if(opened && expanded && service && selected) service.watch(selected.path)
+        if(dashboardVisible && expanded && service && selected) service.watch(selected.path)
     }
     onDetailViewChanged: Qt.callLater(function(){scroller.contentY=0})
-    onOpenedChanged: {
-        if(opened) {now=Date.now(); configure(); if(service){service.refresh();service.watchDay(dayDate);if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
+    onDashboardVisibleChanged: {
+        if(dashboardVisible) {now=Date.now(); configure(); if(service){service.refresh();service.watchDay(dayDate);if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
     }
-    Timer { interval:15000; running:root.opened || root.connection.visible; repeat:true; onTriggered:root.now=Date.now() }
+    Timer { interval:15000; running:root.dashboardVisible || root.connection.visible; repeat:true; onTriggered:root.now=Date.now() }
     Connections {
         target:root.service
         function onUpdateIssuesChanged() {root.now=Date.now()}
@@ -130,14 +177,16 @@ Panel {
     }
     IpcHandler {
         target: "io.github.vip32.procyclingstats.panel"
-        function open(): void { root.open() }
-        function close(): void { root.close() }
-        function expand(): void { root.open(); root.select(root.cursorIndex, true) }
-        function events(): void { root.open(); root.select(root.cursorIndex,true); root.detailView="events" }
+        function detach(): void { root.detachDashboard() }
+        function dock(): void { root.dockDashboard() }
+        function open(): void { root.showDashboard() }
+        function close(): void { root.hideDashboard() }
+        function expand(): void { root.showDashboard(); root.select(root.cursorIndex, true) }
+        function events(): void { root.showDashboard(); root.select(root.cursorIndex,true); root.detailView="events" }
         function setDetailView(view: string): void { root.detailView=view==="events" ? "events" : "overview" }
-        function settings(): void { root.settingsOpen=true;root.open() }
+        function settings(): void { root.settingsOpen=true;root.showDashboard() }
         function settingsSection(section: string): void {
-            root.settingsOpen=true;root.open()
+            root.settingsOpen=true;root.showDashboard()
             settingsPage.cursorIndex=section==="refresh" ? settingsPage.fieldsStart : 0
             Qt.callLater(function(){
                 var y=section==="refresh" ? settingsPage.cursorItem().mapToItem(column,0,0).y-Style.space(30) : 0
@@ -150,17 +199,17 @@ Panel {
         }
         function showDay(offset: int): void { root.showDay(offset) }
         function showRaces(): void { root.showFilter("Races") }
-        function compact(): void { root.expanded = false; root.open() }
-        function selectRace(index: int): void { root.filter = "Races"; root.open(); root.select(index, true) }
+        function compact(): void { root.expanded = false; root.showDashboard() }
+        function selectRace(index: int): void { root.filter = "Races"; root.showDashboard(); root.select(index, true) }
         function restoreView(filterName: string, path: string, expanded: bool, opened: bool): void {
             root.filter = filterName === "Live" ? "Live" : "Races"
             var i = root.rows.findIndex(function(r){return r.path === path})
             root.cursorIndex = Math.max(0,i)
             root.expanded = expanded
-            if(opened) root.open(); else root.close()
+            if(opened) root.showDashboard(); else root.hideDashboard()
         }
         function status(): string {
-            return JSON.stringify({opened:root.opened, expanded:root.expanded, serviceReady:!!root.service,
+            return JSON.stringify({opened:root.dashboardVisible,detached:root.detached,windowVisible:dashboardWindow.visible,expandedGroups:raceOverview.expandedGroupCount(), expanded:root.expanded, serviceReady:!!root.service,
                 dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
@@ -179,7 +228,7 @@ Panel {
         iconComponent: Component { RaceBike {color:root.connection.visible ? root.warningColor : button.foreground} }
         tooltipText: "ProCyclingStats · road cycling\n" + (root.connection.visible ? root.connection.title+"\n"+root.connection.text : root.demo ? "DEMO — fictional races" : root.service && root.service.error ? root.service.error : root.todayRaces.filter(function(r){return r.status === "live"}).length + " live · " + root.todayRaces.length + " races today") + "\nLeft click: races · Right click: PCS · Middle click: refresh"
         onPressed: function(code) {
-            if(code===Qt.LeftButton)root.toggle()
+            if(code===Qt.LeftButton){if(root.detached || (root.service && root.service.windowOwner))root.showDashboard();else root.toggle()}
             else if(code===Qt.RightButton)root.openSource()
             else if(code===Qt.MiddleButton && root.service)root.service.refresh()
         }
@@ -195,25 +244,44 @@ Panel {
             font.pixelSize:Style.font.caption;anchors.right:parent.right;anchors.top:parent.top
         }
     }
+    FloatingWindow {
+        id:dashboardWindow
+        title:"ProCyclingStats — Race dashboard"
+        visible:false
+        color:Color.background
+        implicitWidth:Style.space(760)
+        implicitHeight:Style.space(760)
+        minimumSize:Qt.size(Style.space(500),Style.space(360))
+        Item {
+            id:windowMount
+            anchors.top:parent.top;anchors.bottom:parent.bottom
+            anchors.topMargin:Style.space(16);anchors.bottomMargin:Style.space(16)
+            anchors.horizontalCenter:parent.horizontalCenter
+            width:Math.min(parent.width-Style.space(32),Style.space(900))
+        }
+    }
     KeyboardPanel {
         id: panel
         anchorItem:button
         owner:root
         bar:root.bar
-        open:root.opened
+        open:root.opened && !root.detached
         centerOnBar:false
         focusTarget:keys
         contentWidth:panel.fittedContentWidth(Style.space(root.expanded || root.settingsOpen ? 590 : 420))
         contentHeight:panel.fittedContentHeight(column.implicitHeight+connectionBanner.height+(connectionBanner.visible ? Style.space(12) : 0),Style.space(root.expanded || root.settingsOpen ? 720 : 560))
+        Item {id:popupMount;anchors.fill:parent}
         PanelKeyCatcher {
             id:keys
+            parent:root.detached ? windowMount : popupMount
             anchors.fill:parent
             onMoveRequested:function(dx,dy){if(root.settingsOpen)settingsPage.move(dx,dy);else if(dx!==0 && !root.expanded)root.showDay(root.dayOffset+dx);else if(dy!==0)root.select(root.cursorIndex+dy,root.expanded)}
             onActivateRequested:{if(root.settingsOpen)settingsPage.activate();else root.select(root.cursorIndex,true)}
-            onCloseRequested:{if(root.settingsOpen)root.settingsOpen=false;else if(root.expanded)root.expanded=false;else root.close()}
-            onTabRequested:function(direction){root.switchPanel(direction)}
+            onCloseRequested:{if(root.settingsOpen)root.settingsOpen=false;else if(root.expanded)root.expanded=false;else root.hideDashboard()}
+            onTabRequested:function(direction){if(!root.detached)root.switchPanel(direction)}
             onTextKey:function(text){
                 var k=text.toLowerCase()
+                if(k==="p"){root.toggleWindow();return}
                 if(k===","){root.settingsOpen=!root.settingsOpen;return}
                 if(k==="1"){root.showFilter("Races");return}
                 if(k==="2"){root.showFilter("Live");return}
@@ -264,6 +332,7 @@ Panel {
                             Button {text:"\uf11e";tooltipText:"Races (1)";Accessible.name:"Races";selected:root.filter==="Races" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
                             Button {text:"◉";tooltipText:"Live races (2)";Accessible.name:"Live races";selected:root.filter==="Live" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Live")}
                             Button {text:"↻";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:if(root.service)root.service.refresh()}
+                            Button {text:root.detached ? "▣" : "□";tooltipText:root.detached ? "Dock back to bar (P)" : "Pop out to window (P)";Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.toggleWindow()}
                             Button {text:"↗";tooltipText:"Open PCS in browser (O)";Accessible.name:"Open ProCyclingStats in browser";bordered:true;foreground:root.foreground;onClicked:root.openSource()}
                             Button {text:root.settingsOpen ? "←" : "⚙";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:{if(root.settingsOpen)root.showFilter("Races");else root.settingsOpen=true}}
                             Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to races";bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
@@ -382,6 +451,7 @@ Panel {
                             width:parent.width;detail:root.detail;foreground:root.foreground
                         }
                         RaceOverview {
+                            id:raceOverview
                             visible:root.detailView==="overview" && !root.finished && !root.preview
                             width:parent.width;detail:root.detail;foreground:root.foreground
                         }
