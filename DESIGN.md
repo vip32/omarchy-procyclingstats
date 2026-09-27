@@ -78,3 +78,13 @@
 - Settings survived a shell restart. Verification restored default intervals
   (60/300/300 seconds), notification duration (8 seconds), and notifications off.
   Fictional settings and warning previews were captured; normal data fetching resumed.
+
+- Live overview: one metrics row, compact expandable group summaries, the latest
+  three events, and a smaller course profile with the next published course feature.
+  Event previews are limited to two lines; full events remain one click away.
+- Next-feature distance uses reported race progress, never a guessed zero when
+  progress is missing. Four additional model tests cover ordering, missing values,
+  exact arrival, and passed features (61 behavioral tests total).
+- Verified on the live World Championships: named groups and splits, recent
+  events and profile fit together. Pointer clicks expand/collapse rider rows;
+  the expanded list retains rider bibs. Fictional preview refreshed.
