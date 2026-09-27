@@ -10,7 +10,6 @@ Column {
     readonly property color dim: Qt.darker(foreground,1.5)
     readonly property var nextPoint: Model.nextKeypoint(detail)
     readonly property var latest: (detail.events || []).slice(0,3)
-    signal eventsRequested()
     spacing:Style.space(10)
     function value(n,unit) {return n===null || n===undefined ? "—" : String(n)+(unit || "")}
 
@@ -40,11 +39,7 @@ Column {
         }
         RaceText {width:parent.width;visible:!(root.detail.groups || []).length;text:root.detail.status==="upcoming" ? "Race has not started yet." : "No group gaps published";font.pixelSize:Style.font.caption;color:root.dim}
     }
-    Item {
-        width:parent.width;height:Math.max(eventsHeading.implicitHeight,allEvents.implicitHeight)
-        PanelSectionHeader {id:eventsHeading;anchors.left:parent.left;anchors.right:allEvents.left;anchors.verticalCenter:parent.verticalCenter;text:root.latest.length && (root.detail.error || root.detail.eventsError) ? "LATEST EVENTS · PREVIOUS DATA" : "LATEST EVENTS · KM TO GO";foreground:root.foreground}
-        Button {id:allEvents;anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;text:"All →";tooltipText:"Full race events (T)";fontSize:Style.font.caption;verticalPadding:Style.space(2);foreground:root.foreground;onClicked:root.eventsRequested()}
-    }
+    PanelSectionHeader {text:root.latest.length && (root.detail.error || root.detail.eventsError) ? "LATEST EVENTS · PREVIOUS DATA" : "LATEST EVENTS · KM TO GO";foreground:root.foreground}
     Column {
         width:parent.width;spacing:Style.space(6)
         Repeater {

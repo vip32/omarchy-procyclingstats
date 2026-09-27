@@ -316,7 +316,6 @@ Panel {
                         RaceOverview {
                             visible:root.detailView==="overview" && !root.finished
                             width:parent.width;detail:root.detail;foreground:root.foreground
-                            onEventsRequested:root.detailView="events"
                         }
                     }
                     RaceText {width:parent.width;text:"J/K select · Enter details · T events · R refresh · Esc back";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}
