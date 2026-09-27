@@ -136,7 +136,10 @@ Panel {
         function settingsSection(section: string): void {
             root.settingsOpen=true;root.open()
             settingsPage.cursorIndex=section==="refresh" ? settingsPage.fieldsStart : 0
-            Qt.callLater(function(){settingsPage.reveal(settingsPage.cursorItem())})
+            Qt.callLater(function(){
+                var y=section==="refresh" ? settingsPage.cursorItem().mapToItem(column,0,0).y-Style.space(30) : 0
+                scroller.contentY=Math.max(0,Math.min(y,Math.max(0,scroller.contentHeight-scroller.height)))
+            })
         }
         function restoreScroll(offset: int, cursor: int): void {
             settingsPage.cursorIndex=Math.max(0,Math.min(settingsPage.notificationIndex,cursor))
