@@ -25,7 +25,7 @@ Canvas {
     Canvas {
         id:raster
         // Canvas pixel reads use physical pixels, including fractional display scaling.
-        readonly property real pixelRatio:root.Window.window ? root.Window.window.devicePixelRatio : 1
+        readonly property real pixelRatio:(root.Window.window && root.Window.window.devicePixelRatio) || Screen.devicePixelRatio || 1
         width:480/pixelRatio;height:240/pixelRatio;visible:false
         contextType:"2d"
         property string pendingSource:""
