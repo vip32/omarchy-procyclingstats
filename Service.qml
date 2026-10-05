@@ -104,7 +104,7 @@ Item {
         try {if(code===0)result=JSON.parse(courseRestoreOutput)} catch(e) {}
         var prior=courses[courseRestorePath] || {}
         // A local read cannot replace a newer response or clear a connection warning.
-        if(result.state==="ready" && result.cacheSavedAt && !prior.profileImage && !(prior.profile || []).length) {
+        if(result && result.state==="ready" && result.cacheSavedAt && !prior.profileImage && !(prior.profile || []).length) {
             rememberCourse(courseRestorePath,result,true)
             var times=Object.assign({},lastRequests)
             times["course:"+courseRestorePath]=Math.max(Number(times["course:"+courseRestorePath] || 0),result.cacheSavedAt*1000)

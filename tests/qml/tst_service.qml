@@ -47,6 +47,12 @@ TestCase {
     function cached(age) {
         return {state:"ready",cacheSavedAt:(Date.now()-age)/1000,profile:[[0,80],[100,20]],distance:180,profileState:"ready",fetchedAt:"saved"}
     }
+    function test_invalid_cache_output_falls_back_to_normal_fetch_without_warning() {
+        service.watchCourses([racePath])
+        restore(null)
+        compare(worker().command[3],"course")
+        compare(Object.keys(service.updateIssues).length,0)
+    }
     function test_disk_profile_restores_without_network_refresh_when_fresh() {
         service.watchCourses([racePath])
         verify(!worker().running)
