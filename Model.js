@@ -34,7 +34,8 @@ function archiveRows(races, mode, today, options, limit) {
 }
 
 function mergeArchive(previous, result, mode, today) {
-    if(previous.reset && (result.state==="ready" || result.state==="empty")) previous={reset:false}
+    if(previous.reset && (result.state==="ready" || result.state==="empty" || (result.dates || []).length))
+        previous={reset:false,fetchedAt:previous.fetchedAt || ""}
     var records={}
     ;(previous.races || []).concat(result.races || []).forEach(function(r) {
         var old=records[r.path]

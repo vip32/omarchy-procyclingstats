@@ -1,4 +1,23 @@
-# Candidate validation
+# Validation
+
+## 0.9.0 calendar update — 2026-10-05
+
+- `PCS_REQUIRE_QT=1 tests/run`: 111 behavioral tests (58 Python, 32 JavaScript,
+  21 Qt service cases), manifest validation and QML parsing.
+- Live PCS calendar: recent and upcoming batches returned correctly dated races.
+  The native Recent screen reached 25 matching races across 18 searched dates;
+  selecting Coppa Agostoni opened 149 result rows. Langkawi returned 108 GC rows,
+  109 stage-result rows, 188.3 km and winner time 4:05:17.
+- Native Settings: changed count from 25 to 30 with the keyboard, checked the
+  saved shell entry, reopened the calendar at 30, and restored the original
+  setting. Existing categories, level and notifications were preserved.
+- Fictional Recent, Upcoming, historical GC and Settings captures inspected.
+  Historical selection survived tiled window open, resize, native close/reopen
+  and docking. Demo cleanup restored live polling and desktop state.
+- The marketplace approval below applies to 0.8.1; this update has not been
+  submitted for a new marketplace verification.
+
+## Previous 0.8.1 candidate evidence
 
 Candidate: version **0.8.1**, prepared **2026-09-27**. Exact final source identity
 and raw local reports are in `.git/submission-candidate/` of the preparation checkout.

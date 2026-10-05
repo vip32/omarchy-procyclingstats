@@ -10,6 +10,12 @@ if command -v omarchy >/dev/null 2>&1; then
   omarchy plugin validate "$root"
 fi
 
+qml_formatter="$(command -v qmlformat || true)"
+if [[ -z "$qml_formatter" && -x /usr/lib/qt6/bin/qmlformat ]]; then qml_formatter=/usr/lib/qt6/bin/qmlformat; fi
+if [[ -n "$qml_formatter" ]]; then
+  for source in "$root"/*.qml; do QT_FORCE_STDERR_LOGGING=1 "$qml_formatter" -n "$source" >/dev/null; done
+fi
+
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$root/tests" -p "test_*.py"
 node --test "$root/tests/model.test.cjs"
 

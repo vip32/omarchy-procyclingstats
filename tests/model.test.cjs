@@ -211,3 +211,11 @@ test('archive merges deduplicate races across dates, retain partial failures and
     assert.equal(merged.fetchedAt,stamp);assert.equal(merged.nextDate,'2026-09-23');
     assert.equal(model.mergeArchive({...old,reset:true},{state:'empty',races:[],dates:[]},'recent','2026-09-27').races.length,0);
 });
+
+test('a partially successful refresh keeps new pages when the failed page is retried', () => {
+    const partial=model.mergeArchive({reset:true,races:[{path:'old',date:'2026-01-01'}],dates:['2026-01-01']},
+        {state:'blocked',races:[{path:'new',date:'2026-09-27'}],dates:['2026-09-27'],nextDate:'2026-09-26'},'recent','2026-09-27');
+    const recovered=model.mergeArchive(partial,{state:'empty',races:[],dates:['2026-09-26']},'recent','2026-09-27');
+    assert.deepEqual(plain(recovered.races).map(r=>r.path),['new']);
+    assert.deepEqual(plain(recovered.dates),['2026-09-26','2026-09-27']);
+});

@@ -22,6 +22,7 @@ Panel {
     property int archiveCount: preferences.archiveRaceCount
     property var archiveSelection: null
     readonly property var archiveData: service ? service.archives[archiveMode] || ({state:"loading",races:[]}) : ({})
+    readonly property int archiveAvailableCount: Model.archiveRows(archiveData.races || [],archiveMode,Model.dayKey(now,0),preferences,100).length
     readonly property bool archiveBusy: service ? service.archiveBusy(archiveMode) : false
     readonly property string dayDate: Model.dayKey(now,dayOffset)
     readonly property var dayData: archive ? archiveData : !service ? ({}) : dayOffset === 0 ? {state:service.state,error:service.error,fetchedAt:service.fetchedAt,races:service.races} : service.dayLists[dayDate] || ({state:"loading"})
@@ -477,8 +478,8 @@ Panel {
                         }
                         Button {
                             visible:root.archive && (root.rows.length<root.archiveCount || root.archiveCount<100)
-                            width:parent.width;enabled:!root.archiveBusy && !root.archiveData.exhausted && (!root.service || root.service.nextAllowed<=root.now)
-                            text:root.archiveBusy ? "Searching…" : root.archiveData.exhausted ? "Calendar search limit reached" : root.rows.length>=root.archiveCount ? "Show more races" : root.archiveMode==="recent" ? "Search older races" : "Search later races"
+                            width:parent.width;enabled:!root.archiveBusy && (!root.archiveData.exhausted || root.archiveAvailableCount>root.archiveCount) && (!root.service || root.service.nextAllowed<=root.now)
+                            text:root.archiveBusy ? "Searching…" : root.rows.length>=root.archiveCount && root.archiveCount<root.archiveAvailableCount ? "Show more races" : root.archiveData.exhausted ? (root.demo ? "End of demo calendar" : "Calendar search limit reached") : root.rows.length>=root.archiveCount ? "Show more races" : root.archiveMode==="recent" ? "Search older races" : "Search later races"
                             bordered:true;foreground:root.foreground
                             onClicked:{if(root.rows.length>=root.archiveCount)root.archiveCount=Math.min(100,root.archiveCount+25);if(root.service)root.service.watchArchive(root.archiveMode,root.archiveCount,true)}
                         }
@@ -527,7 +528,7 @@ Panel {
                             width:parent.width;detail:root.detail;foreground:root.foreground
                         }
                     }
-                    RaceText {width:parent.width;text:root.expanded ? "J/K select · Enter details · R refresh · Esc back" : "←/→ day · J/K select · Enter details · R refresh";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}
+                    RaceText {width:parent.width;text:root.expanded ? "J/K select · Enter details · R refresh · Esc back" : root.archive ? "←/→ Recent / Upcoming · Enter details · R refresh" : "←/→ day · J/K select · Enter details · R refresh";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}
                     }
                 }
             }

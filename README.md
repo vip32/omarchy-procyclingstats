@@ -42,7 +42,7 @@ All screenshots show the actual plugin using committed fictional fixtures.
 | --- | --- |
 | ![General classification](screenshots/gc.png) | ![Upcoming race information](screenshots/tomorrow-preview.png) |
 
-[Detached window](screenshots/window.png) · [Race events](screenshots/events.png) · [Refresh and notifications](screenshots/refresh-settings.png)
+[Race calendar](screenshots/calendar.png) · [Detached window](screenshots/window.png) · [Race events](screenshots/events.png) · [Refresh and notifications](screenshots/refresh-settings.png)
 · [Connection warning](screenshots/warning.png) · [Tomorrow’s list](screenshots/tomorrow-list.png)
 
 ## Requirements
