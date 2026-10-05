@@ -14,11 +14,13 @@ sessions or attempt challenge bypass. The provider can block access or change it
 | Settings write | The shell updates this widget’s entry in `~/.config/omarchy/shell.json` when the user changes settings |
 | Window focus | Wayland toplevel metadata locates the dashboard by title and activates it when the user opens it; Qt activation is the fallback |
 | Runtime state | Race snapshots, day lists and notification baselines live in memory and clear on restart |
+| Course cache write | Successful public profiles and distances only, under the XDG cache directory; seven-day retention, 100 entries / 32 MiB maximum |
 
 Runs with your normal user permissions. No separate daemon, service installation,
 credentials, analytics or automatic package installation is used.
 
-Requests are serialized. HTML is limited to 2 MB, the parser to 60,000 nodes,
+Network requests are serialized. A separate local-only helper reads cached
+profiles without waiting for network responses or cooldowns. HTML is limited to 2 MB, the parser to 60,000 nodes,
 output to 512 KB, and each helper invocation to an 18-second total deadline.
 Finished results read distance and winner average from race information and the
 winner time from that race or stage’s result table. If the results page lacks
@@ -38,7 +40,25 @@ Only visible rows request course data (up to 40); requests remain serialized.
 The in-memory course cache holds at most 40 entries and refreshes hourly while
 visible, or after five minutes for failures, subject to the shared cooldown.
 Closing the view cancels queued course work; an in-flight request may finish.
-No race image or course cache is written to disk.
+Successful course data also lives under
+`${XDG_CACHE_HOME:-~/.cache}/omarchy-procyclingstats/courses-v1` for seven days
+from its last successful fetch. Access removes expired entries and evicts the
+oldest beyond 100 entries or 32 MiB; reading a cache entry does not extend its
+retention. Each file is capped at 384 KB. No maintenance daemon is needed.
+Profiles restore before network refreshes, including during a provider cooldown.
+Cached reads preserve the original fetch timestamp and cannot clear warnings or
+replace newer profiles. Profiles older than one hour refresh normally while
+visible; race results, gaps, events and live timings are never stored on disk.
+
+Cache entries contain validated native coordinates or the original bounded
+PNG/JPEG, distance and stage label. Image outlines are retraced once after restart
+and then reused from memory. Entries are schema/path/image-validated on read;
+corrupt, expired or unreadable data falls back to normal fetching. The helper uses
+private directories and files, a nonblocking local lock, descriptor-relative
+entry IO, no-follow opens and atomic replacement. Failed writes preserve existing
+entries and do not turn a successful PCS response into a connection failure.
+Fictional demos and offline `--html` parsing never populate this cache. Removing
+the plugin leaves this disposable cache; it can be deleted independently.
 
 The calendar searches on demand in batches of three dates, using the same worker
 and cooldown. Each user action scans at most 30 dates and stops once enough

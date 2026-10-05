@@ -14,7 +14,8 @@ Race coverage depends on the public data PCS makes available.
   losing your current view; polling and notifications stay shared.
 - **Yesterday, today and tomorrow:** results, current races and upcoming stages.
 - **Profiles and distance:** published elevation thumbnails and kilometres for
-  past, current and upcoming races; larger profiles in the details view.
+  past, current and upcoming races; larger profiles in the details view. Profiles
+  and distances survive shell restarts in a seven-day disk cache.
 - **Race calendar:** browse recent results and upcoming races beyond adjacent days.
   Choose the default list size in Settings (25 races; adjustable from 10 to 100).
 - **One race overview:** distance remaining, race time, average speed, groups and
@@ -88,8 +89,11 @@ omarchy plugin remove io.github.vip32.procyclingstats --yes
 Removal deletes the installed clone and its bar entry. Reinstalling uses default
 settings and placement; preserve your widget entry first if you want to reuse it.
 A separate source checkout and screenshots
-exported by the developer demo remain yours. The plugin keeps no persistent race
-cache, credentials or background service outside the shell.
+exported by the developer demo remain yours. Course profiles and distances are
+cached for seven days under `${XDG_CACHE_HOME:-~/.cache}/omarchy-procyclingstats/courses-v1`
+(up to 100 entries / 32 MiB). This regenerable cache survives removal; delete the
+`omarchy-procyclingstats` cache directory if you want to clear it immediately.
+There are no stored credentials or background services outside the shell.
 
 ## Use
 

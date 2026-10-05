@@ -1,7 +1,13 @@
 #!/usr/bin/python3
-"""Bounded, read-only PCS HTML adapter. No credentials or challenge bypass."""
+"""Bounded PCS HTML adapter with a local course cache. No credentials or challenge bypass."""
 import argparse
 import base64
+import fcntl
+import hashlib
+import os
+import secrets
+import stat
+from contextlib import contextmanager
 import struct
 import datetime as dt
 from html.parser import HTMLParser
@@ -22,6 +28,10 @@ MAX_BYTES = 2_000_000
 MAX_OUTPUT = 512_000
 MAX_IMAGE_BYTES = 256_000
 REQUEST_DEADLINE = None
+CACHE_RETENTION = 7 * 86400
+CACHE_MAX_ENTRIES = 100
+CACHE_MAX_BYTES = 32 * 1024 * 1024
+CACHE_ENTRY_BYTES = 384_000
 
 class SourceError(Exception):
     def __init__(self, state, message):
@@ -375,6 +385,126 @@ def attach_image(result,path):
     except SourceError as e:result.update(profileState=e.state,profileError=e.message)
     return result
 
+
+def course_cache_value(value,path):
+    """Allow only regenerable course data across the disk/UI boundary."""
+    if not isinstance(value,dict) or value.get('state')!='ready' or value.get('profileError'):
+        raise ValueError('No successful course snapshot')
+    points=value.get('profile') or []
+    if not isinstance(points,list) or len(points)>220 or any(
+        not isinstance(p,list) or len(p)!=2 or any(type(n) not in (int,float) or not math.isfinite(n) or not 0<=n<=100 for n in p) for p in points):
+        raise ValueError('Invalid course geometry')
+    out=dict(state='ready',path=path,profile=points,profileState='ready')
+    image=value.get('profileImage') or ''
+    if not points and image:
+        if not isinstance(image,str) or len(image)>350000:
+            raise ValueError('Invalid course image')
+        match=re.fullmatch(r'data:(image/(?:png|jpeg));base64,([A-Za-z0-9+/=]+)',image)
+        if not match:raise ValueError('Invalid course image')
+        data=base64.b64decode(match[2],validate=True)
+        if len(data)>MAX_IMAGE_BYTES:raise ValueError('Oversized course image')
+        mime,width,height=image_dimensions(data)
+        if mime!=match[1]:raise ValueError('Mismatched image type')
+        out.update(profileImage=image,profileImageWidth=width,profileImageHeight=height)
+    if len(points)<2 and not out.get('profileImage'):raise ValueError('No course profile')
+    distance=value.get('distance')
+    if distance is not None:
+        if type(distance) not in (int,float) or not math.isfinite(distance) or not 0<distance<=10000:
+            raise ValueError('Invalid course distance')
+        out['distance']=distance
+    stage=value.get('stagePath') or ''
+    if stage:
+        stage=race_path(stage)
+        if stage.rsplit('/',1)[0]!=path.rsplit('/',1)[0] or not re.fullmatch(r'stage-\d+[a-z]?',stage.rsplit('/',1)[1]):
+            raise ValueError('Unrelated course stage')
+        out['stagePath']=stage
+    out['profileLabel']=clean(value.get('profileLabel',''),80)
+    for key in ('fetchedAt','profileFetchedAt'):
+        if value.get(key):out[key]=clean(value[key],40)
+    return out
+
+
+@contextmanager
+def course_cache_directory():
+    """Private, locked cache; all entry IO stays relative to its open descriptor."""
+    base=Path(os.environ.get('XDG_CACHE_HOME') or Path.home()/'.cache')
+    if not base.is_absolute():base=Path.home()/'.cache'
+    base.mkdir(mode=0o700,parents=True,exist_ok=True)
+    parent=os.open(base,os.O_RDONLY|os.O_DIRECTORY|os.O_CLOEXEC)
+    lock=None
+    try:
+        for name in ('omarchy-procyclingstats','courses-v1'):
+            try:os.mkdir(name,0o700,dir_fd=parent)
+            except FileExistsError:pass
+            child=os.open(name,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_CLOEXEC,dir_fd=parent)
+            info=os.fstat(child)
+            if info.st_uid!=os.getuid() or info.st_mode&0o077:
+                os.close(child);raise OSError('Course cache is not private')
+            os.close(parent);parent=child
+        lock=os.open('.lock',os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW|os.O_CLOEXEC|os.O_NONBLOCK,0o600,dir_fd=parent)
+        info=os.fstat(lock)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid() or info.st_mode&0o077:raise OSError('Invalid cache lock')
+        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        yield parent
+    finally:
+        if lock is not None:os.close(lock)
+        os.close(parent)
+
+
+def prune_course_cache(directory,now):
+    entries=[]
+    with os.scandir(directory) as scan:
+        for entry in scan:
+            if not re.fullmatch(r'[0-9a-f]{64}\.json|\.tmp-[0-9a-f]{32}',entry.name):continue
+            info=entry.stat(follow_symlinks=False)
+            if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid():continue
+            if entry.name.startswith('.tmp-') or info.st_size>CACHE_ENTRY_BYTES or now-info.st_mtime>=CACHE_RETENTION or info.st_mtime>now+60:
+                os.unlink(entry.name,dir_fd=directory)
+            else:entries.append((info.st_mtime,entry.name,info.st_size))
+    entries.sort()
+    total=sum(e[2] for e in entries)
+    while len(entries)>CACHE_MAX_ENTRIES or total>CACHE_MAX_BYTES:
+        _,name,size=entries.pop(0)
+        os.unlink(name,dir_fd=directory);total-=size
+
+
+def cached_course(path,value=None):
+    """Best-effort cache: misses, damage and unwritable disks never block PCS."""
+    try:
+        path=race_path(path)
+        name=hashlib.sha256(path.encode('utf-8')).hexdigest()+'.json'
+        now=time.time()
+        with course_cache_directory() as directory:
+            prune_course_cache(directory,now)
+            if value is not None:
+                snapshot=course_cache_value(value,path)
+                data=json.dumps(dict(version=1,path=path,savedAt=now,course=snapshot),ensure_ascii=True,separators=(',',':')).encode('ascii')
+                if len(data)>CACHE_ENTRY_BYTES:return {}
+                temporary='.tmp-'+secrets.token_hex(16)
+                try:
+                    fd=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW|os.O_CLOEXEC,0o600,dir_fd=directory)
+                    with os.fdopen(fd,'wb') as stream:stream.write(data)
+                    os.replace(temporary,name,src_dir_fd=directory,dst_dir_fd=directory)
+                finally:
+                    try:os.unlink(temporary,dir_fd=directory)
+                    except FileNotFoundError:pass
+                prune_course_cache(directory,now)
+                return {}
+            fd=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC|os.O_NONBLOCK,dir_fd=directory)
+            with os.fdopen(fd,'rb') as stream:
+                info=os.fstat(stream.fileno())
+                if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid() or info.st_mode&0o077 or info.st_size>CACHE_ENTRY_BYTES:return {}
+                data=stream.read(CACHE_ENTRY_BYTES+1)
+            if len(data)>CACHE_ENTRY_BYTES:return {}
+            record=json.loads(data)
+            if not isinstance(record,dict) or record.get('version')!=1 or record.get('path')!=path:return {}
+            saved=record.get('savedAt')
+            if type(saved) not in (int,float) or not math.isfinite(saved) or not 0<=now-saved<CACHE_RETENTION:
+                os.unlink(name,dir_fd=directory);return {}
+            return dict(course_cache_value(record.get('course'),path),cacheSavedAt=saved)
+    except (OSError,ValueError,TypeError,RecursionError,SourceError):
+        return {}
+
 def parse_course(html,path):
     doc=checked_html(html)
     info=race_info(doc)
@@ -666,7 +796,7 @@ def deadline(*_):
 def main():
     global REQUEST_DEADLINE
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode',choices=['overview','calendar','archive','race','events','course'])
+    parser.add_argument('mode',choices=['overview','calendar','archive','race','events','course','course-cache'])
     parser.add_argument('--race',default='')
     parser.add_argument('--date',default='')
     parser.add_argument('--direction',choices=['recent','upcoming'],default='recent')
@@ -678,18 +808,21 @@ def main():
     REQUEST_DEADLINE=time.monotonic()+18
     signal.alarm(18)
     try:
-        path=race_path(args.race) if args.mode in ('race','events','course') else ''
+        path=race_path(args.race) if args.mode in ('race','events','course','course-cache') else ''
         date=calendar_date(args.date) if args.mode in ('calendar','archive') else ''
         if args.html:
             with args.html.open('rb') as stream: html=bounded_read(stream).decode('utf-8',errors='replace')
             result=parse_course(html,path) if args.mode=='course' else parse_calendar(html,date) if date else parse_events(html) if args.mode=='events' else (parse_preview(html,path) if args.upcoming else parse_results(html,path) if args.finished else parse_race(html,path)) if path else parse_overview(html)
+        elif args.mode=='course-cache':
+            result=cached_course(path) or {'state':'empty'}
         elif args.mode=='course':
             result=load_course(path)
         elif args.mode=='archive':
             result=load_archive(date,args.direction)
         else:
             result=parse_calendar(fetch('races.php?p=uci&s=today&date='+date),date) if date else parse_events(fetch(path+'/live/race-events')) if args.mode=='events' else load_race(path,args.finished,args.upcoming) if path else load_overview(calendar_date(args.date or dt.date.today().isoformat()))
-        result['fetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat()
+        if args.mode!='course-cache':result['fetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat()
+        if not args.html and args.mode in ('race','course'):cached_course(path,result)
         result['savedPage']=bool(args.html)
     except SourceError as e:
         result={'state':e.state,'error':e.message}

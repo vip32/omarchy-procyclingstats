@@ -31,6 +31,82 @@ TestCase {
     function worker() {
         for(var i=0;i<service.data.length;i++) if("command" in service.data[i])return service.data[i]
     }
+    function reader() {
+        var found=false
+        for(var i=0;i<service.data.length;i++)if("command" in service.data[i]) {
+            if(found)return service.data[i]
+            found=true
+        }
+    }
+    function restore(result) {
+        reader().running=false
+        service.courseRestoreOutput=JSON.stringify(result)
+        service.consumeCourseCache(0)
+        wait(0)
+    }
+    function cached(age) {
+        return {state:"ready",cacheSavedAt:(Date.now()-age)/1000,profile:[[0,80],[100,20]],distance:180,profileState:"ready",fetchedAt:"saved"}
+    }
+    function test_disk_profile_restores_without_network_refresh_when_fresh() {
+        service.watchCourses([racePath])
+        verify(!worker().running)
+        restore(cached(1000))
+        compare(service.courses[racePath].distance,180)
+        compare(service.courseDiskHits,1)
+        verify(!worker().running)
+        verify(!service.courseDue(racePath))
+    }
+    function test_old_disk_profile_displays_while_normal_refresh_runs() {
+        service.watchCourses([racePath])
+        restore(cached(3601000))
+        compare(service.courses[racePath].profile.length,2)
+        compare(worker().command[3],"course")
+        verify(worker().running)
+    }
+    function test_disk_restore_bypasses_network_cooldown_without_clearing_warning() {
+        service.currentPath="course:"+racePath
+        deliver({state:"blocked",error:"Rejected"})
+        // First-time restore may already be running when the network rejects a request.
+        service.courseRestorePath=racePath;service.courseRestoreDate=service.today
+        restore(cached(3601000))
+        compare(service.courses[racePath].distance,180)
+        verify(service.updateIssues["course:"+racePath]!==undefined)
+        verify(service.nextAllowed>Date.now())
+        verify(!worker().running)
+        service.watchCourses(["race/other/2026/result"])
+        compare(reader().command[3],"course-cache")
+    }
+    function test_late_disk_result_cannot_replace_newer_network_profile() {
+        service.watchCourses([racePath])
+        service.rememberCourse(racePath,{state:"ready",distance:200,profile:[[0,10],[100,20]],profileState:"ready"})
+        restore(cached(1000))
+        compare(service.courses[racePath].distance,200)
+        compare(service.courseDiskHits,0)
+    }
+    function test_cache_read_for_selected_race_does_not_delay_live_request() {
+        service.watch(racePath)
+        compare(reader().command[3],"course-cache")
+        compare(worker().command[3],"race")
+        verify(reader().running && worker().running)
+        restore(cached(1000))
+        compare(service.courses[racePath].distance,180)
+        verify(worker().running)
+    }
+    function test_closing_list_cancels_remaining_disk_reads() {
+        service.watched=[]
+        service.watchCourses([racePath,"race/other/2026/result"])
+        service.watchCourses([])
+        restore(cached(1000))
+        compare(service.courseRestoreQueue.length,0)
+        verify(!reader().running && !worker().running)
+    }
+    function test_late_disk_result_is_discarded_after_day_change() {
+        service.watchCourses([racePath])
+        service.courseRestoreDate="2000-01-01"
+        restore(cached(1000))
+        compare(service.courseDiskHits,0)
+        verify(!service.courses[racePath])
+    }
     function test_archive_routes_serially_and_cancel_keeps_inflight_snapshot() {
         service.watchArchive("recent",25,false)
         compare(worker().command[3],"archive")
@@ -80,6 +156,9 @@ TestCase {
     }
     function test_courses_only_queue_visible_paths_and_stop_on_close() {
         service.watchCourses([racePath,"race/second/2026/result"])
+        compare(reader().command[3],"course-cache")
+        compare(reader().command[5],racePath)
+        restore({state:"empty"})
         compare(worker().command[3],"course")
         compare(worker().command[5],racePath)
         service.watchCourses([])
@@ -94,6 +173,15 @@ TestCase {
         service.rememberCourse(racePath,{state:"ready",distance:180,profileState:"ready"})
         service.rememberCourse(racePath,{state:"ready",distance:null,profile:[[0,10],[100,90]]})
         compare(service.courses[racePath].distance,180)
+    }
+    function test_memory_eviction_allows_profile_to_restore_from_disk_again() {
+        var checked={};checked[racePath]=true;service.courseRestoreChecked=checked
+        service.rememberCourse(racePath,cached(1000))
+        for(var i=0;i<40;i++)service.rememberCourse("race/new-"+i+"/2026/result",cached(1000))
+        verify(!service.courses[racePath])
+        service.watchCourses([racePath])
+        compare(reader().command[3],"course-cache")
+        compare(reader().command[5],racePath)
     }
     function test_course_cache_is_reused_and_bounded() {
         for(var i=0;i<45;i++)service.rememberCourse("race/demo-"+i+"/2026/result",{state:"ready",distance:i,profileState:"unavailable"})
@@ -222,8 +310,7 @@ TestCase {
         compare(service.races[0].path,racePath)
         compare(service.dayLists[date].races[0].path,past.path)
         service.watch(past.path)
-        var command=[]
-        for(var i=0;i<service.data.length;i++) if("command" in service.data[i]) command=service.data[i].command
+        var command=worker().command
         verify(command.indexOf("--finished")>=0)
     }
     function test_calendar_failure_keeps_snapshot_and_recovers_independently() {
@@ -259,8 +346,7 @@ TestCase {
         var future={path:"race/future/2026/stage-2",name:"Future",date:"9999-01-01",status:"scheduled"}
         service.dayLists={future:{races:[future]}}
         service.watch(future.path)
-        var command=[]
-        for(var i=0;i<service.data.length;i++) if("command" in service.data[i]) command=service.data[i].command
+        var command=worker().command
         verify(command.indexOf("--upcoming")>=0)
     }
     function test_metadata_failure_retains_known_filters_and_sets_cooldown() {

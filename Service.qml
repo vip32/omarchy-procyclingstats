@@ -23,12 +23,18 @@ Item {
     property var dayLists: ({})
     property var courses: ({})
     property var courseWanted: []
+    property var courseRestoreQueue: []
+    property var courseRestoreChecked: ({})
+    property string courseRestorePath: ""
+    property string courseRestoreDate: ""
+    property string courseRestoreOutput: ""
+    property int courseDiskHits: 0
     property var archives: ({})
     property var archiveRequests: ({})
     property string today: Model.dayKey(Date.now(),0)
     property string currentRequestDate: today
     property string fetchedAt: ""
-    property bool loading: worker.running
+    property bool loading: worker.running || courseReader.running
     property var queue: []
     property var watched: []
     property var lastRequests: ({})
@@ -66,8 +72,46 @@ Item {
         today = date
         races = []; dayLists = ({}); details = ({}); watched = []
         archives=({});archiveRequests=({});courses=({});courseWanted=[]
+        courseRestoreQueue=[];courseRestoreChecked=({})
         queue = []; lastRequests = ({}); updateIssues = ({}); eventBaselines = ({})
         fetchedAt = ""; metadataFetchedAt = ""; state = "loading"; error = ""
+    }
+    function restoreCourses(paths) {
+        if(demo)return
+        var pending=courseRestoreQueue.slice()
+        ;(paths || []).forEach(function(path) {
+            if(!/^race\/[a-z0-9-]+\/\d{4}\/(result|gc|stage-\d+[a-z]?)$/.test(path) || courses[path] || courseRestoreChecked[path] || (courseReader.running && courseRestorePath===path) || pending.indexOf(path)>=0)return
+            pending.push(path)
+        })
+        courseRestoreQueue=pending.slice(0,40)
+        readNextCourse()
+    }
+    function readNextCourse() {
+        if(demo || courseReader.running || !courseRestoreQueue.length)return
+        courseRestorePath=courseRestoreQueue[0];courseRestoreQueue=courseRestoreQueue.slice(1)
+        courseRestoreDate=today;courseRestoreOutput=""
+        var script=decodeURIComponent(Qt.resolvedUrl("bin/pcs.py").toString().replace(/^file:\/\//,""))
+        courseReader.command=["/usr/bin/python3","-I",script,"course-cache","--race",courseRestorePath]
+        courseReader.running=true
+    }
+    function consumeCourseCache(code) {
+        if(demo)return
+        if(courseRestoreDate!==today) {Qt.callLater(readNextCourse);Qt.callLater(continueCourses);return}
+        var checked=Object.assign({},courseRestoreChecked);delete checked[courseRestorePath];checked[courseRestorePath]=true
+        var keys=Object.keys(checked);while(keys.length>100)delete checked[keys.shift()]
+        courseRestoreChecked=checked
+        var result={}
+        try {if(code===0)result=JSON.parse(courseRestoreOutput)} catch(e) {}
+        var prior=courses[courseRestorePath] || {}
+        // A local read cannot replace a newer response or clear a connection warning.
+        if(result.state==="ready" && result.cacheSavedAt && !prior.profileImage && !(prior.profile || []).length) {
+            rememberCourse(courseRestorePath,result,true)
+            var times=Object.assign({},lastRequests)
+            times["course:"+courseRestorePath]=Math.max(Number(times["course:"+courseRestorePath] || 0),result.cacheSavedAt*1000)
+            lastRequests=times;courseDiskHits++
+        }
+        Qt.callLater(readNextCourse)
+        Qt.callLater(continueCourses)
     }
     function courseDue(path) {
         if(!courses[path])return true
@@ -78,14 +122,16 @@ Item {
         var next=(paths || []).filter(function(p,i,all){return /^race\/[a-z0-9-]+\/\d{4}\/(result|gc|stage-\d+[a-z]?)$/.test(p) && all.indexOf(p)===i}).slice(0,40)
         if(JSON.stringify(next)!==JSON.stringify(courseWanted))courseWanted=next
         queue=queue.filter(function(p){return p.indexOf("course:")!==0 || next.indexOf(p.slice(7))>=0})
+        courseRestoreQueue=courseRestoreQueue.filter(function(p){return next.indexOf(p)>=0 || watched.indexOf(p)>=0})
         continueCourses()
     }
     function continueCourses() {
+        restoreCourses(courseWanted)
         if(demo || Date.now()<nextAllowed || (worker.running && currentPath.indexOf("course:")===0) || queue.some(function(p){return p.indexOf("course:")===0}))return
-        var path=courseWanted.filter(function(p){return courseDue(p)})[0]
+        var path=courseWanted.filter(function(p){return (courses[p] || courseRestoreChecked[p]) && courseDue(p)})[0]
         if(path)enqueue("course:"+path)
     }
-    function rememberCourse(path,value) {
+    function rememberCourse(path,value,fromCache) {
         var next=Object.assign({},courses),prior=next[path] || {}
         delete next[path]
         if(Model.isFailure(value.state))next[path]=Object.assign({},prior,{state:value.state,error:value.error,profileError:value.error})
@@ -101,10 +147,11 @@ Item {
         while(keys.length>40) {
             var oldest=keys.filter(function(p){return courseWanted.indexOf(p)<0})[0] || keys[0]
             delete next[oldest];keys=Object.keys(next)
+            var checked=Object.assign({},courseRestoreChecked);delete checked[oldest];courseRestoreChecked=checked
             var issues=Object.assign({},updateIssues);delete issues["course:"+oldest];updateIssues=issues
         }
         courses=next
-        if(value.state==="ready" && !value.profileError && (value.profileState==="ready" || value.profileState==="unavailable" || (value.profile || []).length || value.profileImage)) {
+        if(!fromCache && value.state==="ready" && !value.profileError && (value.profileState==="ready" || value.profileState==="unavailable" || (value.profile || []).length || value.profileImage)) {
             var recovered=Object.assign({},updateIssues);delete recovered["course:"+path];updateIssues=recovered
         }
     }
@@ -166,6 +213,7 @@ Item {
     function watch(path) {
         if (!/^race\/[a-z0-9-]+\/\d{4}\/(result|gc|stage-\d+[a-z]?)$/.test(path)) return
         watched = [path].concat(watched.filter(function(p) { return p !== path })).slice(0, 3)
+        restoreCourses([path])
         enqueue(path)
     }
     function refresh() {
@@ -320,13 +368,14 @@ Item {
     }
     // Explicit fictional demo; never selected automatically on network failure.
     function setDemo(enabled) {
-        if (worker.running) return false
+        if (loading) return false
         queue = []
         demo = enabled
         details = ({})
         races = []
         dayLists = ({})
         archives=({});archiveRequests=({});courses=({});courseWanted=[]
+        courseRestoreQueue=[];courseRestoreChecked=({})
         today = Model.dayKey(Date.now(),0)
         fetchedAt = ""
         metadataFetchedAt = ""
@@ -372,6 +421,12 @@ Item {
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.output = text }
         onExited: function(code, status) { root.consume(code) }
     }
+    Process {
+        // Local-only reads do not wait behind network requests or their cooldown.
+        id: courseReader
+        stdout: StdioCollector {waitForEnd:true;onStreamFinished:root.courseRestoreOutput=text}
+        onExited: function(code,status) {root.consumeCourseCache(code)}
+    }
     Timer {
         // A short scheduler tick allows each source its own bounded interval.
         interval: 15000
@@ -392,7 +447,7 @@ Item {
         function status(): string {
             return JSON.stringify({state:root.state,error:root.error,loading:root.loading,demo:root.demo,
                                    today:root.today,days:root.dayLists,races:root.races.length,details:Object.keys(root.details),fetchedAt:root.fetchedAt,
-                                   updateIssues:root.updateIssues,nextAllowed:root.nextAllowed,settings:root.options})
+                                   updateIssues:root.updateIssues,nextAllowed:root.nextAllowed,courseDiskHits:root.courseDiskHits,settings:root.options})
         }
     }
 }

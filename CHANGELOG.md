@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.2 — persistent course profiles
+
+- Save successful course profiles and distances in an XDG disk cache for seven
+  days, capped at 100 entries and 32 MiB. Restore locally before refreshing PCS.
+- Preserve normal live polling and hourly course refreshes. Cached reads do not
+  clear connection warnings or replace newer network data.
+- Prune expired entries during cache access; reject damaged cache files and
+  fall back to normal fetching if storage is unavailable.
+
 ## 0.10.1 — consistent inline profiles
 
 - Draw the same theme-coloured line and fill for image-only courses by tracing
