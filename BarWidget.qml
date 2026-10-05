@@ -33,7 +33,7 @@ Panel {
     readonly property bool demo: service ? service.demo : false
     readonly property var rows: archive ? Model.archiveRows(unfilteredRaces,archiveMode,Model.dayKey(now,0),preferences,archiveCount) : filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races
     readonly property var selected: archive && expanded && archiveSelection ? archiveSelection : rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
-    readonly property var detail: selected && service ? service.details[selected.path] || ({}) : ({})
+    readonly property var detail: selected && service ? Model.withCourse(service.details[selected.path] || ({}),service.courses[selected.path] || ({})) : ({})
     readonly property var preferences: Model.settings(demo ? {} : settings)
     readonly property var connection: Model.warning(service ? service.updateIssues : {},now,service ? service.nextAllowed : 0,service ? service.loading : false)
     readonly property color warningColor: bar ? bar.urgent : Color.urgent
@@ -138,6 +138,24 @@ Panel {
         if(service) {service.checkDate(now);service.watchDay(dayDate)}
         if(archive && service)service.watchArchive(archiveMode,archiveCount,false)
     }
+    function rowCourse(race) {
+        return Model.withCourse(race,service ? Model.withCourse(service.details[race.path] || {},service.courses[race.path] || {}) : {})
+    }
+    function updateVisibleCourses() {
+        if(!service)return
+        var paths=[]
+        if(dashboardVisible && !settingsOpen && !expanded) {
+            for(var i=0;i<raceRepeater.count;i++) {
+                var item=raceRepeater.itemAt(i)
+                if(!item)continue
+                var y=item.mapToItem(scroller,0,0).y
+                if(y+item.height>0 && y<scroller.height)paths.push(item.modelData.path)
+            }
+        }
+        service.watchCourses(paths)
+    }
+    onRowsChanged: Qt.callLater(updateVisibleCourses)
+    onExpandedChanged: Qt.callLater(updateVisibleCourses)
     function titleStatus(s) { return ({live:"LIVE",finished:"FINISHED",upcoming:"UPCOMING",scheduled:"SCHEDULED",unknown:"STATUS UNKNOWN"})[s] || "WAITING" }
     function configure() {
         if(service) {
@@ -189,7 +207,7 @@ Panel {
         if(archive && dashboardVisible && service)service.watchArchive(archiveMode,archiveCount,false)
     }
     onDemoChanged: settingsError=""
-    onSettingsOpenChanged: Qt.callLater(function(){scroller.contentY=0})
+    onSettingsOpenChanged: Qt.callLater(function(){scroller.contentY=0;root.updateVisibleCourses()})
     onFilterChanged: { cursorIndex = 0; expanded = false;if(!archive && service){service.stopArchive("recent");service.stopArchive("upcoming")} }
     onSelectedChanged: {
         var path = selected ? selected.path : ""
@@ -198,6 +216,7 @@ Panel {
     }
     onDetailViewChanged: Qt.callLater(function(){scroller.contentY=0})
     onDashboardVisibleChanged: {
+        Qt.callLater(updateVisibleCourses)
         if(dashboardVisible) {now=Date.now(); configure(); if(service){service.refresh();service.watchDay(dayDate);if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
     }
     Connections {
@@ -261,7 +280,7 @@ Panel {
                 archiveMode:root.archiveMode,archiveCount:root.archiveCount,archiveBusy:root.archiveBusy,archiveDates:root.archiveData.dates || [],dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
-                classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",
+                classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",profileImage:!!root.detail.profileImage,distance:root.detail.distance,profileLabel:root.detail.profileLabel || "",courseRows:root.rows.map(function(r){var c=root.rowCourse(r);return {path:r.path,distance:c.distance,hasProfile:!!c.profileImage || (c.profile || []).length>1}}),
                 filtersActive:root.filtersActive,unfilteredRows:root.unfilteredRaces.length,settingsCursor:settingsPage.cursorIndex,scrollY:Math.round(scroller.contentY),warning:root.connection,settingsOpen:root.settingsOpen,settings:root.preferences,
                 demo:root.demo, vertical:root.bar ? root.bar.vertical : false})
         }
@@ -357,6 +376,9 @@ Panel {
             }
             Flickable {
                 id:scroller
+                onContentYChanged: Qt.callLater(root.updateVisibleCourses)
+                onHeightChanged: Qt.callLater(root.updateVisibleCourses)
+                onContentHeightChanged: Qt.callLater(root.updateVisibleCourses)
                 anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom
                 anchors.top:connectionBanner.bottom;anchors.topMargin:connectionBanner.visible ? Style.space(12) : 0
                 contentWidth:width
@@ -425,14 +447,8 @@ Panel {
                         }
                         Row {
                             visible:root.archive;width:parent.width;spacing:Style.space(6)
-                            Button {width:(parent.width-countButton.width-Style.space(12))/2;text:"Recent";selected:root.archiveMode==="recent";bordered:true;foreground:root.foreground;onClicked:root.showCalendar("recent")}
-                            Button {width:(parent.width-countButton.width-Style.space(12))/2;text:"Upcoming";selected:root.archiveMode==="upcoming";bordered:true;foreground:root.foreground;onClicked:root.showCalendar("upcoming")}
-                            Button {id:countButton;text:(root.archiveMode==="recent" ? "Last " : "Next ")+root.archiveCount;tooltipText:"Change the default race count in Settings";bordered:true;foreground:root.foreground;onClicked:{root.settingsOpen=true;Qt.callLater(function(){settingsPage.cursorIndex=settingsPage.fieldsStart;settingsPage.reveal(settingsPage.cursorItem())})}}
-                        }
-                        RaceText {
-                            width:parent.width;visible:root.archive
-                            text:root.archiveBusy ? "Searching the race calendar…" : root.archiveData.dates && root.archiveData.dates.length ? "Searched "+root.archiveData.dates[0]+" — "+root.archiveData.dates[root.archiveData.dates.length-1]+" · "+root.rows.length+" races" : "Choose recent or upcoming races"
-                            font.pixelSize:Style.font.caption;color:root.dim;wrapMode:Text.WordWrap
+                            Button {width:(parent.width-Style.space(6))/2;text:"Recent";selected:root.archiveMode==="recent";bordered:true;foreground:root.foreground;onClicked:root.showCalendar("recent")}
+                            Button {width:(parent.width-Style.space(6))/2;text:"Upcoming";selected:root.archiveMode==="upcoming";bordered:true;foreground:root.foreground;onClicked:root.showCalendar("upcoming")}
                         }
                         RaceText {width:parent.width;visible:root.filtersActive;text:"Filters active · "+root.races.length+" of "+root.unfilteredRaces.length+" races · change in Settings";font.pixelSize:Style.font.caption;color:root.dim}
                         Repeater {
@@ -442,6 +458,7 @@ Panel {
                                 id:raceRow
                                 required property var modelData
                                 required property int index
+                                readonly property var course:root.rowCourse(modelData)
                                 width:parent.width;height:Math.max(Style.space(56),raceLabels.implicitHeight+Style.space(12))
                                 bordered:true;foreground:root.foreground
                                 hasCursor:root.cursorIndex===index
@@ -452,13 +469,13 @@ Panel {
                                     anchors.right:miniProfile.left;anchors.rightMargin:Style.space(8)
                                     anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(2)
                                     RaceText {width:parent.width;text:raceRow.modelData.name;font.bold:true;color:root.foreground}
-                                    RaceText {width:parent.width;text:[root.archive ? raceRow.modelData.date : root.titleStatus(raceRow.modelData.status),raceRow.modelData.category,raceRow.modelData.eta ? "ETA "+raceRow.modelData.eta : ""].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:raceRow.modelData.status==="live" ? Color.accent : root.dim}
+                                    RaceText {width:parent.width;text:[root.archive ? raceRow.modelData.date : root.titleStatus(raceRow.modelData.status),raceRow.modelData.category,raceRow.course.profileLabel || "",raceRow.course.distance!==null && raceRow.course.distance!==undefined ? raceRow.course.distance+" km" : "",raceRow.modelData.status!=="finished" && raceRow.modelData.eta ? "ETA "+raceRow.modelData.eta : ""].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:raceRow.modelData.status==="live" ? Color.accent : root.dim}
                                 }
                                 Column {
                                     id:miniProfile;anchors.right:parent.right;anchors.rightMargin:Style.space(8)
-                                    readonly property bool hasProfile:(raceRow.modelData.profile || []).length>1
+                                    readonly property bool hasProfile:(raceRow.course.profile || []).length>1 || !!raceRow.course.profileImage
                                     anchors.verticalCenter:parent.verticalCenter;width:Style.space(hasProfile || raceRow.modelData.toGo ? 84 : 24)
-                                    Profile {visible:miniProfile.hasProfile;width:parent.width;height:Style.space(20);points:raceRow.modelData.profile || [];lineColor:Color.accent}
+                                    Profile {visible:miniProfile.hasProfile;width:parent.width;height:Style.space(raceRow.course.profileImage && !(raceRow.course.profile || []).length ? 28 : 20);points:raceRow.course.profile || [];imageSource:raceRow.course.profileImage || "";lineColor:Color.accent}
                                     Row {
                                         width:parent.width;height:Style.space(24);spacing:Style.space(4)
                                         RaceText {width:parent.width-raceLink.width-parent.spacing;anchors.verticalCenter:parent.verticalCenter;text:raceRow.modelData.toGo || "";horizontalAlignment:Text.AlignRight;font.pixelSize:Style.font.caption;color:root.dim}

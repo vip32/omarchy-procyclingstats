@@ -2,7 +2,7 @@
 
 The adapter reads public HTTPS HTML from `www.procyclingstats.com`: the homepage,
 date-specific UCI road calendar, normal race/result pages, `/live` and
-`/live/race-events`. It does not authenticate, use a paid API, open hidden browser
+`/live/race-events`, and race-linked PNG/JPEG files under `images/profiles/`. It does not authenticate, use a paid API, open hidden browser
 sessions or attempt challenge bypass. The provider can block access or change its markup.
 
 | Capability | Purpose and boundary |
@@ -19,14 +19,24 @@ Runs with your normal user permissions. No separate daemon, service installation
 credentials, analytics or automatic package installation is used.
 
 Requests are serialized. HTML is limited to 2 MB, the parser to 60,000 nodes,
-output to 180 KB, and each helper invocation to an 18-second total deadline.
+output to 512 KB, and each helper invocation to an 18-second total deadline.
 Finished results read distance and winner average from race information and the
 winner time from that race or stage’s result table. If the results page lacks
 profile geometry, one bounded `/live` request retrieves it without using its clock.
 For an aggregate GC page, optional profile/events requests follow its explicit
 Stage tab within the same race/year; no `/gc/live` endpoint is guessed.
-Image-only profiles still require opening PCS. A rejected profile request retains
+Images are fetched by the same Python adapter, with the actual race page as the
+HTTP Referer, then passed as inline data to QML. There are no direct QML network
+requests. Images are capped at 256 KB, 4096 × 2048 and 4 million pixels; SVG and
+other formats are rejected. They are displayed as published, without inferring
+elevation coordinates from their pixels. A rejected profile request retains
 results and triggers the same shared cooldown and warning as other update failures.
+
+Only visible rows request course data (up to 40); requests remain serialized.
+The in-memory course cache holds at most 40 entries and refreshes hourly while
+visible, or after five minutes for failures, subject to the shared cooldown.
+Closing the view cancels queued course work; an in-flight request may finish.
+No race image or course cache is written to disk.
 
 The calendar searches on demand in batches of three dates, using the same worker
 and cooldown. Each user action scans at most 30 dates and stops once enough

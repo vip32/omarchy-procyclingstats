@@ -4,6 +4,17 @@ import qs.Commons
 Canvas {
     id: root
     property var points: []
+    property string imageSource: ""
+    Image {
+        anchors.fill:parent
+        visible:root.points.length<2
+        source:visible && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(root.imageSource) && root.imageSource.length<350000 ? root.imageSource : ""
+        fillMode:Image.PreserveAspectFit
+        sourceSize.width:1200
+        sourceSize.height:600
+        asynchronous:true
+        smooth:true
+    }
     property real progress: -1
     property color lineColor: Color.accent
     property color foreground: Color.foreground

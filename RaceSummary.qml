@@ -7,7 +7,7 @@ Column {
     property var detail: ({})
     property color foreground: Color.foreground
     readonly property color dim: Qt.darker(foreground,1.5)
-    readonly property bool hasProfile: (detail.profile || []).length>1
+    readonly property bool hasProfile: (detail.profile || []).length>1 || !!detail.profileImage
     spacing:Style.space(10)
     function value(n,unit) {return n===null || n===undefined ? "—" : String(n)+(unit || "")}
 
@@ -27,7 +27,8 @@ Column {
             }
         }
     }
-    Profile {width:parent.width;height:Style.space(58);visible:root.hasProfile;points:root.detail.profile || [];foreground:root.foreground}
+    RaceText {width:parent.width;visible:!!root.detail.profileLabel;text:root.detail.profileLabel+" · elevation profile";color:root.dim;font.pixelSize:Style.font.caption}
+    Profile {width:parent.width;height:root.detail.profileImage && !(root.detail.profile || []).length ? Math.min(Style.space(220),width*(root.detail.profileImageHeight || 300)/(root.detail.profileImageWidth || 600)) : Style.space(58);imageSource:root.detail.profileImage || "";visible:root.hasProfile;points:root.detail.profile || [];foreground:root.foreground}
     RaceText {
         width:parent.width;visible:!root.hasProfile || !!root.detail.profileError
         text:root.hasProfile ? "Profile · previous data" : root.detail.state==="loading" || !root.detail.state ? "Loading profile…" : "Profile unavailable · open PCS with ↗"

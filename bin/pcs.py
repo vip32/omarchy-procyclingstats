@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 """Bounded, read-only PCS HTML adapter. No credentials or challenge bypass."""
 import argparse
+import base64
+import struct
 import datetime as dt
 from html.parser import HTMLParser
 import json
@@ -10,13 +12,16 @@ import re
 import signal
 import socket
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
 BASE = 'https://www.procyclingstats.com/'
 MAX_BYTES = 2_000_000
-MAX_OUTPUT = 180_000
+MAX_OUTPUT = 512_000
+MAX_IMAGE_BYTES = 256_000
+REQUEST_DEADLINE = None
 
 class SourceError(Exception):
     def __init__(self, state, message):
@@ -294,6 +299,92 @@ def metric(value, maximum=10000):
     match = re.match(r'^(\d+(?:[.,]\d+)?)\b', value)
     return number(match[1].replace(',', '.'), maximum) if match else None
 
+def selected_stage(doc,path):
+    if not path.endswith('/gc'): return ''
+    navigation=doc.first(cls='resultTabs') or doc.first(cls='unitTabs')
+    stage_path=''
+    if navigation:
+        for a in navigation.nodes('a'):
+            label=txt(a).upper()
+            if path.endswith('/gc') and label=='STAGE':
+                try:
+                    href=a.attrs.get('href','')
+                    # PCS sometimes points the Stage tab at a secondary award
+                    # for that same stage. Its explicit stage prefix still
+                    # identifies the course; discard only a plain-text suffix.
+                    linked_stage=re.fullmatch(r'(?:https://www\.procyclingstats\.com/)?(race/[a-z0-9-]+-\d{4}-stage-\d+[a-z]?)-[a-z][a-z-]*',href)
+                    candidate=race_path(linked_stage[1] if linked_stage else href)
+                    if candidate.rsplit('/',1)[0]==path.rsplit('/',1)[0] and re.fullmatch(r'stage-\d+[a-z]?',candidate.rsplit('/',1)[1]):
+                        stage_path=candidate
+                except SourceError:
+                    pass
+    return stage_path
+
+def image_path(value):
+    url=urllib.parse.urlsplit(urllib.parse.urljoin(BASE,value))
+    if url.scheme!='https' or url.netloc!='www.procyclingstats.com' or url.query or url.fragment or not re.fullmatch(r'/images/profiles/[a-z0-9/_-]+\.(?:png|jpg|jpeg)',url.path):
+        raise SourceError('unsupported','Only PCS course-profile images are supported.')
+    return url.path.lstrip('/')
+
+def course_fields(doc,path):
+    stage=selected_stage(doc,path)
+    target=stage if path.endswith('/gc') else path
+    image=''
+    if target:
+        prefix=target.removeprefix('race/').replace('/','-')+'-'
+        for node in doc.nodes('img'):
+            try: candidate=image_path(node.attrs.get('src',''))
+            except SourceError: continue
+            if candidate.rsplit('/',1)[-1].startswith(prefix):
+                image=candidate
+                break
+    points=profile(doc)
+    return dict(profile=points,profileImagePath=image,stagePath=stage,
+        profileLabel=stage.rsplit('/',1)[-1].replace('stage-','Stage ') if stage else '',
+        profileState='ready' if points else 'pending' if image else 'unavailable')
+
+def image_dimensions(data):
+    if data.startswith(b'\x89PNG\r\n\x1a\n') and len(data)>=45 and data[8:16]==b'\x00\x00\x00\x0dIHDR' and data.endswith(b'\x00\x00\x00\x00IEND\xaeB`\x82'):
+        width,height=struct.unpack('>II',data[16:24]);mime='image/png'
+    elif data.startswith(b'\xff\xd8') and data.endswith(b'\xff\xd9'):
+        offset=2; width=height=0;mime='image/jpeg'
+        while offset+4<=len(data):
+            if data[offset]!=255: break
+            marker=data[offset+1];offset+=2
+            if marker==255:offset-=1;continue
+            if marker in (0xD9,0xDA):break
+            length=int.from_bytes(data[offset:offset+2],'big')
+            if length<2 or offset+length>len(data):break
+            if marker in (0xC0,0xC1,0xC2) and length>=8:
+                height,width=struct.unpack('>HH',data[offset+3:offset+7]);break
+            offset+=length
+    else: raise SourceError('unsupported','PCS did not return a PNG or JPEG profile.')
+    if not (0<width<=4096 and 0<height<=2048 and width*height<=4_000_000):
+        raise SourceError('unsupported','PCS profile dimensions are unsupported.')
+    return mime,width,height
+
+def attach_image(result,path):
+    if result.get('profile') or not result.get('profileImagePath'): return result
+    try:
+        data=fetch_bytes(image_path(result['profileImagePath']),MAX_IMAGE_BYTES,'image/png,image/jpeg',race_path(path))
+        mime,width,height=image_dimensions(data)
+        result.update(profileImage='data:'+mime+';base64,'+base64.b64encode(data).decode('ascii'),
+            profileImageWidth=width,profileImageHeight=height,profileState='ready',
+            profileFetchedAt=dt.datetime.now(dt.timezone.utc).isoformat())
+    except SourceError as e:result.update(profileState=e.state,profileError=e.message)
+    return result
+
+def parse_course(html,path):
+    doc=checked_html(html)
+    info=race_info(doc)
+    course=course_fields(doc,path)
+    if not info.get('date') and not course['profile'] and not course['profileImagePath']:
+        raise SourceError('unsupported','PCS course information could not be read.')
+    return dict(state='ready',path=path,distance=metric(info.get('distance','')),**course)
+
+def load_course(path):
+    return attach_image(parse_course(fetch(path),path),path)
+
 def parse_preview(html, path):
     doc = checked_html(html)
     values = race_info(doc)
@@ -302,7 +393,7 @@ def parse_preview(html, path):
     return dict(state='ready', path=path, status='upcoming', date=values['date'],
         startTime=values.get('start time', ''), distance=metric(values.get('distance', '')),
         departure=values.get('departure', ''), arrival=values.get('arrival', ''),
-        profile=profile(doc))
+        **course_fields(doc,path))
 
 def parse_race(html, path):
     doc = checked_html(html)
@@ -403,22 +494,10 @@ def parse_results(html,path):
     doc=checked_html(html)
     navigation=doc.first(cls='resultTabs') or doc.first(cls='unitTabs')
     tabs={}
-    stage_path=""
+    stage_path=selected_stage(doc,path)
     if navigation:
         for a in navigation.nodes('a'):
             label=txt(a).upper()
-            if path.endswith('/gc') and label=='STAGE':
-                try:
-                    href=a.attrs.get('href','')
-                    # PCS sometimes points the Stage tab at a secondary award
-                    # for that same stage. Its explicit stage prefix still
-                    # identifies the course; discard only a plain-text suffix.
-                    linked_stage=re.fullmatch(r'(?:https://www\.procyclingstats\.com/)?(race/[a-z0-9-]+-\d{4}-stage-\d+[a-z]?)-[a-z][a-z-]*',href)
-                    candidate=race_path(linked_stage[1] if linked_stage else href)
-                    if candidate.rsplit('/',1)[0]==path.rsplit('/',1)[0] and re.fullmatch(r'stage-\d+[a-z]?',candidate.rsplit('/',1)[1]):
-                        stage_path=candidate
-                except SourceError:
-                    pass
             if label in ('GC','STAGE','RESULT','RESULTS'):
                 tabs[a.attrs.get('data-id',a.attrs.get('data-navid',''))]='gc' if label=='GC' else 'result'
     containers={}
@@ -444,17 +523,20 @@ def parse_results(html,path):
     winner=next((r for c in classifications if c['kind']=='result' for r in c['rows'] if r['rank']=='1'),{})
     elapsed=winner.get('time','')
     if elapsed=='—': elapsed=''
-    points=profile(doc)
+    course=course_fields(doc,path)
+    points=course['profile']
     return dict(state='ready',path=path,name=txt(doc.first('title')),status='finished',
                 classifications=classifications,gcAvailable=any(c['kind']=='gc' for c in classifications),
                 stageRace=stage,stagePath=stage_path,groups=[],profile=points,keypoints=[],date=info.get('date',''),
                 distance=metric(info.get('distance','')),elapsed=elapsed,
                 avgSpeed=metric(info.get('avg. speed winner',''),150),
                 profileState='ready' if points else 'unavailable',
-                profileFetchedAt=dt.datetime.now(dt.timezone.utc).isoformat() if points else '')
+                profileFetchedAt=dt.datetime.now(dt.timezone.utc).isoformat() if points else '',
+                profileImagePath=course['profileImagePath'],
+                profileLabel=course['profileLabel'])
 
 def attach_finished_profile(result,path):
-    if result['profile']: return result
+    if result['profile'] or result.get('profileImage') or result.get('profileImagePath'): return result
     try:
         doc=checked_html(fetch(path+'/live'))
         course=doc.first(cls='bigProfile')
@@ -499,9 +581,9 @@ def attach_events(result,path):
 
 def load_race(path,finished=False,upcoming=False):
     if upcoming:
-        return parse_preview(fetch(path),path)
+        return attach_image(parse_preview(fetch(path),path),path)
     if finished:
-        result=parse_results(fetch(path),path)
+        result=attach_image(parse_results(fetch(path),path),path)
         # GC is an aggregate, not a course. Only follow the same race's explicit
         # Stage tab; never guess a /gc/live endpoint or another race's stage.
         course_path=result.get('stagePath') if path.endswith('/gc') else path
@@ -549,11 +631,15 @@ def bounded_read(stream, limit=MAX_BYTES):
         chunks.append(part)
     return b''.join(chunks)
 
-def fetch(path):
-    request=urllib.request.Request(BASE+path, headers={'User-Agent':'Omarchy-ProCyclingStats/0.1 (personal race overview)', 'Accept':'text/html', 'Accept-Encoding':'identity'})
+def fetch_bytes(path,limit=MAX_BYTES,accept="text/html",referer=""):
+    remaining=REQUEST_DEADLINE-time.monotonic() if REQUEST_DEADLINE is not None else 10
+    if remaining<=0:raise SourceError('offline','PCS request timed out.')
+    headers={'User-Agent':'Omarchy-ProCyclingStats/0.1 (personal race overview)', 'Accept':accept, 'Accept-Encoding':'identity'}
+    if referer:headers['Referer']=BASE+referer
+    request=urllib.request.Request(BASE+path,headers=headers)
     try:
-        with urllib.request.build_opener(SafeRedirect()).open(request,timeout=10) as response:
-            return bounded_read(response).decode('utf-8',errors='replace')
+        with urllib.request.build_opener(SafeRedirect()).open(request,timeout=min(10,remaining)) as response:
+            return bounded_read(response,limit)
     except urllib.error.HTTPError as e:
         e.close()
         if e.code in (401,403): raise SourceError('blocked','PCS blocks automated access. Open PCS in your browser.') from None
@@ -563,12 +649,16 @@ def fetch(path):
     except (urllib.error.URLError,TimeoutError,socket.timeout,OSError):
         raise SourceError('offline','Could not reach PCS. Check your connection and retry.') from None
 
+def fetch(path):
+    return fetch_bytes(path).decode('utf-8',errors='replace')
+
 def deadline(*_):
     raise SourceError('offline','PCS request timed out.')
 
 def main():
+    global REQUEST_DEADLINE
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode',choices=['overview','calendar','archive','race','events'])
+    parser.add_argument('mode',choices=['overview','calendar','archive','race','events','course'])
     parser.add_argument('--race',default='')
     parser.add_argument('--date',default='')
     parser.add_argument('--direction',choices=['recent','upcoming'],default='recent')
@@ -577,13 +667,16 @@ def main():
     parser.add_argument('--html',type=Path,help='Parse a saved public page offline; no network request')
     args=parser.parse_args()
     signal.signal(signal.SIGALRM,deadline)
+    REQUEST_DEADLINE=time.monotonic()+18
     signal.alarm(18)
     try:
-        path=race_path(args.race) if args.mode in ('race','events') else ''
+        path=race_path(args.race) if args.mode in ('race','events','course') else ''
         date=calendar_date(args.date) if args.mode in ('calendar','archive') else ''
         if args.html:
             with args.html.open('rb') as stream: html=bounded_read(stream).decode('utf-8',errors='replace')
-            result=parse_calendar(html,date) if date else parse_events(html) if args.mode=='events' else (parse_preview(html,path) if args.upcoming else parse_results(html,path) if args.finished else parse_race(html,path)) if path else parse_overview(html)
+            result=parse_course(html,path) if args.mode=='course' else parse_calendar(html,date) if date else parse_events(html) if args.mode=='events' else (parse_preview(html,path) if args.upcoming else parse_results(html,path) if args.finished else parse_race(html,path)) if path else parse_overview(html)
+        elif args.mode=='course':
+            result=load_course(path)
         elif args.mode=='archive':
             result=load_archive(date,args.direction)
         else:

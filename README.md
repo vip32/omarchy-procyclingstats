@@ -13,6 +13,8 @@ Race coverage depends on the public data PCS makes available.
 - **Pop-out window:** detach into a regular tiled window and dock back without
   losing your current view; polling and notifications stay shared.
 - **Yesterday, today and tomorrow:** results, current races and upcoming stages.
+- **Profiles and distance:** published elevation thumbnails and kilometres for
+  past, current and upcoming races; larger profiles in the details view.
 - **Race calendar:** browse recent results and upcoming races beyond adjacent days.
   Choose the default list size in Settings (25 races; adjustable from 10 to 100).
 - **One race overview:** distance remaining, race time, average speed, groups and
@@ -117,9 +119,8 @@ needed. The header’s flag always returns to the race list; Live returns to tod
 | Esc | Back, then close |
 
 The calendar applies your category and level filters before limiting the list.
-Click a race for results/GC or its upcoming preview. The “Last/Next” count opens
-Settings; “Show more” expands this visit without changing your saved default.
-The date range shows how far the search has reached. Multi-day races appear once,
+Click a race for results/GC or its upcoming preview. Change the default count in Settings. “Show more” expands this visit without
+changing your saved default. Multi-day races appear once,
 using their nearest listed date and the race/stage link PCS publishes.
 
 The pop-out is a normal Hyprland window: tile, move or resize it with your usual

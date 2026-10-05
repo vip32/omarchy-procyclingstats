@@ -78,6 +78,53 @@ TestCase {
         service.refresh()
         verify(service.queue.indexOf("archive:recent")<0)
     }
+    function test_courses_only_queue_visible_paths_and_stop_on_close() {
+        service.watchCourses([racePath,"race/second/2026/result"])
+        compare(worker().command[3],"course")
+        compare(worker().command[5],racePath)
+        service.watchCourses([])
+        worker().running=false
+        deliver({state:"ready",distance:180,profileState:"unavailable",profile:[]})
+        wait(0)
+        compare(service.courses[racePath].distance,180)
+        compare(service.courseWanted.length,0)
+        compare(service.queue.length,0)
+    }
+    function test_course_cache_is_reused_and_bounded() {
+        for(var i=0;i<45;i++)service.rememberCourse("race/demo-"+i+"/2026/result",{state:"ready",distance:i,profileState:"unavailable"})
+        compare(Object.keys(service.courses).length,40)
+        service.rememberCourse(racePath,{state:"ready",distance:180,profileState:"ready",profileImage:"image"})
+        var times={};times["course:"+racePath]=Date.now();service.lastRequests=times
+        service.watchCourses([racePath])
+        verify(!service.loading)
+    }
+    function test_course_failure_keeps_image_and_distance_with_cooldown() {
+        service.rememberCourse(racePath,{state:"ready",distance:180,profileState:"ready",profileImage:"image",profileFetchedAt:"saved"})
+        service.currentPath="course:"+racePath
+        deliver({state:"ready",distance:181,profileState:"blocked",profileError:"Rejected"})
+        compare(service.courses[racePath].profileImage,"image")
+        compare(service.courses[racePath].distance,181)
+        compare(service.updateIssues["course:"+racePath].lastSuccess,"saved")
+        verify(service.nextAllowed>Date.now()+890000)
+    }
+    function test_details_satisfy_pending_course_request_and_clear_old_warning() {
+        service.currentPath="course:"+racePath
+        deliver({state:"error",error:"Unavailable"})
+        verify(service.updateIssues["course:"+racePath]!==undefined)
+        service.currentPath=racePath
+        deliver({state:"ready",distance:180,profileState:"ready",profileImage:"image"})
+        compare(service.courses[racePath].profileImage,"image")
+        verify(service.updateIssues["course:"+racePath]===undefined)
+        verify(!service.courseDue(racePath))
+    }
+    function test_course_caches_and_interest_clear_at_midnight() {
+        service.courses={test:{distance:100}}
+        service.courseWanted=[racePath]
+        service.today="2000-01-01"
+        service.checkDate(Date.now())
+        compare(Object.keys(service.courses).length,0)
+        compare(service.courseWanted.length,0)
+    }
     function test_failure_and_recovery() {
         deliver(snapshot("First event"))
         var stamp=service.details[racePath].fetchedAt

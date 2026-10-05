@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0 — profiles and distances across race lists
+
+- Show published course thumbnails and kilometres for visible past, current and
+  upcoming races, with full elevation images in the details view. GC entries
+  identify the stage represented by the profile and distance.
+- Reuse live vector profiles; accept bounded PCS PNG/JPEG images as a fallback.
+  Fetch only visible rows through the shared worker and keep a bounded cache.
+- Remove the calendar search-summary line and count-to-settings shortcut.
+  The saved count remains in Settings.
+
 ## 0.9.1 — compact lists and precise warnings
 
 - Reduce race-row height and padding; reclaim unused mini-profile space for names.

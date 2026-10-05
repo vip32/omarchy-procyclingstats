@@ -66,7 +66,7 @@ function updateIssues(previous, path, result, cached, label, now) {
     cached = cached || {}
     update("", result.state, result.error, cached.fetchedAt, path ? label : "Races")
     if (!path && result.metadataState) update("/metadata", result.metadataState, result.metadataError, cached.metadataFetchedAt, "Race categories and levels")
-    if (path && result.state === "ready") {
+    if (path && path.indexOf("course:")!==0 && result.state === "ready") {
         update("/events", result.eventsState, result.eventsError, cached.eventsFetchedAt, "Race events · " + label)
         update("/profile", result.profileState, result.profileError, cached.profileFetchedAt, "Course profile · " + label)
         // A finished results response may omit resultsState on success.
@@ -76,7 +76,7 @@ function updateIssues(previous, path, result, cached, label, now) {
     if (!path && ["ready", "empty"].indexOf(result.state) >= 0) {
         var paths = (result.retainedRaces || result.races || []).map(function(r) {return r.path})
         Object.keys(issues).forEach(function(id) {
-            if (issues[id].path && issues[id].path.indexOf("day:") !== 0 && issues[id].path.indexOf("archive:") !== 0 && paths.indexOf(issues[id].path) < 0) delete issues[id]
+            if (issues[id].path && issues[id].path.indexOf("day:") !== 0 && issues[id].path.indexOf("archive:") !== 0 && issues[id].path.indexOf("course:") !== 0 && paths.indexOf(issues[id].path) < 0) delete issues[id]
         })
     }
     return issues
@@ -84,7 +84,7 @@ function updateIssues(previous, path, result, cached, label, now) {
 
 function warning(issues, now, nextAllowed, loading) {
     var list = Object.keys(issues || {}).map(function(k) {
-        return Object.assign({},issues[k],{component:k.endsWith("/profile") ? "profile" : k.endsWith("/events") ? "events" : k.endsWith("/results") ? "results" : k.endsWith("/metadata") ? "metadata" : "primary"})
+        return Object.assign({},issues[k],{component:k.indexOf("course:")===0 || k.endsWith("/profile") ? "profile" : k.endsWith("/events") ? "events" : k.endsWith("/results") ? "results" : k.endsWith("/metadata") ? "metadata" : "primary"})
     }).sort(function(a,b) {return (b.component==="primary")-(a.component==="primary") || b.failedAt-a.failedAt})
     if (!list.length) return {visible:false, title:"", text:""}
     var issue = list[0]
@@ -182,4 +182,21 @@ function matchesRace(race, options) {
     if (category ? !s[category.key] : cats.some(function(c){return !s[c.key]})) return false
     var minimum=raceLevels().indexOf(s.minimumRaceLevel)
     return !minimum || raceLevel(meta.level)>=minimum
+}
+
+function courseSnapshot(value) {
+    var out={state:value.state,fetchedAt:value.fetchedAt || ""}
+    ;["distance","profile","profileImage","profileImageWidth","profileImageHeight","profileLabel","stagePath","profileState","profileError","profileFetchedAt"].forEach(function(key){if(value[key]!==undefined)out[key]=value[key]})
+    return out
+}
+
+function withCourse(detail,course) {
+    var result=Object.assign({},detail)
+    if(result.distance===null || result.distance===undefined)result.distance=course.distance
+    if(!(result.profile || []).length && !result.profileImage) {
+        ;["profile","profileImage","profileImageWidth","profileImageHeight","profileState","profileError","profileFetchedAt"].forEach(function(key){if(course[key]!==undefined)result[key]=course[key]})
+    }
+    if(!result.profileLabel)result.profileLabel=course.profileLabel || ""
+    if(!result.stagePath)result.stagePath=course.stagePath || ""
+    return result
 }

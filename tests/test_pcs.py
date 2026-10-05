@@ -1,3 +1,5 @@
+import base64
+import struct
 import importlib.util
 import io
 import json
@@ -77,6 +79,57 @@ class Parsing(unittest.TestCase):
         self.assertEqual(result['classifications'][1]['rows'][0]['time'],'3:20:00')
         self.assertEqual(result['distance'],170.2)
         self.assertEqual(result['avgSpeed'],44.5)
+    def test_profile_image_paths_are_confined_to_pcs_images(self):
+        self.assertEqual(pcs.image_path('images/profiles/ab/cd/demo-2026-result-profile.png'),'images/profiles/ab/cd/demo-2026-result-profile.png')
+        for value in ['https://evil.invalid/images/profiles/a.png','images/profiles/a.svg','images/profiles/a.png?token=x','images/profiles/../secret.png','file:///tmp/a.png']:
+            with self.subTest(value=value),self.assertRaises(pcs.SourceError):pcs.image_path(value)
+    def test_course_uses_race_specific_image_and_distance(self):
+        page=race_info_page()+'<img src="images/profiles/aa/bb/other-2026-result-profile.png"><img src="images/profiles/aa/bb/demo-2026-result-profile.png">'
+        png=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=')
+        with patch.object(pcs,'fetch',return_value=page),patch.object(pcs,'fetch_bytes',return_value=png) as fetch:
+            result=pcs.load_course('race/demo/2026/result')
+        self.assertEqual(result['distance'],160)
+        self.assertEqual(result['profileState'],'ready')
+        self.assertTrue(result['profileImage'].startswith('data:image/png;base64,'))
+        self.assertEqual(fetch.call_args.args,('images/profiles/aa/bb/demo-2026-result-profile.png',pcs.MAX_IMAGE_BYTES,'image/png,image/jpeg','race/demo/2026/result'))
+    def test_image_rejection_keeps_distance_and_has_explicit_failure(self):
+        page=race_info_page()+'<img src="images/profiles/aa/bb/demo-2026-result-profile.png">'
+        with patch.object(pcs,'fetch',return_value=page),patch.object(pcs,'fetch_bytes',side_effect=pcs.SourceError('blocked','Rejected')):
+            result=pcs.load_course('race/demo/2026/result')
+        self.assertEqual(result['state'],'ready')
+        self.assertEqual(result['distance'],160)
+        self.assertEqual(result['profileState'],'blocked')
+        self.assertNotIn('profileImage',result)
+    def test_vector_course_needs_no_image_request(self):
+        with patch.object(pcs,'fetch',return_value=race_info_page()+live()),patch.object(pcs,'fetch_bytes') as fetch:
+            result=pcs.load_course('race/demo/2026/result')
+        fetch.assert_not_called()
+        self.assertGreater(len(result['profile']),1)
+    def test_image_types_dimensions_and_truncation_are_bounded(self):
+        png=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=')
+        self.assertEqual(pcs.image_dimensions(png),('image/png',1,1))
+        jpeg=b'\xff\xd8\xff\xc0'+struct.pack('>HBHH',17,8,300,600)+bytes(10)+b'\xff\xd9'
+        self.assertEqual(pcs.image_dimensions(jpeg),('image/jpeg',600,300))
+        for data in [png[:24],jpeg[:-2],b'<svg/>',b'<html>Denied</html>',png[:16]+struct.pack('>II',4097,1)+png[24:]]:
+            with self.subTest(data=data[:20]),self.assertRaises(pcs.SourceError):pcs.image_dimensions(data)
+    def test_image_request_uses_actual_parent_page_referer_and_byte_limit(self):
+        with patch.object(pcs.urllib.request,'build_opener') as op:
+            op.return_value.open.return_value.__enter__.return_value=io.BytesIO(b'12345')
+            self.assertEqual(pcs.fetch_bytes('images/profiles/a.png',5,'image/png','race/demo/2026/result'),b'12345')
+            request=op.return_value.open.call_args.args[0]
+            self.assertEqual(request.get_header('Referer'),pcs.BASE+'race/demo/2026/result')
+            self.assertEqual(request.get_header('Accept'),'image/png')
+    def test_missing_course_image_is_unavailable_not_connection_failure(self):
+        with patch.object(pcs,'fetch',return_value=race_info_page()):result=pcs.load_course('race/demo/2026/result')
+        self.assertEqual(result['profileState'],'unavailable')
+        self.assertEqual(result['distance'],160)
+    def test_course_offline_mode_never_fetches_image(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w',suffix='.html') as source:
+            source.write(race_info_page()+'<img src="images/profiles/aa/bb/demo-2026-result-profile.png">');source.flush()
+            result=json.loads(subprocess.check_output([sys.executable,str(ROOT/'bin/pcs.py'),'course','--race','race/demo/2026/result','--html',source.name],text=True))
+        self.assertTrue(result['savedPage'])
+        self.assertNotIn('profileImage',result)
     def test_overview_deduplicates_live_stage_and_eta(self):
         races=pcs.parse_overview(HOME)['races']
         self.assertEqual(len(races),2)
@@ -144,6 +197,10 @@ class Parsing(unittest.TestCase):
                 op.return_value.open.side_effect=pcs.urllib.error.HTTPError(pcs.BASE,code,'',{},None)
                 with self.assertRaises(pcs.SourceError) as cm: pcs.fetch('')
                 self.assertEqual(cm.exception.state,state)
+    def test_expired_total_budget_prevents_followup_requests(self):
+        with patch.object(pcs,'REQUEST_DEADLINE',0),patch.object(pcs.urllib.request,'build_opener') as opener:
+            with self.assertRaises(pcs.SourceError):pcs.fetch_bytes('images/profiles/demo.png')
+            opener.assert_not_called()
     def test_deadline(self):
         with self.assertRaises(pcs.SourceError) as cm: pcs.deadline()
         self.assertEqual(cm.exception.state,'offline')

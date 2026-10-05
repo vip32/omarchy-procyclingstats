@@ -240,3 +240,14 @@ test('a recent optional error cannot obscure a primary connection failure', () =
     assert.equal(warning.title,'Live updates unavailable');
     assert.match(warning.text,/Could not connect/);
 });
+
+test('course metadata fills missing fields without replacing live progress or vectors', () => {
+    const merged=model.withCourse({kmDone:42,distance:180,profile:[[0,10],[100,90]]},{distance:170,profileImage:'data:image/png;base64,x',profileLabel:'Stage 8'});
+    assert.equal(merged.distance,180);assert.equal(merged.kmDone,42);assert.equal(merged.profileImage,undefined);assert.equal(merged.profileLabel,'Stage 8');
+    const empty=model.withCourse({profile:[]},{distance:170,profileImage:'image',profileImageWidth:600});
+    assert.equal(empty.profileImage,'image');assert.equal(empty.distance,170);
+});
+test('course snapshots exclude classification and event payloads', () => {
+    const snapshot=model.courseSnapshot({state:'ready',distance:170,events:['old'],classifications:['large'],profileImage:'image'});
+    assert.equal(snapshot.distance,170);assert.equal(snapshot.events,undefined);assert.equal(snapshot.classifications,undefined);
+});
