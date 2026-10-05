@@ -1,5 +1,15 @@
 # Validation
 
+## 0.9.1 fixes — 2026-10-05
+
+- Reproduced HTTP 500 at Langkawi `/gc/live`, while its stage endpoint responds.
+  Updated adapter returns 108 GC rows with optional profile/events marked
+  unavailable, without an HTTP 500 warning.
+- `PCS_REQUIRE_QT=1 tests/run`: 117 behavioral tests (61 Python, 35 JavaScript,
+  21 Qt service cases), native manifest validation and QML parsing.
+- Added checks for explicit same-race stage routing, absent/foreign links,
+  optional-warning titles, shared cooldown and primary-failure priority.
+
 ## 0.9.0 calendar update — 2026-10-05
 
 - `PCS_REQUIRE_QT=1 tests/run`: 111 behavioral tests (58 Python, 32 JavaScript,

@@ -83,8 +83,9 @@ function updateIssues(previous, path, result, cached, label, now) {
 }
 
 function warning(issues, now, nextAllowed, loading) {
-    var list = Object.keys(issues || {}).map(function(k) {return issues[k]})
-        .sort(function(a,b) {return b.failedAt - a.failedAt})
+    var list = Object.keys(issues || {}).map(function(k) {
+        return Object.assign({},issues[k],{component:k.endsWith("/profile") ? "profile" : k.endsWith("/events") ? "events" : k.endsWith("/results") ? "results" : k.endsWith("/metadata") ? "metadata" : "primary"})
+    }).sort(function(a,b) {return (b.component==="primary")-(a.component==="primary") || b.failedAt-a.failedAt})
     if (!list.length) return {visible:false, title:"", text:""}
     var issue = list[0]
     var reason = ({blocked:"PCS rejected automated access.", "rate-limited":"PCS is limiting requests.",
@@ -93,8 +94,12 @@ function warning(issues, now, nextAllowed, loading) {
     var age = Number.isFinite(stamp) ? "Last successful update " + Math.max(0,Math.floor((now-stamp)/60000)) + "m ago." : "No successful update yet."
     var retry = nextAllowed > now ? "Retrying in about " + Math.ceil((nextAllowed-now)/60000) + "m."
         : loading ? "Reconnecting…" : "Retrying automatically."
-    return {visible:true, title:"Live updates unavailable", text:reason + " Previously fetched data may be out of date.\n"
-        + issue.scope + (list.length > 1 ? " (and " + (list.length-1) + " more)" : "") + " · " + age + " " + retry}
+    var titles={profile:"Course profile unavailable",events:"Race events unavailable",results:"Results unavailable",metadata:"Race metadata unavailable"}
+    var title=nextAllowed>now ? "PCS updates paused" : titles[issue.component] || (issue.path ? "Race updates unavailable" : "Live updates unavailable")
+    if(list.some(function(other){return other.component!==issue.component}) && issue.component!=="primary" && nextAllowed<=now)title="Some PCS data unavailable"
+    var detail=issue.error || reason
+    return {visible:true,title:title,text:issue.scope + (list.length>1 ? " (and "+(list.length-1)+" more)" : "") + " · " + detail + "\n"
+        + (Number.isFinite(stamp) || issue.component==="primary" ? age+" " : "") + retry}
 }
 
 function eventKey(event) { return JSON.stringify([event.marker || "", event.text || ""]) }

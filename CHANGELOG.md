@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.1 — compact lists and precise warnings
+
+- Reduce race-row height and padding; reclaim unused mini-profile space for names.
+- Load GC course profiles and events from the published stage link, avoiding
+  invalid aggregate-GC LiveStats endpoints.
+- Identify optional-data failures separately from a live connection failure,
+  show the underlying error, and retain visible shared cooldowns.
+
 ## 0.9.0 — race calendar
 
 - Browse recent and upcoming races beyond yesterday/tomorrow, with existing

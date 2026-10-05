@@ -403,9 +403,22 @@ def parse_results(html,path):
     doc=checked_html(html)
     navigation=doc.first(cls='resultTabs') or doc.first(cls='unitTabs')
     tabs={}
+    stage_path=""
     if navigation:
         for a in navigation.nodes('a'):
             label=txt(a).upper()
+            if path.endswith('/gc') and label=='STAGE':
+                try:
+                    href=a.attrs.get('href','')
+                    # PCS sometimes points the Stage tab at a secondary award
+                    # for that same stage. Its explicit stage prefix still
+                    # identifies the course; discard only a plain-text suffix.
+                    linked_stage=re.fullmatch(r'(?:https://www\.procyclingstats\.com/)?(race/[a-z0-9-]+-\d{4}-stage-\d+[a-z]?)-[a-z][a-z-]*',href)
+                    candidate=race_path(linked_stage[1] if linked_stage else href)
+                    if candidate.rsplit('/',1)[0]==path.rsplit('/',1)[0] and re.fullmatch(r'stage-\d+[a-z]?',candidate.rsplit('/',1)[1]):
+                        stage_path=candidate
+                except SourceError:
+                    pass
             if label in ('GC','STAGE','RESULT','RESULTS'):
                 tabs[a.attrs.get('data-id',a.attrs.get('data-navid',''))]='gc' if label=='GC' else 'result'
     containers={}
@@ -434,7 +447,7 @@ def parse_results(html,path):
     points=profile(doc)
     return dict(state='ready',path=path,name=txt(doc.first('title')),status='finished',
                 classifications=classifications,gcAvailable=any(c['kind']=='gc' for c in classifications),
-                stageRace=stage,groups=[],profile=points,keypoints=[],date=info.get('date',''),
+                stageRace=stage,stagePath=stage_path,groups=[],profile=points,keypoints=[],date=info.get('date',''),
                 distance=metric(info.get('distance','')),elapsed=elapsed,
                 avgSpeed=metric(info.get('avg. speed winner',''),150),
                 profileState='ready' if points else 'unavailable',
@@ -488,11 +501,18 @@ def load_race(path,finished=False,upcoming=False):
     if upcoming:
         return parse_preview(fetch(path),path)
     if finished:
-        result=attach_finished_profile(parse_results(fetch(path),path),path)
+        result=parse_results(fetch(path),path)
+        # GC is an aggregate, not a course. Only follow the same race's explicit
+        # Stage tab; never guess a /gc/live endpoint or another race's stage.
+        course_path=result.get('stagePath') if path.endswith('/gc') else path
+        if not course_path:
+            result.update(eventsState='unavailable',events=[])
+            return result
+        result=attach_finished_profile(result,course_path)
         if result['profileState'] in ('blocked','rate-limited'):
             result.update(eventsState=result['profileState'],eventsError='Event refresh deferred after PCS rejected the profile request.')
             return result
-        return attach_events(result,path)
+        return attach_events(result,course_path)
     result=parse_race(fetch(path+'/live'),path)
     if result['status']=='finished':
         # LiveStats clocks can keep advancing after the finish. Never label that

@@ -206,6 +206,29 @@ class Classifications(unittest.TestCase):
         d=pcs.parse_results(html,'race/demo/2026/stage-6')
         self.assertEqual(d['elapsed'],'')
         self.assertTrue(d['gcAvailable'])
+    def test_gc_uses_explicit_stage_for_profile_and_events(self):
+        page=results_page().replace('data-id="s">STAGE','data-id="s" href="race/demo-2026-stage-6-most-combative-rider">STAGE')
+        with patch.object(pcs,'fetch',side_effect=[page,live(),'<ul class="timeline3"></ul>']) as fetch:
+            result=pcs.load_race('race/demo/2026/gc',True)
+        self.assertEqual([c.args[0] for c in fetch.call_args_list],['race/demo/2026/gc','race/demo/2026/stage-6/live','race/demo/2026/stage-6/live/race-events'])
+        self.assertEqual(result['stagePath'],'race/demo/2026/stage-6')
+        self.assertEqual(result['path'],'race/demo/2026/gc')
+        self.assertEqual(result['profileState'],'ready')
+        self.assertEqual(result['elapsed'],'3:20:00')
+    def test_gc_without_stage_does_not_guess_live_endpoint(self):
+        with patch.object(pcs,'fetch',return_value=results_page()) as fetch:
+            result=pcs.load_race('race/demo/2026/gc',True)
+        self.assertEqual(fetch.call_count,1)
+        self.assertEqual(result['profileState'],'unavailable')
+        self.assertEqual(result['eventsState'],'unavailable')
+        self.assertTrue(result['gcAvailable'])
+    def test_gc_stage_link_must_belong_to_same_race_and_year(self):
+        for href in ['https://evil.invalid/race/demo-2026-stage-6','race/other-2026-stage-6','race/demo-2025-stage-6','race/demo-2026-result']:
+            page=results_page().replace('data-id="s">STAGE','data-id="s" href="'+href+'">STAGE')
+            with self.subTest(href=href),patch.object(pcs,'fetch',return_value=page) as fetch:
+                result=pcs.load_race('race/demo/2026/gc',True)
+                self.assertEqual(fetch.call_count,1)
+                self.assertEqual(result['stagePath'],'')
     def test_profile_on_results_page_needs_no_extra_fetch(self):
         page=results_page()+live()
         with patch.object(pcs,'fetch',side_effect=[page,'<ul class="timeline3"></ul>']) as fetch:

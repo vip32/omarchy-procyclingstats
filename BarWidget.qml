@@ -175,7 +175,8 @@ Panel {
         })
     }
     function openSource() {
-        var path = selected ? selected.path + (expanded && detailView === "events" ? "/live/race-events" : !preview && (selected.status === "live" || selected.status === "upcoming") ? "/live" : "") : ""
+        var sourcePath=selected ? (expanded && detailView==="events" && detail.stagePath ? detail.stagePath : selected.path) : ""
+        var path = selected ? sourcePath + (expanded && detailView === "events" ? "/live/race-events" : !preview && (selected.status === "live" || selected.status === "upcoming") ? "/live" : "") : ""
         openPcsPath(path)
     }
     function openPcsPath(path) {
@@ -413,7 +414,7 @@ Panel {
                     }
                     Column {
                         visible:!root.expanded || !root.selected
-                        width:parent.width;spacing:Style.space(7)
+                        width:parent.width;spacing:Style.space(4)
                         Row {
                             visible:!root.archive
                             width:parent.width;spacing:Style.space(6)
@@ -441,21 +442,23 @@ Panel {
                                 id:raceRow
                                 required property var modelData
                                 required property int index
-                                width:parent.width;height:Style.space(74)
+                                width:parent.width;height:Math.max(Style.space(56),raceLabels.implicitHeight+Style.space(12))
                                 bordered:true;foreground:root.foreground
                                 hasCursor:root.cursorIndex===index
                                 MouseArea {anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.PointingHandCursor;onEntered:root.cursorIndex=raceRow.index;onClicked:root.select(raceRow.index,true)}
                                 Column {
-                                    anchors.left:parent.left;anchors.leftMargin:Style.space(10)
-                                    anchors.right:miniProfile.left;anchors.rightMargin:Style.space(10)
-                                    anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(4)
+                                    id:raceLabels
+                                    anchors.left:parent.left;anchors.leftMargin:Style.space(8)
+                                    anchors.right:miniProfile.left;anchors.rightMargin:Style.space(8)
+                                    anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(2)
                                     RaceText {width:parent.width;text:raceRow.modelData.name;font.bold:true;color:root.foreground}
                                     RaceText {width:parent.width;text:[root.archive ? raceRow.modelData.date : root.titleStatus(raceRow.modelData.status),raceRow.modelData.category,raceRow.modelData.eta ? "ETA "+raceRow.modelData.eta : ""].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:raceRow.modelData.status==="live" ? Color.accent : root.dim}
                                 }
                                 Column {
-                                    id:miniProfile;anchors.right:parent.right;anchors.rightMargin:Style.space(10)
-                                    anchors.verticalCenter:parent.verticalCenter;width:Style.space(104)
-                                    Profile {width:parent.width;height:Style.space(27);points:raceRow.modelData.profile || [];lineColor:Color.accent}
+                                    id:miniProfile;anchors.right:parent.right;anchors.rightMargin:Style.space(8)
+                                    readonly property bool hasProfile:(raceRow.modelData.profile || []).length>1
+                                    anchors.verticalCenter:parent.verticalCenter;width:Style.space(hasProfile || raceRow.modelData.toGo ? 84 : 24)
+                                    Profile {visible:miniProfile.hasProfile;width:parent.width;height:Style.space(20);points:raceRow.modelData.profile || [];lineColor:Color.accent}
                                     Row {
                                         width:parent.width;height:Style.space(24);spacing:Style.space(4)
                                         RaceText {width:parent.width-raceLink.width-parent.spacing;anchors.verticalCenter:parent.verticalCenter;text:raceRow.modelData.toGo || "";horizontalAlignment:Text.AlignRight;font.pixelSize:Style.font.caption;color:root.dim}

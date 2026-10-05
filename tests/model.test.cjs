@@ -219,3 +219,24 @@ test('a partially successful refresh keeps new pages when the failed page is ret
     assert.deepEqual(plain(recovered.races).map(r=>r.path),['new']);
     assert.deepEqual(plain(recovered.dates),['2026-09-26','2026-09-27']);
 });
+
+test('an isolated profile error does not claim live updates are down', () => {
+    const issues=model.updateIssues({},path,{state:'ready',profileState:'error',profileError:'PCS returned HTTP 500.'},cached,race.name,now);
+    const warning=model.warning(issues,now,0,false);
+    assert.equal(warning.title,'Course profile unavailable');
+    assert.match(warning.text,/HTTP 500/);
+    assert.doesNotMatch(warning.text,/Previously fetched data may be out of date|No successful update yet/);
+});
+test('profile rejection still identifies the shared cooldown', () => {
+    const issues=model.updateIssues({},path,{state:'ready',profileState:'blocked',profileError:'PCS rejected access.'},cached,race.name,now);
+    const warning=model.warning(issues,now,now+900000,false);
+    assert.equal(warning.title,'PCS updates paused');
+    assert.match(warning.text,/15m/);
+});
+test('a recent optional error cannot obscure a primary connection failure', () => {
+    let issues=model.updateIssues({},'',{state:'offline',error:'Could not connect.'},cached,'',now);
+    issues=model.updateIssues(issues,path,{state:'ready',profileState:'error',profileError:'PCS returned HTTP 500.'},cached,race.name,now+1);
+    const warning=model.warning(issues,now+1,0,false);
+    assert.equal(warning.title,'Live updates unavailable');
+    assert.match(warning.text,/Could not connect/);
+});

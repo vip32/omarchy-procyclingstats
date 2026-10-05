@@ -23,6 +23,8 @@ output to 180 KB, and each helper invocation to an 18-second total deadline.
 Finished results read distance and winner average from race information and the
 winner time from that race or stage’s result table. If the results page lacks
 profile geometry, one bounded `/live` request retrieves it without using its clock.
+For an aggregate GC page, optional profile/events requests follow its explicit
+Stage tab within the same race/year; no `/gc/live` endpoint is guessed.
 Image-only profiles still require opening PCS. A rejected profile request retains
 results and triggers the same shared cooldown and warning as other update failures.
 
@@ -40,6 +42,8 @@ loading user-site modules. Remote HTML is parsed into plain text, never executed
 
 A rejected or rate-limited request produces a visible warning and a shared
 15-minute cooldown. Failed primary requests retain the previous snapshot.
+Optional profile/event failures name the affected data instead of claiming all
+live updates are unavailable. Missing optional coverage is not a connection error.
 Event and metadata failures retain their own last-success timestamps and warnings;
 an unrelated successful request cannot clear them. Optional missing coverage is
 shown in the relevant view. These controls are not a guarantee of uninterrupted data.
