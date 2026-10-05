@@ -341,7 +341,8 @@ def course_fields(doc,path):
     points=profile(doc)
     return dict(profile=points,profileImagePath=image,stagePath=stage,
         profileLabel=stage.rsplit('/',1)[-1].replace('stage-','Stage ') if stage else '',
-        profileState='ready' if points else 'pending' if image else 'unavailable')
+        profileState='ready' if points else 'pending' if image else 'unavailable',
+        profileFetchedAt=dt.datetime.now(dt.timezone.utc).isoformat() if points else '')
 
 def image_dimensions(data):
     if data.startswith(b'\x89PNG\r\n\x1a\n') and len(data)>=45 and data[8:16]==b'\x00\x00\x00\x0dIHDR' and data.endswith(b'\x00\x00\x00\x00IEND\xaeB`\x82'):
@@ -609,9 +610,14 @@ def load_race(path,finished=False,upcoming=False):
             if results['profile']: result['profile']=results['profile']
             result['profileState']='ready' if result['profile'] else 'unavailable'
             result['profileFetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat() if result['profile'] else ''
+            result.update({k:results[k] for k in ('profileImagePath','profileLabel','stagePath')})
+            result=attach_image(result,path)
         except SourceError as e:
             result['resultsError']=e.message
             result['resultsState']=e.state
+    if result.get('profileState') in ('blocked','rate-limited'):
+        result.update(eventsState=result['profileState'],eventsError='Event refresh deferred after PCS rejected the profile request.')
+        return result
     return attach_events(result,path)
 
 class SafeRedirect(urllib.request.HTTPRedirectHandler):

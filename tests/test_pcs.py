@@ -313,6 +313,15 @@ class Classifications(unittest.TestCase):
             d=pcs.load_race('race/demo/2026/stage-6',True)
         self.assertEqual(d['profileState'],'unavailable')
         self.assertEqual(d['eventsState'],'empty')
+    def test_finishing_live_race_can_switch_to_published_profile_image(self):
+        page=results_page()+'<img src="images/profiles/aa/bb/demo-2026-stage-6-profile.png">'
+        ended=live(dict(DATA,race_status='finished')).replace('clip-path: polygon','ignored: polygon')
+        png=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=')
+        with patch.object(pcs,'fetch',side_effect=[ended,page,'<ul class="timeline3"></ul>']),patch.object(pcs,'fetch_bytes',return_value=png):
+            result=pcs.load_race('race/demo/2026/stage-6')
+        self.assertEqual(result['profileState'],'ready')
+        self.assertTrue(result['profileImage'])
+        self.assertEqual(result['elapsed'],'3:20:00')
     def test_results_failure_preserves_finish_snapshot(self):
         with patch.object(pcs,'fetch',side_effect=[live(dict(DATA,race_status='finished')),pcs.SourceError('blocked','Blocked'),pcs.SourceError('blocked','Blocked')]):
             d=pcs.load_race('race/demo/2026/stage-6')

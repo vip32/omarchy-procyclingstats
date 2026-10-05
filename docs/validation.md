@@ -1,5 +1,21 @@
 # Validation
 
+## 0.10.0 elevation profiles — 2026-10-05
+
+- `PCS_REQUIRE_QT=1 tests/run`: 134 behavioral tests (71 Python, 37 JavaScript,
+  26 Qt service cases), manifest validation and QML parsing.
+- PNG/JPEG fixtures cover origin/path restrictions, image signatures and size,
+  pixel bounds, parent-page Referer, offline mode, rejection, vector preference
+  and transition from live to finished image coverage. Service checks cover
+  visible-only queueing, cancellation, bounded caching, recovery and cooldowns.
+- Native yesterday list loaded both real profiles: Langkawi Stage 8 (188.3 km)
+  and the European Championships (196.3 km). Langkawi details retained 108 GC rows
+  alongside its full image and stage label. Upcoming men’s/women’s Tre Valli
+  Varesine loaded profiles and distances of 196.1/133.9 km.
+- Fictional daily/calendar thumbnails and full image fallback captured and
+  visually inspected. Calendar search-summary/count shortcut removed. Saved
+  count, filters, notifications and previous dashboard view restored.
+
 ## 0.9.1 fixes — 2026-10-05
 
 - Reproduced HTTP 500 at Langkawi `/gc/live`, while its stage endpoint responds.

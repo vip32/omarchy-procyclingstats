@@ -83,3 +83,7 @@ Do not leave demo mode enabled when normal race updates are expected.
 
 Calendar fixture captures: `demo/run --calendar recent --compact --output screenshots/calendar.png`
 and `demo/run --calendar upcoming --compact --output /tmp/pcs-upcoming.png`.
+
+Rebuild the fictional raster-profile fixture with `python3 demo/build-profile.py`.
+`python3 -I bin/pcs.py course --race race/example/2026/result` reads course metadata
+and a bounded inline profile image when published.

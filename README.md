@@ -44,7 +44,7 @@ All screenshots show the actual plugin using committed fictional fixtures.
 | --- | --- |
 | ![General classification](screenshots/gc.png) | ![Upcoming race information](screenshots/tomorrow-preview.png) |
 
-[Race calendar](screenshots/calendar.png) · [Detached window](screenshots/window.png) · [Race events](screenshots/events.png) · [Refresh and notifications](screenshots/refresh-settings.png)
+[Race calendar](screenshots/calendar.png) · [Full course profile](screenshots/finished-profile.png) · [Detached window](screenshots/window.png) · [Race events](screenshots/events.png) · [Refresh and notifications](screenshots/refresh-settings.png)
 · [Connection warning](screenshots/warning.png) · [Tomorrow’s list](screenshots/tomorrow-list.png)
 
 ## Requirements
@@ -137,8 +137,8 @@ See [filters, refresh intervals and notifications](docs/settings.md).
 ## Data limitations
 
 PCS coverage varies by race. Missing metrics show an em dash; unavailable riders,
-GC, events or profiles are labelled explicitly. Image-only profiles may require
-opening PCS. Start-time text is shown as published, including its timezone; ETA
+GC, events or profiles are labelled explicitly. Published PNG/JPEG profiles are supported as images; unsupported formats or
+missing coverage still require opening PCS. Start-time text is shown as published, including its timezone; ETA
 means expected finish. Race position is never extrapolated. Finished-race time
 is the published winner’s time for that race or stage, not accumulated GC time
 or the live clock. Average speed is the published winner’s average.
