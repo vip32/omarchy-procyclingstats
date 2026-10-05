@@ -7,6 +7,10 @@
   unavailable, without an HTTP 500 warning.
 - `PCS_REQUIRE_QT=1 tests/run`: 117 behavioral tests (61 Python, 35 JavaScript,
   21 Qt service cases), native manifest validation and QML parsing.
+- Native panel verified Langkawi with 108 GC rows and no connection warning;
+  compact daily/calendar rows and the shared-cooldown banner were captured and
+  visually checked. Existing settings (including the saved count of 10) and
+  the prior dashboard view were restored.
 - Added checks for explicit same-race stage routing, absent/foreign links,
   optional-warning titles, shared cooldown and primary-failure priority.
 
