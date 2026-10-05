@@ -280,3 +280,10 @@ test('traced outlines have a bounded shared cache, including failed traces', () 
     for(let i=0;i<40;i++)trace.remember('image'+i,[[0,1],[100,2]]);
     assert.equal(trace.cached('old'),null);assert.equal(trace.cached('image39').length,2);
 });
+
+
+test('calendar tab preference restores Upcoming and falls back to Recent', () => {
+    assert.equal(model.settings({calendarTab:'upcoming'}).calendarTab,'upcoming');
+    for (const value of [undefined,null,'recent','invalid',42])
+        assert.equal(model.settings({calendarTab:value}).calendarTab,'recent');
+});

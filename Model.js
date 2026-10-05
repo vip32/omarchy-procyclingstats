@@ -7,6 +7,7 @@ function integer(value, fallback, min, max) {
 function settings(value) {
     value = value || {}
     var result = {
+        calendarTab: value.calendarTab === "upcoming" ? "upcoming" : "recent",
         archiveRaceCount: integer(value.archiveRaceCount, 25, 10, 100),
         refreshIntervalSec: integer(value.refreshIntervalSec, 60, 60, 900),
         overviewIntervalSec: integer(value.overviewIntervalSec, 300, 300, 3600),

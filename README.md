@@ -97,7 +97,8 @@ There are no stored credentials or background services outside the shell.
 
 ## Use
 
-Click the bike, choose a date, then select a race. Each row has a ↗ icon that
+Click the bike, choose a date, then select a race. The calendar remembers your
+last Recent or Upcoming tab, including after a shell restart. Each row has a ↗ icon that
 opens that race or stage’s page directly on ProCyclingStats. Click a group to expand its
 riders and bib numbers. Finished stages open on GC; switch to stage results when
 needed. The header’s flag always returns to the race list; Live returns to today.

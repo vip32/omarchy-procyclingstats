@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.3 — remember the calendar tab
+
+- Remember Recent or Upcoming across navigation and shell restarts. The calendar
+  button reopens the last selected tab; fictional demos do not change it.
+
 ## 0.10.2 — persistent course profiles
 
 - Save successful course profiles and distances in an XDG disk cache for seven

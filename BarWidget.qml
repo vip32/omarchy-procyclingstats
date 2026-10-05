@@ -18,7 +18,7 @@ Panel {
     readonly property var todayRaces: service ? service.races.filter(function(r){return Model.matchesRace(r,preferences)}) : []
     property int dayOffset: 0
     readonly property bool archive: filter==="Calendar"
-    property string archiveMode: "recent"
+    property string archiveMode: preferences.calendarTab
     property int archiveCount: preferences.archiveRaceCount
     property var archiveSelection: null
     readonly property var archiveData: service ? service.archives[archiveMode] || ({state:"loading",races:[]}) : ({})
@@ -117,8 +117,10 @@ Panel {
         Qt.callLater(function(){scroller.contentY=0})
     }
     function showCalendar(mode) {
+        mode=mode || archiveMode
         if(service && archiveMode!==mode) service.stopArchive(archiveMode)
         archiveMode=mode==="upcoming" ? "upcoming" : "recent"
+        if(!demo)persistSettings({calendarTab:archiveMode})
         archiveCount=preferences.archiveRaceCount
         showFilter("Calendar")
         if(service) service.watchArchive(archiveMode,archiveCount,false)
@@ -203,6 +205,8 @@ Panel {
     }
     onServiceChanged: configure()
     onPreferencesChanged: {
+        if(service && archiveMode!==preferences.calendarTab)service.stopArchive(archiveMode)
+        archiveMode=preferences.calendarTab
         configure();archiveCount=preferences.archiveRaceCount;cursorIndex=0;expanded=false
         if(archive && dashboardVisible && service)service.watchArchive(archiveMode,archiveCount,false)
     }
@@ -443,7 +447,7 @@ Panel {
                             Button {id:previousDay;text:"‹";enabled:root.dayOffset>-1;tooltipText:"Previous day (Left)";Accessible.name:"Previous day";bordered:true;foreground:root.foreground;onClicked:root.showDay(root.dayOffset-1)}
                             Button {width:parent.width-previousDay.width-nextDay.width-calendarButton.width-Style.space(18);text:Model.dayLabel(root.now,root.dayOffset);tooltipText:"Return to today";Accessible.name:text;foreground:root.foreground;onClicked:root.showDay(0)}
                             Button {id:nextDay;text:"›";enabled:root.dayOffset<1;tooltipText:"Next day (Right)";Accessible.name:"Next day";bordered:true;foreground:root.foreground;onClicked:root.showDay(root.dayOffset+1)}
-                            Button {id:calendarButton;text:"\uf073";tooltipText:"Recent & upcoming races (3)";Accessible.name:"Race calendar";bordered:true;foreground:root.foreground;onClicked:root.showCalendar("recent")}
+                            Button {id:calendarButton;text:"\uf073";tooltipText:"Recent & upcoming races (3)";Accessible.name:"Race calendar";bordered:true;foreground:root.foreground;onClicked:root.showCalendar()}
                         }
                         Row {
                             visible:root.archive;width:parent.width;spacing:Style.space(6)
