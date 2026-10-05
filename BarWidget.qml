@@ -324,7 +324,7 @@ Panel {
             id:keys
             parent:root.detached ? windowMount : popupMount
             anchors.fill:parent
-            onMoveRequested:function(dx,dy){if(root.settingsOpen)settingsPage.move(dx,dy);else if(dx!==0 && !root.expanded){if(root.archive)root.showCalendar(dx>0 ? "upcoming" : "recent");else root.showDay(root.dayOffset+dx)};else if(dy!==0)root.select(root.cursorIndex+dy,root.expanded)}
+            onMoveRequested:function(dx,dy){if(root.settingsOpen)settingsPage.move(dx,dy);else if(dx!==0 && !root.expanded){if(root.archive)root.showCalendar(dx>0 ? "upcoming" : "recent");else root.showDay(root.dayOffset+dx)}else if(dy!==0)root.select(root.cursorIndex+dy,root.expanded)}
             onActivateRequested:{if(root.settingsOpen)settingsPage.activate();else root.select(root.cursorIndex,true)}
             onCloseRequested:{if(root.settingsOpen)root.settingsOpen=false;else if(root.expanded)root.expanded=false;else root.hideDashboard()}
             onTabRequested:function(direction){if(!root.detached)root.switchPanel(direction)}
