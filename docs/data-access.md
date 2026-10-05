@@ -11,7 +11,7 @@ sessions or attempt challenge bypass. The provider can block access or change it
 | HTTPS | Only the fixed PCS origin; redirects outside that HTTPS origin are rejected |
 | Browser launch | `/usr/bin/xdg-open` receives a validated PCS URL after a user action |
 | Notifications | `/usr/bin/omarchy notification send`, only when enabled; bounded, escaped remote text |
-| Settings write | The shell updates this widget’s entry in `~/.config/omarchy/shell.json` when the user changes settings |
+| Settings write | The shell updates this widget’s entry in `~/.config/omarchy/shell.json` when the user changes settings or selects a calendar tab |
 | Window focus | Wayland toplevel metadata locates the dashboard by title and activates it when the user opens it; Qt activation is the fallback |
 | Runtime state | Race snapshots, day lists and notification baselines live in memory and clear on restart |
 | Course cache write | Successful public profiles and distances only, under the XDG cache directory; seven-day retention, 100 entries / 32 MiB maximum |

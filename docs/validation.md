@@ -1,5 +1,16 @@
 # Validation
 
+## 0.10.3 calendar tab retention — 2026-10-05
+
+- `PCS_REQUIRE_QT=1 tests/run`: 165 behavioral tests (85 Python, 42 JavaScript,
+  38 Qt cases), plus the two profile cases at 150% scaling. Manifest validation
+  and QML parsing passed.
+- Native Recent and Upcoming selections survived navigation to Races and calendar
+  reopening, plus closing/reopening the dashboard. Upcoming survived a shell
+  restart. Fictional demo tab changes left the saved settings file unchanged.
+- Previous view and unrelated preferences restored; the calendar choice is stored
+  in the existing widget entry without an extra settings control.
+
 ## 0.10.2 persistent profiles — 2026-10-05
 
 - `PCS_REQUIRE_QT=1 tests/run`: 164 behavioral tests (85 Python, 41 JavaScript,
