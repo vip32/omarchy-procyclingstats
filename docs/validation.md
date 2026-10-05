@@ -1,5 +1,24 @@
 # Validation
 
+## 0.10.2 persistent profiles — 2026-10-05
+
+- `PCS_REQUIRE_QT=1 tests/run`: 164 behavioral tests (85 Python, 41 JavaScript,
+  38 Qt cases), plus the two profile cases repeated at 150% scaling. Manifest
+  validation and QML parsing passed.
+- Disk tests cover cross-process restoration, seven-day expiry without renewal
+  on reads, pruning and byte/count limits, corrupt/oversized/unrelated data,
+  image validation, atomic-write failure, symlinks and unavailable storage.
+  Production CLI tests verify network-free reads and offline-fixture isolation.
+- Service tests cover immediate restoration, normal refresh of older profiles,
+  network cooldown/warning retention, concurrent live updates, memory eviction,
+  list closure, malformed output and discarded completions after midnight.
+- Native shell restart restored Langkawi Stage 8 (188.3 km) and the European
+  Championships (196.3 km) from disk. The service reported two disk hits; both
+  cache files retained their pre-restart fetch timestamps, proving no profile
+  refetch was needed. Settings and the previous dashboard view were restored.
+- Portable advisory scan reported no findings; process and collected-output
+  boundaries were reviewed. Cache reads/writes stay in the bounded Python helper.
+
 ## 0.10.1 inline image profiles — 2026-10-05
 
 - `PCS_REQUIRE_QT=1 tests/run`: 142 behavioral tests (72 Python, 41 JavaScript,
