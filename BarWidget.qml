@@ -475,7 +475,7 @@ Panel {
                                     id:miniProfile;anchors.right:parent.right;anchors.rightMargin:Style.space(8)
                                     readonly property bool hasProfile:(raceRow.course.profile || []).length>1 || !!raceRow.course.profileImage
                                     anchors.verticalCenter:parent.verticalCenter;width:Style.space(hasProfile || raceRow.modelData.toGo ? 84 : 24)
-                                    Profile {visible:miniProfile.hasProfile;width:parent.width;height:Style.space(raceRow.course.profileImage && !(raceRow.course.profile || []).length ? 28 : 20);points:raceRow.course.profile || [];imageSource:raceRow.course.profileImage || "";lineColor:Color.accent}
+                                    Profile {id:rowProfile;visible:miniProfile.hasProfile;width:parent.width;height:Style.space(raceRow.course.profileImage && !rowProfile.hasCurve ? 28 : 20);points:raceRow.course.profile || [];imageSource:raceRow.course.profileImage || "";lineColor:Color.accent}
                                     Row {
                                         width:parent.width;height:Style.space(24);spacing:Style.space(4)
                                         RaceText {width:parent.width-raceLink.width-parent.spacing;anchors.verticalCenter:parent.verticalCenter;text:raceRow.modelData.toGo || "";horizontalAlignment:Text.AlignRight;font.pixelSize:Style.font.caption;color:root.dim}

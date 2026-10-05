@@ -137,7 +137,8 @@ See [filters, refresh intervals and notifications](docs/settings.md).
 ## Data limitations
 
 PCS coverage varies by race. Missing metrics show an em dash; unavailable riders,
-GC, events or profiles are labelled explicitly. Published PNG/JPEG profiles are supported as images; unsupported formats or
+GC, events or profiles are labelled explicitly. Published PNG/JPEG profiles use the same inline graph when their outline can
+be traced reliably, with the original image as a fallback; unsupported formats or
 missing coverage still require opening PCS. Start-time text is shown as published, including its timezone; ETA
 means expected finish. Race position is never extrapolated. Finished-race time
 is the published winner’s time for that race or stage, not accumulated GC time

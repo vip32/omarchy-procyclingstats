@@ -91,6 +91,7 @@ Item {
         if(Model.isFailure(value.state))next[path]=Object.assign({},prior,{state:value.state,error:value.error,profileError:value.error})
         else {
             var snapshot=Model.courseSnapshot(value)
+            if(snapshot.distance===null || snapshot.distance===undefined)snapshot.distance=prior.distance
             if(value.profileError) {
                 ;["profile","profileImage","profileImageWidth","profileImageHeight","profileFetchedAt"].forEach(function(k){if(prior[k])snapshot[k]=prior[k]})
             }

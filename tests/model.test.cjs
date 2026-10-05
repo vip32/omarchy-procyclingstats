@@ -251,3 +251,32 @@ test('course snapshots exclude classification and event payloads', () => {
     const snapshot=model.courseSnapshot({state:'ready',distance:170,events:['old'],classifications:['large'],profileImage:'image'});
     assert.equal(snapshot.distance,170);assert.equal(snapshot.events,undefined);assert.equal(snapshot.classifications,undefined);
 });
+
+const trace=vm.createContext({});
+vm.runInContext(fs.readFileSync(__dirname+'/../ProfileTrace.js','utf8').replace(/^\.pragma library\s*/,''),trace);
+function elevationPixels(gap=false) {
+    const w=120,h=60,pixels=new Uint8ClampedArray(w*h*4).fill(255);
+    for(let x=3;x<117;x++)for(let y=Math.round(15+20*Math.abs((x-60)/60));y<55;y++) {
+        if(gap && x>40 && x<62)continue;
+        const i=(y*w+x)*4;pixels[i]=142;pixels[i+1]=190;pixels[i+2]=45;
+    }
+    return pixels;
+}
+test('raster tracing follows the published green silhouette and normalizes its extent', () => {
+    const outline=trace.outline(elevationPixels(),120,60);
+    assert.ok(outline.length>40);assert.equal(outline[0][0],0);assert.equal(outline.at(-1)[0],100);
+    const peak=outline.reduce((a,b)=>a[1]<b[1]?a:b);
+    assert.ok(peak[0]>45 && peak[0]<55);assert.ok(outline[0][1]>peak[1]);
+});
+test('tracing rejects empty or unrelated image content and excessive pixel counts', () => {
+    assert.equal(trace.outline(new Uint8ClampedArray(120*60*4).fill(255),120,60).length,0);
+    assert.equal(trace.outline([],4096,2048).length,0);
+});
+test('tracing does not bridge a large missing section of the elevation image', () => {
+    assert.equal(trace.outline(elevationPixels(true),120,60).length,0);
+});
+test('traced outlines have a bounded shared cache, including failed traces', () => {
+    trace.remember('old',[]);assert.deepEqual(plain(trace.cached('old')),[]);
+    for(let i=0;i<40;i++)trace.remember('image'+i,[[0,1],[100,2]]);
+    assert.equal(trace.cached('old'),null);assert.equal(trace.cached('image39').length,2);
+});

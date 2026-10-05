@@ -28,7 +28,7 @@ Column {
         }
     }
     RaceText {width:parent.width;visible:!!root.detail.profileLabel;text:root.detail.profileLabel+" · elevation profile";color:root.dim;font.pixelSize:Style.font.caption}
-    Profile {width:parent.width;height:root.detail.profileImage && !(root.detail.profile || []).length ? Math.min(Style.space(220),width*(root.detail.profileImageHeight || 300)/(root.detail.profileImageWidth || 600)) : Style.space(58);imageSource:root.detail.profileImage || "";visible:root.hasProfile;points:root.detail.profile || [];foreground:root.foreground}
+    Profile {id:summaryProfile;width:parent.width;height:root.detail.profileImage && !summaryProfile.hasCurve ? Math.min(Style.space(220),width*(root.detail.profileImageHeight || 300)/(root.detail.profileImageWidth || 600)) : Style.space(58);imageSource:root.detail.profileImage || "";visible:root.hasProfile;points:root.detail.profile || [];foreground:root.foreground}
     RaceText {
         width:parent.width;visible:!root.hasProfile || !!root.detail.profileError
         text:root.hasProfile ? "Profile · previous data" : root.detail.state==="loading" || !root.detail.state ? "Loading profile…" : "Profile unavailable · open PCS with ↗"

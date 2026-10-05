@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.1 — consistent inline profiles
+
+- Draw the same theme-coloured line and fill for image-only courses by tracing
+  the published green elevation silhouette. Use native PCS coordinates first;
+  keep the original image when no reliable outline can be found.
+- Reuse a bounded trace cache and keep profile rendering compact in lists,
+  finished-race details and upcoming previews. Traced outlines are visual
+  approximations, not GPS or elevation measurements.
+- Fill missing live total distance from published kilometres covered/remaining,
+  and retain known course distance across partial live updates.
+
 ## 0.10.0 — profiles and distances across race lists
 
 - Show published course thumbnails and kilometres for visible past, current and

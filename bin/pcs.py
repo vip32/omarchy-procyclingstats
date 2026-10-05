@@ -417,6 +417,8 @@ def parse_race(html, path):
     status = {'racing':'live','preview':'upcoming','finished':'finished'}.get(status,'unknown')
     distance = number(data.get('maxkm'))
     done, remaining = number(value('kmdone','kmdone')), number(value('kmtogo','kmtogo'))
+    if distance is None and done is not None and remaining is not None and done+remaining>0:
+        distance=round(done+remaining,1)
     if status == 'upcoming' and distance is not None and remaining == 0:
         remaining = distance
     groups = []

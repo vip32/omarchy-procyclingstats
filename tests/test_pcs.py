@@ -173,6 +173,10 @@ class Parsing(unittest.TestCase):
     def test_preview_zero_uses_full_distance(self):
         race=pcs.parse_race(live(dict(DATA,race_status='preview',kmtogo=0,kmdone=0)),'race/demo/2026/result')
         self.assertEqual(race['kmToGo'],190.8)
+    def test_live_distance_uses_published_done_plus_remaining_when_total_is_missing(self):
+        data=dict(DATA);del data['maxkm']
+        result=pcs.parse_race(live(data),'race/demo/2026/result')
+        self.assertEqual(result['distance'],190.8)
     def test_missing_fields_not_fabricated(self):
         race=pcs.parse_race(live({'race_status':'racing'}),'race/demo/2026/result')
         self.assertIsNone(race['kmToGo'])

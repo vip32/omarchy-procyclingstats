@@ -1,14 +1,47 @@
 import QtQuick
 import qs.Commons
+import "ProfileTrace.js" as Trace
 
 Canvas {
     id: root
     property var points: []
     property string imageSource: ""
+    property var tracedPoints: []
+    readonly property var drawingPoints:points.length>1 ? points : tracedPoints
+    readonly property bool hasCurve:drawingPoints.length>1
+    readonly property bool validImage:/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(imageSource) && imageSource.length<350000
+    function resolveOutline() {
+        tracedPoints=[]
+        if(raster.pendingSource) {raster.unloadImage(raster.pendingSource);raster.pendingSource=""}
+        if(points.length>1 || !validImage)return
+        var known=Trace.cached(imageSource)
+        if(known!==null) {tracedPoints=known;return}
+        raster.pendingSource=imageSource
+        raster.loadImage(imageSource)
+        if(raster.isImageLoaded(imageSource))raster.trace()
+    }
+    onImageSourceChanged: Qt.callLater(resolveOutline)
+    onTracedPointsChanged: requestPaint()
+    Canvas {
+        id:raster
+        width:480;height:240;visible:false
+        contextType:"2d"
+        property string pendingSource:""
+        function trace() {
+            if(!available || !root.validImage || !isImageLoaded(root.imageSource))return
+            var source=root.imageSource
+            var c=getContext("2d")
+            c.reset();c.drawImage(source,0,0,width,height)
+            root.tracedPoints=Trace.remember(source,Trace.outline(c.getImageData(0,0,width,height).data,width,height))
+            c.reset();unloadImage(source);pendingSource=""
+        }
+        onImageLoaded:trace()
+        onAvailableChanged:if(available)Qt.callLater(root.resolveOutline)
+    }
     Image {
         anchors.fill:parent
-        visible:root.points.length<2
-        source:visible && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(root.imageSource) && root.imageSource.length<350000 ? root.imageSource : ""
+        visible:!root.hasCurve
+        source:visible && root.validImage ? root.imageSource : ""
         fillMode:Image.PreserveAspectFit
         sourceSize.width:1200
         sourceSize.height:600
@@ -19,7 +52,7 @@ Canvas {
     property color lineColor: Color.accent
     property color foreground: Color.foreground
     antialiasing: true
-    onPointsChanged: requestPaint()
+    onPointsChanged: {requestPaint();Qt.callLater(resolveOutline)}
     onProgressChanged: requestPaint()
     onLineColorChanged: requestPaint()
     onForegroundChanged: requestPaint()
@@ -28,6 +61,7 @@ Canvas {
     onPaint: {
         var c=getContext("2d")
         c.reset()
+        var points=root.drawingPoints
         if (points.length < 2) return
         var h=height-6, w=width-2
         c.beginPath(); c.moveTo(1,h)

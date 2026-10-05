@@ -90,6 +90,11 @@ TestCase {
         compare(service.courseWanted.length,0)
         compare(service.queue.length,0)
     }
+    function test_partial_live_snapshot_keeps_known_course_distance() {
+        service.rememberCourse(racePath,{state:"ready",distance:180,profileState:"ready"})
+        service.rememberCourse(racePath,{state:"ready",distance:null,profile:[[0,10],[100,90]]})
+        compare(service.courses[racePath].distance,180)
+    }
     function test_course_cache_is_reused_and_bounded() {
         for(var i=0;i<45;i++)service.rememberCourse("race/demo-"+i+"/2026/result",{state:"ready",distance:i,profileState:"unavailable"})
         compare(Object.keys(service.courses).length,40)

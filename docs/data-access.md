@@ -28,8 +28,10 @@ Stage tab within the same race/year; no `/gc/live` endpoint is guessed.
 Images are fetched by the same Python adapter, with the actual race page as the
 HTTP Referer, then passed as inline data to QML. There are no direct QML network
 requests. Images are capped at 256 KB, 4096 × 2048 and 4 million pixels; SVG and
-other formats are rejected. They are displayed as published, without inferring
-elevation coordinates from their pixels. A rejected profile request retains
+other formats are rejected. Native PCS coordinates take precedence. The UI can trace the green silhouette
+of a profile image at a bounded 480 × 240 resolution to draw an inline graph.
+This is a visual approximation, not recovered GPS/elevation measurements.
+Ambiguous images retain their original image view; up to 40 outlines are cached. A rejected profile request retains
 results and triggers the same shared cooldown and warning as other update failures.
 
 Only visible rows request course data (up to 40); requests remain serialized.

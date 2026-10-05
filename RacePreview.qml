@@ -24,6 +24,6 @@ Column {
     }
     RaceText {width:parent.width;visible:!!(root.detail.departure || root.detail.arrival);text:[root.detail.departure,root.detail.arrival].filter(Boolean).join(" → ");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
     RaceText {width:parent.width;visible:!!root.detail.profileLabel;text:root.detail.profileLabel+" · elevation profile";color:root.dim;font.pixelSize:Style.font.caption}
-    Profile {width:parent.width;height:root.detail.profileImage && !(root.detail.profile || []).length ? Math.min(Style.space(220),width*(root.detail.profileImageHeight || 300)/(root.detail.profileImageWidth || 600)) : Style.space(75);visible:root.hasProfile;imageSource:root.detail.profileImage || "";points:root.detail.profile || [];lineColor:Color.accent}
+    Profile {id:previewProfile;width:parent.width;height:root.detail.profileImage && !previewProfile.hasCurve ? Math.min(Style.space(220),width*(root.detail.profileImageHeight || 300)/(root.detail.profileImageWidth || 600)) : Style.space(75);visible:root.hasProfile;imageSource:root.detail.profileImage || "";points:root.detail.profile || [];lineColor:Color.accent}
     RaceText {width:parent.width;visible:!root.hasProfile;text:"Course profile unavailable here. Open PCS with ↗.";font.pixelSize:Style.font.caption;color:root.dim;wrapMode:Text.WordWrap;elide:Text.ElideNone}
 }
