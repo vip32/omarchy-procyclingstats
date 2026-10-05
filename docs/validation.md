@@ -1,5 +1,20 @@
 # Validation
 
+## 0.10.1 inline image profiles — 2026-10-05
+
+- `PCS_REQUIRE_QT=1 tests/run`: 142 behavioral tests (72 Python, 41 JavaScript,
+  29 Qt cases), plus the two profile cases repeated at 150% scaling. Manifest
+  validation and QML parsing passed.
+- Native Langkawi Stage 8 image rendered as a compact theme-coloured curve,
+  retaining 188.3 km, winner time, average speed and 108 GC rows. The check
+  exposed and fixed physical-pixel reads on fractionally scaled Wayland windows.
+- Fictional daily/calendar lists and finished-race profile screenshots captured
+  and inspected. Capture supports the focused, unrotated plugin monitor while
+  preserving other monitors and restoring the original workspace and view.
+- Native PCS coordinates take precedence. Image-only profiles use a bounded
+  visual outline approximation, falling back to the source image when tracing
+  is unreliable. No actual elevation measurements are inferred from pixels.
+
 ## 0.10.0 elevation profiles — 2026-10-05
 
 - `PCS_REQUIRE_QT=1 tests/run`: 134 behavioral tests (71 Python, 37 JavaScript,

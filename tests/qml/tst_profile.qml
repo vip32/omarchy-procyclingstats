@@ -24,6 +24,8 @@ TestCase {
         tryVerify(function(){return fixture.length>0},3000)
         tryVerify(function(){return chart.hasCurve},5000)
         verify(chart.tracedPoints.length>100)
+        var peak=chart.tracedPoints.reduce(function(a,b){return b[1]<a[1] ? b : a})
+        verify(peak[0]>68 && peak[0]<77,"The full image must be read at fractional display scales")
         compare(chart.tracedPoints[0][0],0)
         compare(chart.tracedPoints[chart.tracedPoints.length-1][0],100)
     }

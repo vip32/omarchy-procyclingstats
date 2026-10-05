@@ -24,7 +24,9 @@ Canvas {
     onTracedPointsChanged: requestPaint()
     Canvas {
         id:raster
-        width:480;height:240;visible:false
+        // Canvas pixel reads use physical pixels, including fractional display scaling.
+        readonly property real pixelRatio:root.Window.window ? root.Window.window.devicePixelRatio : 1
+        width:480/pixelRatio;height:240/pixelRatio;visible:false
         contextType:"2d"
         property string pendingSource:""
         function trace() {
@@ -32,7 +34,7 @@ Canvas {
             var source=root.imageSource
             var c=getContext("2d")
             c.reset();c.drawImage(source,0,0,width,height)
-            root.tracedPoints=Trace.remember(source,Trace.outline(c.getImageData(0,0,width,height).data,width,height))
+            root.tracedPoints=Trace.remember(source,Trace.outline(c.getImageData(0,0,480,240).data,480,240))
             c.reset();unloadImage(source);pendingSource=""
         }
         onImageLoaded:trace()

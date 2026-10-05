@@ -93,11 +93,12 @@ def main():
     panel_state=status(ID+'.panel')
     if status()['demo']: p.error('Demo is already active; restore it first with demo false')
     monitors=json.loads(run('hyprctl','monitors','-j'))
-    if len(monitors)!=1 or monitors[0]['transform']!=0:
-        p.error('Capture currently supports one unrotated monitor')
+    monitor=next((m for m in monitors if m['name']==panel_state['geometry']['screen']),None)
+    if not monitor or monitor['transform']!=0 or not monitor.get('focused'):
+        p.error('Focus the unrotated monitor containing the plugin before capturing')
     if any(c.get('class')=='hyprlock' for c in json.loads(run('hyprctl','clients','-j'))):
         p.error('Unlock the session before capturing')
-    original_workspace=monitors[0]['activeWorkspace']['id']
+    original_workspace=monitor['activeWorkspace']['id']
     used={w['id'] for w in json.loads(run('hyprctl','workspaces','-j'))}
     workspace=next(i for i in range(90,110) if i not in used)
     runtime=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))
@@ -143,7 +144,7 @@ def main():
         # Wait only for the native panel fade-in after readiness is established.
         time.sleep(.6)
         if not status(ID+'.panel')['demo']: raise RuntimeError('Refusing to capture non-demo data')
-        mon=monitors[0]
+        mon=next(m for m in monitors if m['name']==geometry['screen'])
         x,y=round(geometry['x']+mon['x']),round(geometry['y']+mon['y'])
         if args.window:
             client=dashboard_windows()[0]
