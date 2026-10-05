@@ -186,3 +186,28 @@ test('metadata request failures stay visible until metadata itself recovers', ()
     issues=model.updateIssues(issues,'',{state:'ready',metadataState:'ready'},{},'',now);
     assert.equal(Object.keys(issues).length,0);
 });
+
+test('saved calendar count defaults to 25 and clamps malformed or out of range settings', () => {
+    for (const [value,expected] of [[undefined,25],['oops',25],[-4,25],[5,10],[500,100],[40,40]])
+        assert.equal(model.settings({archiveRaceCount:value}).archiveRaceCount,expected);
+});
+test('archive lists filter before limiting and order nearest dates first', () => {
+    const records=[
+        {path:'a',name:'A',date:'2026-09-20',status:'finished',raceClass:'1.Pro',competitionCategory:'ME'},
+        {path:'b',name:'B',date:'2026-09-25',status:'finished',raceClass:'1.1',competitionCategory:'ME'},
+        {path:'c',name:'C',date:'2026-09-28',status:'scheduled',raceClass:'1.Pro',competitionCategory:'WE'},
+        {path:'d',name:'D',date:'2026-09-29',status:'scheduled',raceClass:'1.Pro',competitionCategory:'ME'}];
+    const opts={minimumRaceLevel:'ProSeries+'};
+    assert.deepEqual(plain(model.archiveRows(records,'recent','2026-09-27',opts,1)).map(r=>r.path),['a']);
+    assert.deepEqual(plain(model.archiveRows(records,'upcoming','2026-09-27',opts,1)).map(r=>r.path),['c']);
+    assert.equal(records[0].path,'a');
+});
+test('archive merges deduplicate races across dates, retain partial failures and reset on successful refresh', () => {
+    const a={path:'a',name:'A',date:'2026-09-25',status:'finished'};
+    const old={races:[a],dates:['2026-09-25'],fetchedAt:stamp,nextDate:'2026-09-24'};
+    const partial={state:'blocked',races:[{...a,date:'2026-09-24'},{path:'b',date:'2026-09-24'}],dates:['2026-09-24'],nextDate:'2026-09-23'};
+    const merged=model.mergeArchive(old,partial,'recent','2026-09-27');
+    assert.equal(merged.races.length,2);assert.equal(merged.races[0].date,a.date);
+    assert.equal(merged.fetchedAt,stamp);assert.equal(merged.nextDate,'2026-09-23');
+    assert.equal(model.mergeArchive({...old,reset:true},{state:'empty',races:[],dates:[]},'recent','2026-09-27').races.length,0);
+});

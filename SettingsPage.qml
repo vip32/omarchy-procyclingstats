@@ -17,6 +17,7 @@ Column {
     readonly property int notificationIndex: fieldsStart+fields.length
     spacing: Style.space(12)
     readonly property var fields: [
+        {key:"archiveRaceCount",label:"Recent & upcoming race count",min:10,max:100,step:5,unit:"races"},
         {key:"refreshIntervalSec",label:"Live races & events",min:60,max:900,step:30},
         {key:"overviewIntervalSec",label:"Race list",min:300,max:3600,step:60},
         {key:"resultsIntervalSec",label:"Finished results & GC",min:300,max:3600,step:60},
@@ -106,9 +107,9 @@ Column {
             }
         }
     }
-    RaceText {width:parent.width;text:"Applies to Races, Live and event notifications. Races with missing category or level data are hidden when that filter is restricted.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Qt.darker(root.foreground,1.5);font.pixelSize:Style.font.caption}
+    RaceText {width:parent.width;text:"Applies to Races, Live, the calendar and event notifications. Races with missing category or level data are hidden when that filter is restricted.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Qt.darker(root.foreground,1.5);font.pixelSize:Style.font.caption}
     PanelSeparator {foreground:root.foreground}
-    PanelSectionHeader {text:"REFRESH & NOTIFICATIONS";foreground:root.foreground}
+    PanelSectionHeader {text:"CALENDAR & UPDATES";foreground:root.foreground}
     Repeater {
         id:fieldRepeater
         model:root.fields
@@ -123,7 +124,7 @@ Column {
                 anchors.right:adjust.left;anchors.rightMargin:Style.space(8)
                 anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(4)
                 RaceText {width:parent.width;text:row.modelData.label;font.bold:true;color:root.foreground}
-                RaceText {width:parent.width;text:root.duration(root.values[row.modelData.key]);color:Qt.darker(root.foreground,1.5);font.pixelSize:Style.font.caption}
+                RaceText {width:parent.width;text:row.modelData.unit==="races" ? root.values[row.modelData.key]+" races" : root.duration(root.values[row.modelData.key]);color:Qt.darker(root.foreground,1.5);font.pixelSize:Style.font.caption}
             }
             Row {
                 id:adjust;anchors.right:parent.right;anchors.rightMargin:Style.space(10);anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(6)

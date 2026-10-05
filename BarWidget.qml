@@ -17,15 +17,21 @@ Panel {
     readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
     readonly property var todayRaces: service ? service.races.filter(function(r){return Model.matchesRace(r,preferences)}) : []
     property int dayOffset: 0
+    readonly property bool archive: filter==="Calendar"
+    property string archiveMode: "recent"
+    property int archiveCount: preferences.archiveRaceCount
+    property var archiveSelection: null
+    readonly property var archiveData: service ? service.archives[archiveMode] || ({state:"loading",races:[]}) : ({})
+    readonly property bool archiveBusy: service ? service.archiveBusy(archiveMode) : false
     readonly property string dayDate: Model.dayKey(now,dayOffset)
-    readonly property var dayData: !service ? ({}) : dayOffset === 0 ? {state:service.state,error:service.error,fetchedAt:service.fetchedAt,races:service.races} : service.dayLists[dayDate] || ({state:"loading"})
+    readonly property var dayData: archive ? archiveData : !service ? ({}) : dayOffset === 0 ? {state:service.state,error:service.error,fetchedAt:service.fetchedAt,races:service.races} : service.dayLists[dayDate] || ({state:"loading"})
     readonly property var unfilteredRaces: dayData.races || []
     readonly property var races: unfilteredRaces.filter(function(r){return Model.matchesRace(r,preferences)})
     readonly property bool filtersActive: Model.filtersActive(preferences)
-    readonly property bool preview: dayOffset > 0 && !finished
+    readonly property bool preview: selected && selected.date>Model.dayKey(now,0) && !finished
     readonly property bool demo: service ? service.demo : false
-    readonly property var rows: filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races
-    readonly property var selected: rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
+    readonly property var rows: archive ? Model.archiveRows(unfilteredRaces,archiveMode,Model.dayKey(now,0),preferences,archiveCount) : filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races
+    readonly property var selected: archive && expanded && archiveSelection ? archiveSelection : rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
     readonly property var detail: selected && service ? service.details[selected.path] || ({}) : ({})
     readonly property var preferences: Model.settings(demo ? {} : settings)
     readonly property var connection: Model.warning(service ? service.updateIssues : {},now,service ? service.nextAllowed : 0,service ? service.loading : false)
@@ -103,10 +109,23 @@ Panel {
         settingsOpen=false
         expanded=false
         if(name === "Live") dayOffset=0
-        filter=name === "Live" ? "Live" : "Races"
+        filter=name === "Live" ? "Live" : name==="Calendar" ? "Calendar" : "Races"
+        archiveSelection=null
         cursorIndex=0
         detailView="overview"
         Qt.callLater(function(){scroller.contentY=0})
+    }
+    function showCalendar(mode) {
+        if(service && archiveMode!==mode) service.stopArchive(archiveMode)
+        archiveMode=mode==="upcoming" ? "upcoming" : "recent"
+        archiveCount=preferences.archiveRaceCount
+        showFilter("Calendar")
+        if(service) service.watchArchive(archiveMode,archiveCount,false)
+    }
+    function refreshView() {
+        if(!service)return
+        if(archive)service.refreshArchive(archiveMode,archiveCount)
+        else service.refresh()
     }
     function showDay(offset) {
         showFilter("Races")
@@ -116,6 +135,7 @@ Panel {
     onDayDateChanged: {
         cursorIndex=0; expanded=false
         if(service) {service.checkDate(now);service.watchDay(dayDate)}
+        if(archive && service)service.watchArchive(archiveMode,archiveCount,false)
     }
     function titleStatus(s) { return ({live:"LIVE",finished:"FINISHED",upcoming:"UPCOMING",scheduled:"SCHEDULED",unknown:"STATUS UNKNOWN"})[s] || "WAITING" }
     function configure() {
@@ -137,6 +157,7 @@ Panel {
     }
     function select(index, show) {
         cursorIndex = Math.max(0,Math.min(rows.length-1,index))
+        if(archive && show) {archiveSelection=rows[cursorIndex] || null;if(service)service.stopArchive(archiveMode)}
         if(show) expanded = true
         if(service && selected) service.watch(selected.path)
         Qt.callLater(function() {
@@ -157,14 +178,17 @@ Panel {
         openPcsPath(path)
     }
     function openPcsPath(path) {
-        if(path && !/^race\/[a-z0-9-]+\/\d{4}\/(result|stage-\d+[a-z]?)(\/live(\/race-events)?)?$/.test(path)) return
+        if(path && !/^race\/[a-z0-9-]+\/\d{4}\/(result|gc|stage-\d+[a-z]?)(\/live(\/race-events)?)?$/.test(path)) return
         Quickshell.execDetached(["/usr/bin/xdg-open","https://www.procyclingstats.com/" + path])
     }
     onServiceChanged: configure()
-    onPreferencesChanged: {configure();cursorIndex=0;expanded=false}
+    onPreferencesChanged: {
+        configure();archiveCount=preferences.archiveRaceCount;cursorIndex=0;expanded=false
+        if(archive && dashboardVisible && service)service.watchArchive(archiveMode,archiveCount,false)
+    }
     onDemoChanged: settingsError=""
     onSettingsOpenChanged: Qt.callLater(function(){scroller.contentY=0})
-    onFilterChanged: { cursorIndex = 0; expanded = false }
+    onFilterChanged: { cursorIndex = 0; expanded = false;if(!archive && service){service.stopArchive("recent");service.stopArchive("upcoming")} }
     onSelectedChanged: {
         var path = selected ? selected.path : ""
         if(path !== lastSelectedPath) {classificationKind="gc";detailView="overview";lastSelectedPath=path}
@@ -173,6 +197,15 @@ Panel {
     onDetailViewChanged: Qt.callLater(function(){scroller.contentY=0})
     onDashboardVisibleChanged: {
         if(dashboardVisible) {now=Date.now(); configure(); if(service){service.refresh();service.watchDay(dayDate);if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
+    }
+    Connections {
+        target:root
+        function onDashboardVisibleChanged() {
+            if(root.archive && root.service) {
+                if(root.dashboardVisible && !root.expanded)root.service.watchArchive(root.archiveMode,root.archiveCount,false)
+                else root.service.stopArchive(root.archiveMode)
+            }
+        }
     }
     Timer { interval:15000; running:root.dashboardVisible || root.connection.visible; repeat:true; onTriggered:root.now=Date.now() }
     Connections {
@@ -204,18 +237,26 @@ Panel {
         }
         function showDay(offset: int): void { root.showDay(offset) }
         function showRaces(): void { root.showFilter("Races") }
+        function calendar(mode: string): void {root.showCalendar(mode);root.showDashboard()}
+        function restoreCalendar(mode: string, count: int): void {
+            root.archiveMode=mode==="upcoming" ? "upcoming" : "recent"
+            root.archiveCount=Math.max(10,Math.min(100,count))
+            root.showFilter("Calendar")
+            if(root.service)root.service.watchArchive(root.archiveMode,root.archiveCount,false)
+        }
         function compact(): void { root.expanded = false; root.showDashboard() }
-        function selectRace(index: int): void { root.filter = "Races"; root.showDashboard(); root.select(index, true) }
+        function selectRace(index: int): void { if(!root.archive)root.filter = "Races"; root.showDashboard(); root.select(index, true) }
         function restoreView(filterName: string, path: string, expanded: bool, opened: bool): void {
-            root.filter = filterName === "Live" ? "Live" : "Races"
+            root.filter = filterName === "Live" ? "Live" : filterName==="Calendar" ? "Calendar" : "Races"
             var i = root.rows.findIndex(function(r){return r.path === path})
             root.cursorIndex = Math.max(0,i)
+            if(root.archive)root.archiveSelection=root.rows[root.cursorIndex] || null
             root.expanded = expanded
             if(opened) root.showDashboard(); else root.hideDashboard()
         }
         function status(): string {
             return JSON.stringify({opened:root.dashboardVisible,detached:root.detached,windowVisible:dashboardWindow.visible,expandedGroups:raceOverview.expandedGroupCount(), expanded:root.expanded, serviceReady:!!root.service,
-                dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
+                archiveMode:root.archiveMode,archiveCount:root.archiveCount,archiveBusy:root.archiveBusy,archiveDates:root.archiveData.dates || [],dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
                 classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",
@@ -276,14 +317,14 @@ Panel {
         open:root.opened && !root.detached
         centerOnBar:false
         focusTarget:keys
-        contentWidth:panel.fittedContentWidth(Style.space(root.expanded || root.settingsOpen ? 590 : 420))
-        contentHeight:panel.fittedContentHeight(column.implicitHeight+connectionBanner.height+(connectionBanner.visible ? Style.space(12) : 0),Style.space(root.expanded || root.settingsOpen ? 720 : 560))
+        contentWidth:panel.fittedContentWidth(Style.space(root.expanded || root.settingsOpen || root.archive ? 590 : 420))
+        contentHeight:panel.fittedContentHeight(column.implicitHeight+connectionBanner.height+(connectionBanner.visible ? Style.space(12) : 0),Style.space(root.expanded || root.settingsOpen || root.archive ? 720 : 560))
         Item {id:popupMount;anchors.fill:parent}
         PanelKeyCatcher {
             id:keys
             parent:root.detached ? windowMount : popupMount
             anchors.fill:parent
-            onMoveRequested:function(dx,dy){if(root.settingsOpen)settingsPage.move(dx,dy);else if(dx!==0 && !root.expanded)root.showDay(root.dayOffset+dx);else if(dy!==0)root.select(root.cursorIndex+dy,root.expanded)}
+            onMoveRequested:function(dx,dy){if(root.settingsOpen)settingsPage.move(dx,dy);else if(dx!==0 && !root.expanded){if(root.archive)root.showCalendar(dx>0 ? "upcoming" : "recent");else root.showDay(root.dayOffset+dx)};else if(dy!==0)root.select(root.cursorIndex+dy,root.expanded)}
             onActivateRequested:{if(root.settingsOpen)settingsPage.activate();else root.select(root.cursorIndex,true)}
             onCloseRequested:{if(root.settingsOpen)root.settingsOpen=false;else if(root.expanded)root.expanded=false;else root.hideDashboard()}
             onTabRequested:function(direction){if(!root.detached)root.switchPanel(direction)}
@@ -293,8 +334,9 @@ Panel {
                 if(k===","){root.settingsOpen=!root.settingsOpen;return}
                 if(k==="1"){root.showFilter("Races");return}
                 if(k==="2"){root.showFilter("Live");return}
+                if(k==="3"){root.showCalendar(root.archiveMode);return}
                 if(root.settingsOpen)return
-                if(k==="r" && root.service)root.service.refresh()
+                if(k==="r")root.refreshView()
                 if(k==="o")root.openSource()
                 if(k==="t" && root.expanded && !root.preview)root.detailView=root.detailView==="events" ? "overview" : "events"
                 if(k==="e" && root.selected){root.expanded=!root.expanded;root.select(root.cursorIndex,root.expanded)}
@@ -332,18 +374,18 @@ Panel {
                             anchors.right:actions.left;anchors.rightMargin:Style.space(8)
                             anchors.verticalCenter:parent.verticalCenter
                             spacing:Style.space(2)
-                            RaceText {width:parent.width;text:root.settingsOpen ? "Settings" : "ProCyclingStats";font.pixelSize:Style.font.title;font.bold:true;color:root.foreground}
+                            RaceText {width:parent.width;text:root.settingsOpen ? "Settings" : root.archive && !root.expanded ? "Race calendar" : "ProCyclingStats";font.pixelSize:Style.font.title;font.bold:true;color:root.foreground}
                             RaceText {width:parent.width;text:root.demo ? "DEMO · fictional road races" : root.service && root.service.loading ? "Refreshing races…" : "Road cycling · " + root.age(root.dayData.fetchedAt || "");font.pixelSize:Style.font.caption;color:root.dim}
                         }
                         Row {
                             id:actions;anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(6)
                             Button {text:"\uf11e";tooltipText:"Races (1)";Accessible.name:"Races";selected:root.filter==="Races" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
                             Button {text:"◉";tooltipText:"Live races (2)";Accessible.name:"Live races";selected:root.filter==="Live" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Live")}
-                            Button {text:"↻";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:if(root.service)root.service.refresh()}
+                            Button {text:"↻";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:root.refreshView()}
                             Button {text:root.detached ? "▣" : "□";tooltipText:root.detached ? "Dock back to bar (P)" : "Pop out to window (P)";Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.toggleWindow()}
                             Button {text:"↗";tooltipText:"Open PCS in browser (O)";Accessible.name:"Open ProCyclingStats in browser";bordered:true;foreground:root.foreground;onClicked:root.openSource()}
                             Button {text:root.settingsOpen ? "←" : "⚙";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:{if(root.settingsOpen)root.showFilter("Races");else root.settingsOpen=true}}
-                            Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to races";bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
+                            Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to race list";bordered:true;foreground:root.foreground;onClicked:{root.expanded=false;root.detailView="overview"}}
                         }
                     }
                     PanelSeparator {foreground:root.foreground}
@@ -372,10 +414,23 @@ Panel {
                         visible:!root.expanded || !root.selected
                         width:parent.width;spacing:Style.space(7)
                         Row {
+                            visible:!root.archive
                             width:parent.width;spacing:Style.space(6)
                             Button {id:previousDay;text:"‹";enabled:root.dayOffset>-1;tooltipText:"Previous day (Left)";Accessible.name:"Previous day";bordered:true;foreground:root.foreground;onClicked:root.showDay(root.dayOffset-1)}
-                            Button {width:parent.width-previousDay.width-nextDay.width-Style.space(12);text:Model.dayLabel(root.now,root.dayOffset);tooltipText:"Return to today";Accessible.name:text;foreground:root.foreground;onClicked:root.showDay(0)}
+                            Button {width:parent.width-previousDay.width-nextDay.width-calendarButton.width-Style.space(18);text:Model.dayLabel(root.now,root.dayOffset);tooltipText:"Return to today";Accessible.name:text;foreground:root.foreground;onClicked:root.showDay(0)}
                             Button {id:nextDay;text:"›";enabled:root.dayOffset<1;tooltipText:"Next day (Right)";Accessible.name:"Next day";bordered:true;foreground:root.foreground;onClicked:root.showDay(root.dayOffset+1)}
+                            Button {id:calendarButton;text:"\uf073";tooltipText:"Recent & upcoming races (3)";Accessible.name:"Race calendar";bordered:true;foreground:root.foreground;onClicked:root.showCalendar("recent")}
+                        }
+                        Row {
+                            visible:root.archive;width:parent.width;spacing:Style.space(6)
+                            Button {width:(parent.width-countButton.width-Style.space(12))/2;text:"Recent";selected:root.archiveMode==="recent";bordered:true;foreground:root.foreground;onClicked:root.showCalendar("recent")}
+                            Button {width:(parent.width-countButton.width-Style.space(12))/2;text:"Upcoming";selected:root.archiveMode==="upcoming";bordered:true;foreground:root.foreground;onClicked:root.showCalendar("upcoming")}
+                            Button {id:countButton;text:(root.archiveMode==="recent" ? "Last " : "Next ")+root.archiveCount;tooltipText:"Change the default race count in Settings";bordered:true;foreground:root.foreground;onClicked:{root.settingsOpen=true;Qt.callLater(function(){settingsPage.cursorIndex=settingsPage.fieldsStart;settingsPage.reveal(settingsPage.cursorItem())})}}
+                        }
+                        RaceText {
+                            width:parent.width;visible:root.archive
+                            text:root.archiveBusy ? "Searching the race calendar…" : root.archiveData.dates && root.archiveData.dates.length ? "Searched "+root.archiveData.dates[0]+" — "+root.archiveData.dates[root.archiveData.dates.length-1]+" · "+root.rows.length+" races" : "Choose recent or upcoming races"
+                            font.pixelSize:Style.font.caption;color:root.dim;wrapMode:Text.WordWrap
                         }
                         RaceText {width:parent.width;visible:root.filtersActive;text:"Filters active · "+root.races.length+" of "+root.unfilteredRaces.length+" races · change in Settings";font.pixelSize:Style.font.caption;color:root.dim}
                         Repeater {
@@ -394,7 +449,7 @@ Panel {
                                     anchors.right:miniProfile.left;anchors.rightMargin:Style.space(10)
                                     anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(4)
                                     RaceText {width:parent.width;text:raceRow.modelData.name;font.bold:true;color:root.foreground}
-                                    RaceText {width:parent.width;text:[root.titleStatus(raceRow.modelData.status),raceRow.modelData.category,raceRow.modelData.eta ? "ETA "+raceRow.modelData.eta : ""].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:raceRow.modelData.status==="live" ? Color.accent : root.dim}
+                                    RaceText {width:parent.width;text:[root.archive ? raceRow.modelData.date : root.titleStatus(raceRow.modelData.status),raceRow.modelData.category,raceRow.modelData.eta ? "ETA "+raceRow.modelData.eta : ""].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:raceRow.modelData.status==="live" ? Color.accent : root.dim}
                                 }
                                 Column {
                                     id:miniProfile;anchors.right:parent.right;anchors.rightMargin:Style.space(10)
@@ -417,15 +472,22 @@ Panel {
                         }
                         RaceText {
                             width:parent.width;visible:root.rows.length===0
-                            text:root.dayData.error ? "Race data is unavailable. Use ↗ in the header to open PCS." : root.dayData.state==="loading" ? "Loading races…" : root.filtersActive && root.unfilteredRaces.length ? "No races match these filters. Change them in Settings." : root.filter==="Live" ? "No live races listed right now." : "No races listed for this day."
+                            text:root.dayData.error ? "Race data is unavailable. Use ↗ in the header to open PCS." : root.dayData.state==="loading" || root.archiveBusy ? "Loading races…" : root.archive ? "No matching races in the searched dates. Search further or change your filters." : root.filtersActive && root.unfilteredRaces.length ? "No races match these filters. Change them in Settings." : root.filter==="Live" ? "No live races listed right now." : "No races listed for this day."
                             color:root.dim;wrapMode:Text.WordWrap;elide:Text.ElideNone
+                        }
+                        Button {
+                            visible:root.archive && (root.rows.length<root.archiveCount || root.archiveCount<100)
+                            width:parent.width;enabled:!root.archiveBusy && !root.archiveData.exhausted && (!root.service || root.service.nextAllowed<=root.now)
+                            text:root.archiveBusy ? "Searching…" : root.archiveData.exhausted ? "Calendar search limit reached" : root.rows.length>=root.archiveCount ? "Show more races" : root.archiveMode==="recent" ? "Search older races" : "Search later races"
+                            bordered:true;foreground:root.foreground
+                            onClicked:{if(root.rows.length>=root.archiveCount)root.archiveCount=Math.min(100,root.archiveCount+25);if(root.service)root.service.watchArchive(root.archiveMode,root.archiveCount,true)}
                         }
                     }
                     Column {
                         visible:root.expanded && !!root.selected
                         width:parent.width;spacing:Style.space(12)
                         RaceText {width:parent.width;text:root.selected ? root.selected.name : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
-                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || "",root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "Race data unavailable" : root.finished ? "Loading results…" : root.preview ? "Loading race preview…" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
+                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || (root.selected ? root.selected.date || "" : ""),root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "Race data unavailable" : root.finished ? "Loading results…" : root.preview ? "Loading race preview…" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
                         RaceText {width:parent.width;visible:!!root.detail.error;text:(root.detail.fetchedAt ? "Previous snapshot · " : "")+(root.detail.error || "");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Color.urgent}
                         Row {
                             visible:!root.preview

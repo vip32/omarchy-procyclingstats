@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0 — race calendar
+
+- Browse recent and upcoming races beyond yesterday/tomorrow, with existing
+  category and level filters, dated rows and links to results or previews.
+- Save the default calendar count in Settings: 25 races, adjustable from 10–100.
+  Show more temporarily expands the list; bounded searches display date coverage.
+- Share serialized requests and failure warnings with the live dashboard.
+- Read current PCS flattened race links, race information and GC/results tabs.
+
 ## 0.8.1 — submission candidate
 
 - Show finished-race distance, winner time, average speed and available course

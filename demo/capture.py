@@ -39,7 +39,7 @@ def verify_window():
     before=status(target)
     def same_view():
         current=status(target)
-        for key in ('selected','dayOffset','filter','expanded','detailView','settingsOpen','classificationTitle','expandedGroups'):
+        for key in ('selected','dayOffset','filter','expanded','detailView','settingsOpen','classificationTitle','expandedGroups','archiveMode','archiveCount'):
             if current[key]!=before[key]: raise RuntimeError('Window transition changed '+key)
     ipc(target,'detach')
     wait_for(lambda:len(dashboard_windows())==1)
@@ -78,6 +78,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,default=ROOT/'preview.png')
     p.add_argument('--day',type=int,choices=[-1,0,1],default=0,help='Yesterday, today or tomorrow')
+    p.add_argument('--calendar',choices=['recent','upcoming'],help='Browse fictional races beyond adjacent days')
     p.add_argument('--window',action='store_true',help='Capture the detached desktop window')
     p.add_argument('--verify-window',action='store_true',help='Exercise dock, reopen, focus and close with fictional data')
     p.add_argument('--compact',action='store_true')
@@ -123,6 +124,7 @@ def main():
         run('hyprctl','dispatch',f'hl.dsp.focus({{ workspace = "{workspace}" }})')
         mode='compact' if args.compact else 'expand'
         ipc(ID+'.panel','showDay',str(args.day))
+        if args.calendar: ipc(ID+'.panel','calendar',args.calendar)
         ipc(ID+'.panel','selectRace',str(args.race_index))
         ipc(ID+'.panel',mode)
         ipc(ID+'.panel','setDetailView','events' if args.events else 'overview')
@@ -161,6 +163,9 @@ def main():
             ipc(ID+'.panel','showRaces')
             ipc(ID+'.panel','showDay',str(panel_state.get('dayOffset',0)))
             wait_for(lambda:not status()['loading'])
+            if panel_state.get('filter')=='Calendar':
+                ipc(ID+'.panel','restoreCalendar',panel_state.get('archiveMode','recent'),str(panel_state.get('archiveCount',25)))
+                wait_for(lambda:not status()['loading'] and not status(ID+'.panel')['archiveBusy'])
             ipc(ID+'.panel','restoreView',panel_state.get('filter','Races'),panel_state['selected'],str(panel_state['expanded']).lower(),str(panel_state['opened']).lower())
             ipc(ID+'.panel','setDetailView',panel_state.get('detailView','overview'))
             if panel_state.get('settingsOpen'): ipc(ID+'.panel','settings')

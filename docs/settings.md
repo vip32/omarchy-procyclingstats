@@ -42,6 +42,13 @@ Filters apply to every date, Live, bar counts and event notifications. When a
 filter is restricted, races missing the metadata needed by that filter are hidden.
 The list shows an active-filter count and a specific no-matches message.
 
+## Calendar list size
+
+“Recent & upcoming race count” defaults to **25**, adjustable from **10 to 100**
+in steps of 5. It saves automatically and applies to both calendar tabs.
+“Show more” increases the current list only; reopening a tab uses the saved count.
+Filters apply before the count. Sparse calendars may need “Search older/later races”.
+
 ## Refresh and notifications
 
 | Setting | Default | Range |

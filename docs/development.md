@@ -22,6 +22,7 @@ runs on pushes to main and pull requests.
 ```sh
 python3 -I bin/pcs.py overview
 python3 -I bin/pcs.py calendar --date 2026-09-27
+python3 -I bin/pcs.py archive --date 2026-10-05 --direction recent
 python3 -I bin/pcs.py race --race race/example/2026/result --html saved-page.html
 omarchy-shell io.github.vip32.procyclingstats status
 omarchy-shell io.github.vip32.procyclingstats.panel status
@@ -79,3 +80,6 @@ omarchy-shell io.github.vip32.procyclingstats demo false
 ```
 
 Do not leave demo mode enabled when normal race updates are expected.
+
+Calendar fixture captures: `demo/run --calendar recent --compact --output screenshots/calendar.png`
+and `demo/run --calendar upcoming --compact --output /tmp/pcs-upcoming.png`.

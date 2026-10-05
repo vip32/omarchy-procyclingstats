@@ -26,6 +26,15 @@ profile geometry, one bounded `/live` request retrieves it without using its clo
 Image-only profiles still require opening PCS. A rejected profile request retains
 results and triggers the same shared cooldown and warning as other update failures.
 
+The calendar searches on demand in batches of three dates, using the same worker
+and cooldown. Each user action scans at most 30 dates and stops once enough
+matching races are found. “Search older/later races” continues from the next date.
+Each tab retains at most 366 searched dates and 1,000 race records per session.
+Closing the dashboard or opening details stops further batches; an in-flight batch
+may finish and populate the cache. There is no separate archive polling loop.
+A failed batch retains completed pages and retries at the first unread date.
+Calendar refresh restarts the search, at most once per minute.
+
 Race paths are validated, fields are bounded, and Python isolated mode avoids
 loading user-site modules. Remote HTML is parsed into plain text, never executed.
 

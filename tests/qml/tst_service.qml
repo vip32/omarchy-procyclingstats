@@ -28,6 +28,56 @@ TestCase {
     function snapshot(text) {
         return {state:"ready",status:"live",kmToGo:42,fetchedAt:new Date().toISOString(),eventsState:"ready",eventsFetchedAt:new Date().toISOString(),events:[{marker:"42",text:text}]}
     }
+    function worker() {
+        for(var i=0;i<service.data.length;i++) if("command" in service.data[i])return service.data[i]
+    }
+    function test_archive_routes_serially_and_cancel_keeps_inflight_snapshot() {
+        service.watchArchive("recent",25,false)
+        compare(worker().command[3],"archive")
+        compare(worker().command[5],service.today)
+        service.watch(racePath)
+        compare(worker().command[3],"archive")
+        verify(service.queue.indexOf(racePath)>=0)
+        service.stopArchive("recent")
+        deliver({state:"ready",races:[],dates:[service.today],nextDate:"2026-01-01"})
+        compare(service.archives.recent.dates.length,1)
+        verify(!service.archiveRequests.recent)
+    }
+    function test_archive_stops_at_count_and_keeps_details_across_overview_refresh() {
+        var records=[]
+        for(var i=0;i<10;i++)records.push({path:"race/past-"+i+"/2026/gc",name:"Past "+i,date:"2026-01-01",status:"finished"})
+        service.archives={recent:{races:records,dates:[]}}
+        service.watchArchive("recent",10,false)
+        verify(!service.loading)
+        service.watch(records[0].path)
+        verify(worker().command.indexOf("--finished")>=0)
+        deliver({state:"ready",status:"finished",classifications:[]})
+        service.currentPath=""
+        deliver({state:"ready",races:[race]})
+        verify(service.details[records[0].path]!==undefined)
+        verify(service.watched.indexOf(records[0].path)>=0)
+    }
+    function test_archive_rejection_retains_data_and_sets_shared_cooldown() {
+        service.archives={recent:{races:[race],dates:["2026-01-01"],fetchedAt:"saved",nextDate:"2025-12-31"}}
+        service.watchArchive("recent",25,true)
+        deliver({state:"blocked",error:"Rejected",races:[],dates:[],nextDate:"2025-12-31"})
+        compare(service.archives.recent.races.length,1)
+        compare(service.archives.recent.fetchedAt,"saved")
+        verify(service.nextAllowed>Date.now()+890000)
+        verify(!service.archiveRequests.recent)
+        verify(service.updateIssues["archive:recent"]!==undefined)
+    }
+    function test_archive_search_budget_and_no_background_restart() {
+        service.archives={recent:{races:[],dates:[],nextDate:service.today}}
+        service.archiveRequests={recent:{count:25,remaining:3}}
+        service.currentPath="archive:recent"
+        deliver({state:"empty",races:[],dates:["2026-01-03","2026-01-02","2026-01-01"],nextDate:"2025-12-31"})
+        wait(0)
+        compare(service.archiveRequests.recent.remaining,0)
+        verify(service.queue.indexOf("archive:recent")<0)
+        service.refresh()
+        verify(service.queue.indexOf("archive:recent")<0)
+    }
     function test_failure_and_recovery() {
         deliver(snapshot("First event"))
         var stamp=service.details[racePath].fetchedAt

@@ -7,6 +7,7 @@ function integer(value, fallback, min, max) {
 function settings(value) {
     value = value || {}
     var result = {
+        archiveRaceCount: integer(value.archiveRaceCount, 25, 10, 100),
         refreshIntervalSec: integer(value.refreshIntervalSec, 60, 60, 900),
         overviewIntervalSec: integer(value.overviewIntervalSec, 300, 300, 3600),
         resultsIntervalSec: integer(value.resultsIntervalSec, 300, 300, 3600),
@@ -21,6 +22,30 @@ function settings(value) {
 function requestInterval(path, finished, options) {
     var s = settings(options)
     return 1000 * ((!path || path.indexOf("day:") === 0) ? s.overviewIntervalSec : finished ? s.resultsIntervalSec : s.refreshIntervalSec)
+}
+
+function archiveRows(races, mode, today, options, limit) {
+    return (races || []).filter(function(r) {
+        return matchesRace(r,options) && (mode==="recent" ? r.status==="finished" && r.date<=today : r.date>today && r.status!=="finished")
+    }).sort(function(a,b) {
+        var date=a.date.localeCompare(b.date)
+        return (mode==="recent" ? -date : date) || a.name.localeCompare(b.name) || a.path.localeCompare(b.path)
+    }).slice(0,limit || 100)
+}
+
+function mergeArchive(previous, result, mode, today) {
+    if(previous.reset && (result.state==="ready" || result.state==="empty")) previous={reset:false}
+    var records={}
+    ;(previous.races || []).concat(result.races || []).forEach(function(r) {
+        var old=records[r.path]
+        if(!old || (mode==="recent" ? r.date>=old.date : r.date<=old.date)) records[r.path]=r
+    })
+    var dates=(previous.dates || []).concat(result.dates || []).filter(function(d,i,all){return all.indexOf(d)===i}).sort()
+    var races=Object.keys(records).map(function(k){return records[k]}).sort(function(a,b){return mode==="recent" ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)}).slice(0,1000)
+    return Object.assign({},previous,result,{races:races,dates:dates,
+        fetchedAt:isFailure(result.state) ? previous.fetchedAt || "" : result.fetchedAt || "",
+        exhausted:dates.length>=366 || races.length>=1000,
+        error:result.error || ""})
 }
 
 function isFailure(state) {
@@ -50,7 +75,7 @@ function updateIssues(previous, path, result, cached, label, now) {
     if (!path && ["ready", "empty"].indexOf(result.state) >= 0) {
         var paths = (result.retainedRaces || result.races || []).map(function(r) {return r.path})
         Object.keys(issues).forEach(function(id) {
-            if (issues[id].path && issues[id].path.indexOf("day:") !== 0 && paths.indexOf(issues[id].path) < 0) delete issues[id]
+            if (issues[id].path && issues[id].path.indexOf("day:") !== 0 && issues[id].path.indexOf("archive:") !== 0 && paths.indexOf(issues[id].path) < 0) delete issues[id]
         })
     }
     return issues

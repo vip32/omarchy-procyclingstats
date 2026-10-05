@@ -21,6 +21,8 @@ Item {
     property var races: []
     property var details: ({})
     property var dayLists: ({})
+    property var archives: ({})
+    property var archiveRequests: ({})
     property string today: Model.dayKey(Date.now(),0)
     property string currentRequestDate: today
     property string fetchedAt: ""
@@ -50,6 +52,7 @@ Item {
     function allRaces() {
         var all = races.slice()
         Object.keys(dayLists).forEach(function(date) { all = all.concat(dayLists[date].races || []) })
+        Object.keys(archives).forEach(function(mode) {all=all.concat(archives[mode].races || [])})
         return all
     }
     function findRace(path) { return allRaces().filter(function(r) {return r.path === path})[0] }
@@ -60,6 +63,7 @@ Item {
         // tagged with its start date and cannot populate the new today.
         today = date
         races = []; dayLists = ({}); details = ({}); watched = []
+        archives=({});archiveRequests=({})
         queue = []; lastRequests = ({}); updateIssues = ({}); eventBaselines = ({})
         fetchedAt = ""; metadataFetchedAt = ""; state = "loading"; error = ""
     }
@@ -73,18 +77,52 @@ Item {
         }
         enqueue("day:"+date)
     }
+    function watchArchive(mode,count,more) {
+        if(["recent","upcoming"].indexOf(mode)<0 || demo) return
+        count=Math.max(10,Math.min(100,Math.round(count)||25))
+        var data=archives[mode]
+        if(!data) {
+            var next=Object.assign({},archives)
+            next[mode]={state:"loading",races:[],dates:[],nextDate:mode==="recent" ? today : Model.dayKey(Date.now(),1)}
+            archives=next;data=next[mode]
+        }
+        if(!more && !data.reset && Model.archiveRows(data.races,mode,today,options,count).length>=count) return
+        var requests=Object.assign({},archiveRequests)
+        // Search at most 30 days per user action, stopping as soon as X matches exist.
+        requests[mode]={count:count,remaining:data.reset ? 30 : Math.min(30,366-(data.dates || []).length)}
+        archiveRequests=requests
+        continueArchive(mode)
+    }
+    function refreshArchive(mode,count) {
+        if(["recent","upcoming"].indexOf(mode)<0 || demo || archiveBusy(mode) || Date.now()<nextAllowed) return
+        if(Date.now()-Number(lastRequests["archive:"+mode] || 0)<60000) return
+        var next=Object.assign({},archives)
+        next[mode]=Object.assign({},next[mode] || {},{reset:true,exhausted:false,nextDate:mode==="recent" ? today : Model.dayKey(Date.now(),1)})
+        archives=next;watchArchive(mode,count,true)
+    }
+    function stopArchive(mode) {
+        var requests=Object.assign({},archiveRequests);delete requests[mode];archiveRequests=requests
+        queue=queue.filter(function(p){return p!=="archive:"+mode})
+    }
+    function continueArchive(mode) {
+        var data=archives[mode], request=archiveRequests[mode]
+        if(!data || !request || request.remaining<=0 || data.exhausted || Date.now()<nextAllowed) return
+        if(!data.reset && Model.archiveRows(data.races,mode,today,options,request.count).length>=request.count) return
+        enqueue("archive:"+mode)
+    }
+    function archiveBusy(mode) {return (worker.running && currentPath==="archive:"+mode) || queue.indexOf("archive:"+mode)>=0}
     function enqueue(path) {
         if (demo || Date.now() < nextAllowed) return
         var key = path || "overview"
         if ((worker.running && currentPath === path) || queue.indexOf(path) >= 0) return
         var race = findRace(path)
         var finished = race && (race.status === "finished" || race.date > today)
-        if (Date.now() - Number(lastRequests[key] || 0) < Model.requestInterval(path, finished, options)) return
+        if (path.indexOf("archive:")!==0 && Date.now() - Number(lastRequests[key] || 0) < Model.requestInterval(path, finished, options)) return
         queue = queue.concat([path]).slice(0, 5)
         runNext()
     }
     function watch(path) {
-        if (!/^race\/[a-z0-9-]+\/\d{4}\/(result|stage-\d+[a-z]?)$/.test(path)) return
+        if (!/^race\/[a-z0-9-]+\/\d{4}\/(result|gc|stage-\d+[a-z]?)$/.test(path)) return
         watched = [path].concat(watched.filter(function(p) { return p !== path })).slice(0, 3)
         enqueue(path)
     }
@@ -108,6 +146,10 @@ Item {
                                      : ["/usr/bin/python3", "-I", script, "overview", "--date", today]
         if (currentPath.indexOf("day:") === 0)
             worker.command = ["/usr/bin/python3", "-I", script, "calendar", "--date", currentPath.slice(4)]
+        else if(currentPath.indexOf("archive:")===0) {
+            var mode=currentPath.slice(8)
+            worker.command=["/usr/bin/python3","-I",script,"archive","--date",archives[mode].nextDate,"--direction",mode]
+        }
         else {
             var race = findRace(currentPath)
             if (race && race.status === "finished") worker.command = worker.command.concat(["--finished"])
@@ -123,9 +165,11 @@ Item {
         try { result = JSON.parse(output) } catch (e) { result = {state: "error", error: "Race data helper failed."} }
         if (code !== 0) result = {state: "error", error: "Race data helper could not run. Check Python 3 is installed."}
         var calendar = currentPath.indexOf("day:") === 0
+        var archive = currentPath.indexOf("archive:") === 0
+        var archiveMode=archive ? currentPath.slice(8) : ""
         var date = calendar ? currentPath.slice(4) : today
         var race = findRace(currentPath)
-        var previousData = calendar ? dayLists[date] || ({}) : currentPath ? details[currentPath] || ({}) : {fetchedAt:fetchedAt,metadataFetchedAt:metadataFetchedAt}
+        var previousData = archive ? archives[archiveMode] || ({}) : calendar ? dayLists[date] || ({}) : currentPath ? details[currentPath] || ({}) : {fetchedAt:fetchedAt,metadataFetchedAt:metadataFetchedAt}
         if (!currentPath && (result.state === "ready" || result.state === "empty")) {
             result.races = (result.races || []).map(function(r) {
                 var old=races.filter(function(p){return p.path===r.path})[0] || {}
@@ -136,9 +180,17 @@ Item {
             })
             result.retainedRaces = result.races.concat(allRaces().filter(function(r) {return r.date !== today}))
         }
-        updateIssues = Model.updateIssues(updateIssues,currentPath,result,previousData,calendar ? "Races · "+date : race ? race.name : "Selected race",Date.now())
+        updateIssues = Model.updateIssues(updateIssues,currentPath,result,previousData,archive ? "Race calendar · "+archiveMode : calendar ? "Races · "+date : race ? race.name : "Selected race",Date.now())
         receiveEvents(currentPath,result,race)
-        if (calendar) {
+        if(archive) {
+            var archiveNext=Object.assign({},archives)
+            archiveNext[archiveMode]=Model.mergeArchive(previousData,result,archiveMode,today)
+            archives=archiveNext
+            var requests=Object.assign({},archiveRequests)
+            if(requests[archiveMode]) requests[archiveMode]=Object.assign({},requests[archiveMode],{remaining:requests[archiveMode].remaining-(result.dates || []).length})
+            archiveRequests=requests
+            if(result.state!=="ready" && result.state!=="empty") stopArchive(archiveMode)
+        } else if (calendar) {
             var lists = Object.assign({},dayLists)
             lists[date] = result.state === "ready" || result.state === "empty" ? result
                 : Object.assign({},previousData,{state:result.state,error:result.error})
@@ -162,6 +214,8 @@ Item {
                 next[currentPath] = Object.assign({}, previous, {state:result.state, error:result.error})
             }
             details = next
+            var keep=Object.keys(details).filter(function(p){return watched.indexOf(p)>=0}).concat(Object.keys(details).slice(-12))
+            var bounded={};keep.forEach(function(p){bounded[p]=next[p]});details=bounded
         } else {
             state = result.state
             error = result.error || ""
@@ -189,6 +243,7 @@ Item {
             queue = []
         }
         Qt.callLater(runNext)
+        if(archive && (result.state==="ready" || result.state==="empty")) Qt.callLater(function(){root.continueArchive(archiveMode)})
     }
     function receiveEvents(path,result,race) {
         if (!path || (race && !Model.matchesRace(race,raceFilters)) || !races.some(function(r){return r.path === path}) || demo || !eventNotifications || result.state !== "ready" || ["ready","empty"].indexOf(result.eventsState)<0) return
@@ -216,6 +271,7 @@ Item {
         details = ({})
         races = []
         dayLists = ({})
+        archives=({});archiveRequests=({})
         today = Model.dayKey(Date.now(),0)
         fetchedAt = ""
         metadataFetchedAt = ""
@@ -245,6 +301,12 @@ Item {
                     lists[date] = {state:"ready",fetchedAt:new Date().toISOString(),races:entries.map(function(r) {return Object.assign({},r,{date:date})})}
                 })
                 root.dayLists = lists
+                var archives={}
+                ;["recent","upcoming"].forEach(function(mode) {
+                    var entries=((fixture.archive || {})[mode] || []).map(function(r){return Object.assign({},r,{date:Model.dayKey(Date.now(),r.dayOffset)})})
+                    archives[mode]={state:"ready",races:entries,dates:entries.map(function(r){return r.date}).sort(),fetchedAt:new Date().toISOString(),exhausted:true}
+                })
+                root.archives=archives
                 root.state = "ready"
                 root.fetchedAt = new Date().toISOString()
             } catch (e) { root.state = "error"; root.error = "Demo fixture could not be loaded." }

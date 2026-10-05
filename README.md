@@ -13,6 +13,8 @@ Race coverage depends on the public data PCS makes available.
 - **Pop-out window:** detach into a regular tiled window and dock back without
   losing your current view; polling and notifications stay shared.
 - **Yesterday, today and tomorrow:** results, current races and upcoming stages.
+- **Race calendar:** browse recent results and upcoming races beyond adjacent days.
+  Choose the default list size in Settings (25 races; adjustable from 10 to 100).
 - **One race overview:** distance remaining, race time, average speed, groups and
   rider splits, latest events, course profile and the next published climb or sprint.
 - **Finished races:** course profile, distance, winner’s time and average speed,
@@ -99,7 +101,8 @@ needed. The header’s flag always returns to the race list; Live returns to tod
 | Bike: left / right / middle click | Toggle popup or focus detached window / open PCS / refresh |
 | Flag / `1` | Return to the full list for the selected date |
 | Live indicator / `2` | Today’s live races |
-| `←` / `→` in the list | Yesterday / today / tomorrow |
+| Calendar icon / `3` | Recent results and upcoming races |
+| `←` / `→` in the list | Adjacent dates, or Recent / Upcoming in the calendar |
 | Click the date | Return to today |
 | Race-row ↗ | Open that race or stage on PCS |
 | `J` / `K` or `↓` / `↑` | Select a race or setting |
@@ -112,6 +115,12 @@ needed. The header’s flag always returns to the race list; Live returns to tod
 | Enter in Settings | Toggle a category or adjust the selected setting |
 | `R` | Refresh, respecting configured intervals and cooldowns |
 | Esc | Back, then close |
+
+The calendar applies your category and level filters before limiting the list.
+Click a race for results/GC or its upcoming preview. The “Last/Next” count opens
+Settings; “Show more” expands this visit without changing your saved default.
+The date range shows how far the search has reached. Multi-day races appear once,
+using their nearest listed date and the race/stage link PCS publishes.
 
 The pop-out is a normal Hyprland window: tile, move or resize it with your usual
 window controls. Closing it keeps the current view; click the bike to reopen it.

@@ -39,6 +39,44 @@ def race_info_page():
     return '<ul class="keyvalueList">'+''.join('<li><div class="title">'+k+':</div><div class="value">'+v+'</div></li>' for k,v in [('Date','27 September 2026'),('Distance','160 km'),('Avg. speed winner','48.0 km/h')])+'</ul>'
 
 class Parsing(unittest.TestCase):
+    def test_flattened_links_normalize_without_losing_gc(self):
+        self.assertEqual(pcs.race_path('race/demo-tour-2026-gc/results/results'),'race/demo-tour/2026/gc')
+        self.assertEqual(pcs.race_path('race/demo-tour-2026-stage-2'),'race/demo-tour/2026/stage-2')
+        self.assertEqual(pcs.race_path('race/demo-tour/2026/gc'),'race/demo-tour/2026/gc')
+        for value in ['race/demo-2026-gc?x=y','https://evil.invalid/race/demo-2026-result','race/demo-2026-startlist']:
+            with self.assertRaises(pcs.SourceError): pcs.race_path(value)
+    def test_archive_batches_three_days_and_deduplicates_nearest(self):
+        def parsed(html,date):
+            return {'races':[{'path':'race/demo/2026/gc','date':date}]}
+        with patch.object(pcs,'fetch',return_value='html') as fetch, patch.object(pcs,'parse_calendar',side_effect=parsed):
+            recent=pcs.load_archive('2026-01-01','recent')
+            self.assertEqual(recent['dates'],['2026-01-01','2025-12-31','2025-12-30'])
+            self.assertEqual(recent['nextDate'],'2025-12-29')
+            self.assertEqual(recent['races'],[{'path':'race/demo/2026/gc','date':'2026-01-01'}])
+            self.assertEqual(fetch.call_count,3)
+            future=pcs.load_archive('2026-12-31','upcoming')
+            self.assertEqual(future['nextDate'],'2027-01-03')
+    def test_archive_partial_failure_returns_retry_cursor_and_successful_pages(self):
+        with patch.object(pcs,'fetch',side_effect=['html',pcs.SourceError('blocked','Rejected')]) as fetch, patch.object(pcs,'parse_calendar',return_value={'races':[{'path':'race/demo/2026/result'}]}):
+            result=pcs.load_archive('2026-10-01','recent')
+            self.assertEqual(result['state'],'blocked')
+            self.assertEqual(result['dates'],['2026-10-01'])
+            self.assertEqual(result['nextDate'],'2026-09-30')
+            self.assertEqual(len(result['races']),1)
+            self.assertEqual(fetch.call_count,2)
+    def test_archive_invalid_date_never_fetches(self):
+        with patch.object(pcs,'fetch') as fetch:
+            with self.assertRaises(pcs.SourceError): pcs.load_archive('2026-02-30','recent')
+            fetch.assert_not_called()
+    def test_modern_results_preserve_primary_gc_with_repeated_navigation_ids(self):
+        html=results_page().replace('resultTabs','unitTabs').replace('resTab','resultCont').replace('data-id','data-navid').replace('<th>Time</th>','<th>Timelag</th>')
+        html+='<div class="resultCont" data-navid="g"><table class="results"><th>Team</th></table></div>'
+        html+='<div class="unitInfo"><div class="bold">Distance:</div><div>170.2</div><div>km</div><br><div class="bold">Avg. speed winner:</div><div>44.5</div><br></div>'
+        result=pcs.parse_results(html,'race/demo/2026/gc')
+        self.assertEqual(result['classifications'][0]['rows'][0]['name'],'OverallWinner')
+        self.assertEqual(result['classifications'][1]['rows'][0]['time'],'3:20:00')
+        self.assertEqual(result['distance'],170.2)
+        self.assertEqual(result['avgSpeed'],44.5)
     def test_overview_deduplicates_live_stage_and_eta(self):
         races=pcs.parse_overview(HOME)['races']
         self.assertEqual(len(races),2)

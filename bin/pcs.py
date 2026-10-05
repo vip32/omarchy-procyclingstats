@@ -90,9 +90,12 @@ def race_path(value):
     url = urllib.parse.urlsplit(urllib.parse.urljoin(BASE, value))
     if url.scheme != 'https' or url.netloc != 'www.procyclingstats.com' or url.query or url.fragment:
         raise SourceError('unsupported', 'Only public PCS road race links are supported.')
-    if not re.fullmatch(r'/race/[a-z0-9-]+/\d{4}/(?:result|stage-\d+[a-z]?)(?:/(?:live|result|livestats))*', url.path):
+    # PCS now also publishes flattened race URLs. Keep one canonical cache key.
+    flat = re.fullmatch(r'/race/([a-z0-9-]+)-(\d{4})-(result|gc|stage-\d+[a-z]?)(?:/(?:live|results|result|livestats))*', url.path)
+    path = '/race/'+'/'.join(flat.groups()) if flat else url.path
+    if not re.fullmatch(r'/race/[a-z0-9-]+/\d{4}/(?:result|gc|stage-\d+[a-z]?)(?:/(?:live|result|livestats))*', path):
         raise SourceError('unsupported', 'Select a PCS race result or stage link.')
-    bits = url.path.strip('/').split('/')
+    bits = path.strip('/').split('/')
     return '/'.join(bits[:4])
 
 def race_link(n):
@@ -251,12 +254,40 @@ def parse_calendar(html, date):
         raise SourceError('unsupported', 'PCS calendar format changed; races could not be read.')
     return dict(state='ready' if races else 'empty', date=date, races=list(races.values())[:60])
 
+def load_archive(date, direction):
+    """Three dated calendars per request; the shared service drives pagination."""
+    cursor=dt.date.fromisoformat(calendar_date(date))
+    step=-1 if direction=='recent' else 1
+    races={}
+    scanned=[]
+    for _ in range(3):
+        day=cursor.isoformat()
+        try:
+            page=parse_calendar(fetch('races.php?p=uci&s=today&date='+day),day)
+        except SourceError as e:
+            return dict(state=e.state,error=e.message,races=list(races.values()),dates=scanned,nextDate=day)
+        scanned.append(day)
+        for race in page['races']:
+            # Dates are traversed nearest first. A multi-day race keeps its nearest entry.
+            races.setdefault(race['path'],race)
+        cursor+=dt.timedelta(days=step)
+    return dict(state='ready' if races else 'empty',races=list(races.values()),dates=scanned,nextDate=cursor.isoformat())
+
 def race_info(doc):
     values = {}
     for group in doc.nodes('ul', 'keyvalueList'):
         for row in group.nodes('li'):
             key = txt(row.first(cls='title')).rstrip(':').lower()
             values[key] = txt(row.first(cls='value'))
+    for group in doc.nodes(cls='unitInfo'):
+        for label in group.nodes('div','bold'):
+            siblings=label.parent.children
+            following=siblings[siblings.index(label)+1:]
+            parts=[]
+            for node in following:
+                if isinstance(node,Node) and node.tag=='br': break
+                parts.append(txt(node) if isinstance(node,Node) else node)
+            values[txt(label).rstrip(': ').lower()]=clean(' '.join(parts))
     return values
 
 def metric(value, maximum=10000):
@@ -338,8 +369,11 @@ def parse_race(html, path):
 def result_rows(table):
     """Read header-selected columns; hidden numeric times resolve PCS ditto marks."""
     headers=[txt(h).lower() for h in table.nodes('th')]
-    if 'rider' not in headers or 'time' not in headers: return []
-    rider_index,time_index=headers.index('rider'),headers.index('time')
+    if 'rider' not in headers: return []
+    if 'time' in headers: time_index=headers.index('time')
+    elif 'timelag' in headers: time_index=len(headers)-1-headers[::-1].index('timelag')
+    else: return []
+    rider_index=headers.index('rider')
     bib_index=headers.index('bib') if 'bib' in headers else -1
     rows=[]
     previous_gap=None
@@ -367,16 +401,19 @@ def result_rows(table):
 
 def parse_results(html,path):
     doc=checked_html(html)
-    navigation=doc.first(cls='resultTabs')
+    navigation=doc.first(cls='resultTabs') or doc.first(cls='unitTabs')
     tabs={}
     if navigation:
         for a in navigation.nodes('a'):
             label=txt(a).upper()
             if label in ('GC','STAGE','RESULT','RESULTS'):
-                tabs[a.attrs.get('data-id','')]='gc' if label=='GC' else 'result'
-    containers={n.attrs.get('data-id'):n for n in doc.nodes(cls='resTab')}
+                tabs[a.attrs.get('data-id',a.attrs.get('data-navid',''))]='gc' if label=='GC' else 'result'
+    containers={}
+    for node in doc.nodes():
+        if set(node.attrs.get('class','').split()) & {'resTab','resultCont'}:
+            containers.setdefault(node.attrs.get('data-id',node.attrs.get('data-navid')),node)
     classifications=[]
-    stage=path.split('/')[-1].startswith('stage-')
+    stage=path.split('/')[-1].startswith('stage-') or path.endswith('/gc')
     for tab_id,kind in tabs.items():
         container=containers.get(tab_id)
         table=container.first('table','results') if container else None
@@ -386,7 +423,8 @@ def parse_results(html,path):
         # A standalone one-day results page has no GC, and must never be labeled GC.
         table=doc.first('table','results')
         if table is None: raise SourceError('unavailable','PCS has not published results for this race yet.')
-        classifications=[dict(kind='result',title='Stage results' if stage else 'Final results',rows=result_rows(table))]
+        is_gc=path.endswith('/gc')
+        classifications=[dict(kind='gc' if is_gc else 'result',title='General classification' if is_gc else 'Stage results' if stage else 'Final results',rows=result_rows(table))]
     classifications.sort(key=lambda c:0 if c['kind']=='gc' else 1)
     info=race_info(doc)
     # The selected stage's winner time is independent of the GC's accumulated time.
@@ -510,9 +548,10 @@ def deadline(*_):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode',choices=['overview','calendar','race','events'])
+    parser.add_argument('mode',choices=['overview','calendar','archive','race','events'])
     parser.add_argument('--race',default='')
     parser.add_argument('--date',default='')
+    parser.add_argument('--direction',choices=['recent','upcoming'],default='recent')
     parser.add_argument('--upcoming',action='store_true',help='Read the published pre-race information')
     parser.add_argument('--finished',action='store_true',help='Read published results and stage GC instead of LiveStats')
     parser.add_argument('--html',type=Path,help='Parse a saved public page offline; no network request')
@@ -521,10 +560,12 @@ def main():
     signal.alarm(18)
     try:
         path=race_path(args.race) if args.mode in ('race','events') else ''
-        date=calendar_date(args.date) if args.mode=='calendar' else ''
+        date=calendar_date(args.date) if args.mode in ('calendar','archive') else ''
         if args.html:
             with args.html.open('rb') as stream: html=bounded_read(stream).decode('utf-8',errors='replace')
             result=parse_calendar(html,date) if date else parse_events(html) if args.mode=='events' else (parse_preview(html,path) if args.upcoming else parse_results(html,path) if args.finished else parse_race(html,path)) if path else parse_overview(html)
+        elif args.mode=='archive':
+            result=load_archive(date,args.direction)
         else:
             result=parse_calendar(fetch('races.php?p=uci&s=today&date='+date),date) if date else parse_events(fetch(path+'/live/race-events')) if args.mode=='events' else load_race(path,args.finished,args.upcoming) if path else load_overview(calendar_date(args.date or dt.date.today().isoformat()))
         result['fetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat()
