@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0 — follow races and stages
+
+- Pin race editions with a compact star; keep matching races first in lists and
+  retain pins across reboots in the widget's existing settings.
+- Navigate previous/next published stages without leaving details. Resolve each
+  stage to results, live coverage or preview and retain spoiler protection.
+- Show gaining/losing gap arrows only for fresh, comparable live groups against
+  the same front group; omit uncertain, incomplete or stale comparisons.
+
 ## 0.11.3 — readable empty states
 
 - Conceal only populated results and event lists. Keep loading, unavailable and

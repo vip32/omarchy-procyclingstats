@@ -68,3 +68,11 @@ including while the panel is closed. First fetches, filter changes, re-enabling
 notifications and long outages establish a baseline without replaying old events.
 Each update groups at most three summaries plus a count into one notification.
 Omarchy’s native notification service handles expiry and Do Not Disturb.
+
+## Pinned races
+
+Use the star in a race row or beside its title, or press F. Pins are stored as
+validated race-edition keys in `pinnedRaces` on the same shell entry (maximum
+100), so all stages share the star and it survives a reboot. Pins reorder only
+matching races in the current view; filters and notification settings still apply.
+Fictional demo pins are temporary and never change saved pins.

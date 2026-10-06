@@ -28,6 +28,31 @@ TestCase {
     function snapshot(text) {
         return {state:"ready",status:"live",kmToGo:42,fetchedAt:new Date().toISOString(),eventsState:"ready",eventsFetchedAt:new Date().toISOString(),events:[{marker:"42",text:text}]}
     }
+    function test_gap_trends_follow_successful_snapshot_history_only() {
+        var groups=[{label:"Front",gap:"+0:00",riders:[{id:"rider/a"}]},{label:"Peloton",gap:"+1:20",riders:[]}]
+        var first=snapshot("First");first.path=racePath;first.groups=groups;first.sourceAt=new Date(Date.now()-60000).toISOString()
+        deliver(first)
+        compare(service.details[racePath].groups[1].gapDelta,null)
+        var next=snapshot("Next");next.path=racePath;next.groups=JSON.parse(JSON.stringify(groups));next.groups[1].gap="+1:10";next.sourceAt=new Date().toISOString()
+        deliver(next)
+        compare(service.details[racePath].groups[1].gapDelta,-10)
+        deliver({state:"blocked",error:"Rejected"})
+        next.sourceAt=new Date(Date.now()+1000).toISOString();deliver(next)
+        compare(service.details[racePath].groups[1].gapDelta,null)
+    }
+    function test_stage_navigation_is_confined_and_uses_stage_resolver() {
+        var parent={path:"race/tour/2026/stage-2",name:"Tour",status:"finished"}
+        var stage={path:"race/tour/2026/stage-3",label:"Stage 3"}
+        var details={};details[parent.path]={stages:[stage]};service.details=details
+        verify(!service.watchStage({path:"race/other/2026/stage-3"},parent))
+        verify(!service.watchStage({path:"race/tour/2026/stage-4"},parent))
+        verify(service.watchStage(stage,parent))
+        verify(worker().command.indexOf("--stage")>=0)
+        verify(worker().command.indexOf("--finished")<0)
+        service.currentPath="";worker().running=false
+        deliver({state:"ready",races:[race]})
+        verify(service.watched.indexOf(stage.path)>=0)
+    }
     function worker() {
         for(var i=0;i<service.data.length;i++) if("command" in service.data[i])return service.data[i]
     }

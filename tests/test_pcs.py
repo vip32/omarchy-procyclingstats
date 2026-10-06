@@ -41,6 +41,49 @@ def race_info_page():
     return '<ul class="keyvalueList">'+''.join('<li><div class="title">'+k+':</div><div class="value">'+v+'</div></li>' for k,v in [('Date','27 September 2026'),('Distance','160 km'),('Avg. speed winner','48.0 km/h')])+'</ul>'
 
 class Parsing(unittest.TestCase):
+    def test_stage_navigation_uses_published_same_edition_links(self):
+        html='<select>'+''.join('<option value="'+p+'">Stage</option>' for p in [
+            'race/demo-2026-stage-2b/live','race/demo/2026/stage-1',
+            'race/demo-2026-stage-2a/results','race/demo-2026-gc',
+            'race/other/2026/stage-3','race/demo/2025/stage-3',
+            'https://evil.invalid/race/demo/2026/stage-3'])+'</select>'
+        html+='<a href="race/demo-2026-stage-4">Stage 4</a><a href="race/demo-2026-stage-9">An unrelated story</a>'
+        stages=pcs.stage_links(pcs.checked_html(html),'race/demo/2026/gc')
+        self.assertEqual([s['label'] for s in stages],['Stage 1','Stage 2a','Stage 2b','Stage 4'])
+        self.assertEqual(len(pcs.stage_links(pcs.checked_html('<select>'+''.join('<option value="race/demo/2026/stage-'+str(n)+'">Stage</option>' for n in range(50))+'</select>'),'race/demo/2026/gc')),32)
+
+    def test_stage_resolver_reads_finished_results_without_guessing_status(self):
+        page=results_page()+race_info_page()+'<svg><polyline points="0,10 100,20"/></svg>'
+        with patch.object(pcs,'fetch',return_value=page) as fetch,patch.object(pcs,'attach_finished_profile',side_effect=lambda r,p:r),patch.object(pcs,'attach_events',side_effect=lambda r,p:r):
+            result=pcs.load_race('race/demo/2026/stage-2',stage=True)
+        self.assertEqual(result['status'],'finished')
+        self.assertTrue(result['classifications'][0]['rows'])
+        self.assertEqual(fetch.call_count,1)
+
+    def test_stage_resolver_future_stage_is_preview_without_live_request(self):
+        page=race_info_page().replace('27 September 2026','27 September 2099')
+        with patch.object(pcs,'fetch',return_value=page) as fetch:
+            result=pcs.load_race('race/demo/2026/stage-2',stage=True)
+        self.assertEqual(result['status'],'upcoming')
+        self.assertEqual(fetch.call_count,1)
+        self.assertNotIn('classifications',result)
+
+    def test_stage_resolver_uses_live_data_and_retains_stage_links(self):
+        page=race_info_page()+'<select><option value="race/demo/2026/stage-2">Stage 2</option></select>'
+        with patch.object(pcs,'fetch',side_effect=[page,live()]),patch.object(pcs,'attach_events',side_effect=lambda r,p:r):
+            result=pcs.load_race('race/demo/2026/stage-2',stage=True)
+        self.assertEqual(result['status'],'live')
+        self.assertEqual(result['stages'][0]['path'],'race/demo/2026/stage-2')
+
+    def test_stage_resolver_never_hides_rejection_or_assumes_past_stage_finished(self):
+        with patch.object(pcs,'fetch',side_effect=[race_info_page(),'<title>No timing</title>']):
+            result=pcs.load_race('race/demo/2026/stage-2',stage=True)
+        self.assertEqual(result['status'],'unknown')
+        with patch.object(pcs,'fetch',side_effect=[race_info_page(),pcs.SourceError('blocked','Rejected')]) as fetch:
+            with self.assertRaises(pcs.SourceError) as error: pcs.load_race('race/demo/2026/stage-2',stage=True)
+            self.assertEqual(error.exception.state,'blocked')
+            self.assertEqual(fetch.call_count,2)
+
     def test_flattened_links_normalize_without_losing_gc(self):
         self.assertEqual(pcs.race_path('race/demo-tour-2026-gc/results/results'),'race/demo-tour/2026/gc')
         self.assertEqual(pcs.race_path('race/demo-tour-2026-stage-2'),'race/demo-tour/2026/stage-2')

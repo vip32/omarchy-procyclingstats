@@ -7,6 +7,7 @@ function integer(value, fallback, min, max) {
 function settings(value) {
     value = value || {}
     var result = {
+        pinnedRaces: normalizePins(value.pinnedRaces),
         detailTab: value.detailTab === "events" ? "events" : "overview",
         revealMode: value.revealMode !== false,
         calendarTab: value.calendarTab === "upcoming" ? "upcoming" : "recent",
@@ -28,12 +29,13 @@ function requestInterval(path, finished, options) {
 }
 
 function archiveRows(races, mode, today, options, limit) {
-    return (races || []).filter(function(r) {
+    var eligible=(races || []).filter(function(r) {
         return matchesRace(r,options) && (mode==="recent" ? r.status==="finished" && r.date<=today : r.date>today && r.status!=="finished")
     }).sort(function(a,b) {
         var date=a.date.localeCompare(b.date)
         return (mode==="recent" ? -date : date) || a.name.localeCompare(b.name) || a.path.localeCompare(b.path)
-    }).slice(0,limit || 100)
+    })
+    return pinnedFirst(eligible,settings(options).pinnedRaces).slice(0,limit || 100)
 }
 
 function mergeArchive(previous, result, mode, today) {
@@ -207,4 +209,70 @@ function withCourse(detail,course) {
 // A reveal applies only to the currently selected race, never to the next one.
 function resultsHidden(enabled, raceStatus, detailStatus, revealed) {
     return enabled && (raceStatus === "finished" || detailStatus === "finished") && !revealed
+}
+
+// Pins identify an edition, so GC and individual stages share the same star.
+function raceEdition(path) {
+    var match=/^(race\/[a-z0-9-]+\/\d{4})(?:\/(?:result|gc|stage-\d+[a-z]?))?$/.exec(String(path || ""))
+    return match ? match[1] : ""
+}
+function normalizePins(value) {
+    return (Array.isArray(value) ? value : []).map(raceEdition).filter(function(p,i,a){return p && a.indexOf(p)===i}).slice(0,100)
+}
+function isPinned(path,pins) {return normalizePins(pins).indexOf(raceEdition(path))>=0}
+function togglePin(path,pins) {
+    var next=normalizePins(pins),key=raceEdition(path),index=next.indexOf(key)
+    if(!key)return next
+    if(index>=0)next.splice(index,1)
+    else if(next.length<100)next.push(key)
+    return next
+}
+function pinnedFirst(rows,pins) {
+    return rows.map(function(r,i){return {race:r,index:i}}).sort(function(a,b){
+        return Number(isPinned(b.race.path,pins))-Number(isPinned(a.race.path,pins)) || a.index-b.index
+    }).map(function(item){return item.race})
+}
+function stageNeighbor(detail,offset) {
+    var stages=detail.stages || [],path=detail.stagePath || detail.path || ""
+    var index=stages.findIndex(function(s){return s.path===path})
+    return index>=0 ? stages[index+(offset<0 ? -1 : 1)] || null : null
+}
+function gapSeconds(value) {
+    if(!/^\+?\d{1,2}:[0-5]\d(?::[0-5]\d)?$/.test(String(value || "")))return null
+    return String(value).replace(/^\+/,"").split(":").reduce(function(total,n){return total*60+Number(n)},0)
+}
+function groupIdentity(group) {
+    if(group.uncertain || group.omitted>0)return ""
+    var riders=group.riders || []
+    if(riders.length) {
+        var ids=riders.map(function(r){return r.id || r.name || ""}).sort()
+        if(ids.some(function(id){return !id}) || (group.count && group.count!==ids.length))return ""
+        return "riders:"+ids.join("|")
+    }
+    // A numbered group is unstable; the peloton is the only safe unnamed group.
+    return /^peloton$/i.test(String(group.label || "").trim()) ? "peloton" : ""
+}
+function gapTrends(previous,current,now,maxAge) {
+    var groups=(current.groups || []).map(function(g){return Object.assign({},g,{gapDelta:null})})
+    if(!previous || previous.state!=="ready" || current.state!=="ready" || previous.status!=="live" || current.status!=="live" || previous.path!==current.path)return groups
+    var before=Date.parse(previous.sourceAt || previous.fetchedAt),after=Date.parse(current.sourceAt || current.fetchedAt)
+    if(!Number.isFinite(before) || !Number.isFinite(after) || after<=before || after-before>maxAge || now-after>maxAge || after>now+60000)return groups
+    var old=previous.groups || [],front=groups[0],oldFront=old[0]
+    // Both gaps must refer to the same front group, with complete membership.
+    if(!front || !oldFront || gapSeconds(front.gap)!==0 || gapSeconds(oldFront.gap)!==0 || !groupIdentity(front) || groupIdentity(front)!==groupIdentity(oldFront))return groups
+    var identities=groups.map(groupIdentity),oldIdentities=old.map(groupIdentity)
+    return groups.map(function(g,index){
+        var id=identities[index],matches=old.filter(function(p,i){return oldIdentities[i]===id})
+        var gap=gapSeconds(g.gap),was=matches.length===1 ? gapSeconds(matches[0].gap) : null
+        if(index>0 && id && identities.indexOf(id)===identities.lastIndexOf(id) && gap!==null && was!==null && !matches[0].uncertain)g.gapDelta=gap-was
+        return g
+    })
+}
+function gapTrendText(group,fresh) {
+    var delta=group.gapDelta
+    return fresh && typeof delta==="number" && delta!==0 ? (delta<0 ? " ↑" : " ↓") : ""
+}
+
+function editionName(race) {
+    return race.editionName || String(race.name || "Race").replace(/\s*[·|–-]\s*Stage\s+\d+[a-z]?.*$/i,"")
 }

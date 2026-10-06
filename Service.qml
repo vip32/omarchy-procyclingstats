@@ -20,6 +20,8 @@ Item {
     property string error: ""
     property var races: []
     property var details: ({})
+    property var stageRaces: ({})
+    property var pinnedRaces: []
     property var dayLists: ({})
     property var courses: ({})
     property var courseWanted: []
@@ -53,7 +55,7 @@ Item {
     property var eventBaselines: ({})
     readonly property var options: Model.settings(Object.assign({},raceFilters,{refreshIntervalSec:refreshIntervalSec,
         overviewIntervalSec:overviewIntervalSec,resultsIntervalSec:resultsIntervalSec,
-        revealMode:revealMode,eventNotifications:eventNotifications,notificationDurationSec:notificationDurationSec}))
+        revealMode:revealMode,eventNotifications:eventNotifications,notificationDurationSec:notificationDurationSec,pinnedRaces:pinnedRaces}))
     property double nextAllowed: 0
     property bool demo: false
     onEventNotificationsChanged: eventBaselines = ({})
@@ -64,14 +66,14 @@ Item {
         Object.keys(archives).forEach(function(mode) {all=all.concat(archives[mode].races || [])})
         return all
     }
-    function findRace(path) { return allRaces().filter(function(r) {return r.path === path})[0] }
+    function findRace(path) { return allRaces().filter(function(r) {return r.path === path})[0] || stageRaces[path] }
     function checkDate(now) {
         var date = Model.dayKey(now,0)
         if (date === today || demo) return
         // Drop the old day's polling and snapshots; an in-flight response is
         // tagged with its start date and cannot populate the new today.
         today = date
-        races = []; dayLists = ({}); details = ({}); watched = []
+        races = []; dayLists = ({}); details = ({}); stageRaces=({}); watched = []
         archives=({});archiveRequests=({});courses=({});courseWanted=[]
         courseRestoreQueue=[];courseRestoreChecked=({})
         queue = []; lastRequests = ({}); updateIssues = ({}); eventBaselines = ({})
@@ -205,7 +207,7 @@ Item {
         var key = path || "overview"
         if ((worker.running && currentPath === path) || queue.indexOf(path) >= 0) return
         var race = findRace(path)
-        var finished = race && (race.status === "finished" || race.date > today)
+        var finished = (race && (race.status === "finished" || race.date > today)) || (details[path] && details[path].status!=="live")
         if(path.indexOf("course:")===0 && !courseDue(path.slice(7)))return
         if (path.indexOf("archive:")!==0 && path.indexOf("course:")!==0 && Date.now() - Number(lastRequests[key] || 0) < Model.requestInterval(path, finished, options)) return
         queue = queue.concat([path]).slice(0, 5)
@@ -216,6 +218,17 @@ Item {
         watched = [path].concat(watched.filter(function(p) { return p !== path })).slice(0, 3)
         restoreCourses([path])
         enqueue(path)
+    }
+    function watchStage(stage,parent) {
+        if(!stage || !parent || Model.raceEdition(stage.path)!==Model.raceEdition(parent.path))return false
+        var source=details[parent.path] || {}
+        if(!(source.stages || []).some(function(s){return s.path===stage.path}))return false
+        var next=Object.assign({},stageRaces)
+        next[stage.path]={path:stage.path,name:Model.editionName(parent),status:"unknown",stageNavigation:true,stages:source.stages}
+        var keys=Object.keys(next);while(keys.length>64)delete next[keys.shift()]
+        stageRaces=next
+        watch(stage.path)
+        return true
     }
     function refresh() {
         checkDate(Date.now())
@@ -246,7 +259,8 @@ Item {
         }
         else {
             var race = findRace(currentPath)
-            if (race && race.status === "finished") worker.command = worker.command.concat(["--finished"])
+            if(stageRaces[currentPath]) worker.command=worker.command.concat(["--stage"])
+            else if (race && race.status === "finished") worker.command = worker.command.concat(["--finished"])
             else if (race && race.date > today) worker.command = worker.command.concat(["--upcoming"])
         }
         worker.running = true
@@ -307,6 +321,8 @@ Item {
                     result.profile = prior.profile
                     result.profileFetchedAt = prior.profileFetchedAt || prior.fetchedAt || ""
                 }
+                if(!(result.stages || []).length && stageRaces[currentPath])result.stages=stageRaces[currentPath].stages || []
+                result.groups=Model.gapTrends(prior,result,Date.now(),Math.max(180000,refreshIntervalSec*3000))
                 next[currentPath] = result
                 rememberCourse(currentPath,result)
                 var times=Object.assign({},lastRequests);times["course:"+currentPath]=Date.now();lastRequests=times
@@ -326,7 +342,7 @@ Item {
                 races = result.races || []
                 fetchedAt = result.fetchedAt || ""
                 if(result.metadataFetchedAt) metadataFetchedAt=result.metadataFetchedAt
-                var paths = allRaces().map(function(r) {return r.path})
+                var paths = allRaces().map(function(r) {return r.path}).concat(Object.keys(stageRaces))
                 watched = watched.filter(function(p) {return paths.indexOf(p) >= 0})
                 var retained = {}
                 for (var i = 0; i < paths.length; i++) if (details[paths[i]]) retained[paths[i]] = details[paths[i]]
@@ -373,7 +389,7 @@ Item {
         if (loading) return false
         queue = []
         demo = enabled
-        details = ({})
+        details = ({});stageRaces=({})
         races = []
         dayLists = ({})
         archives=({});archiveRequests=({});courses=({});courseWanted=[]
@@ -399,7 +415,13 @@ Item {
             try {
                 var fixture = JSON.parse(text())
                 root.races = fixture.races
-                root.details = fixture.details
+                var demoDetails=fixture.details
+                Object.keys(demoDetails).forEach(function(path){
+                    var d=demoDetails[path]
+                    d.fetchedAt=new Date().toISOString()
+                    if(d.status==="live")d.sourceAt=d.fetchedAt
+                })
+                root.details = demoDetails
                 var lists = {}
                 ;[-1,1].forEach(function(offset) {
                     var date = Model.dayKey(Date.now(),offset)

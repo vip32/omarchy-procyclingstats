@@ -29,10 +29,10 @@ Panel {
     readonly property var unfilteredRaces: dayData.races || []
     readonly property var races: unfilteredRaces.filter(function(r){return Model.matchesRace(r,preferences)})
     readonly property bool filtersActive: Model.filtersActive(preferences)
-    readonly property bool preview: selected && selected.date>Model.dayKey(now,0) && !finished
+    readonly property bool preview: selected && !finished && (selected.date>Model.dayKey(now,0) || (selected.stageNavigation && detail.status==="upcoming"))
     readonly property bool demo: service ? service.demo : false
-    readonly property var rows: archive ? Model.archiveRows(unfilteredRaces,archiveMode,Model.dayKey(now,0),preferences,archiveCount) : filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races
-    readonly property var selected: archive && expanded && archiveSelection ? archiveSelection : rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
+    readonly property var rows: archive ? Model.archiveRows(unfilteredRaces,archiveMode,Model.dayKey(now,0),Object.assign({},preferences,{pinnedRaces:pins}),archiveCount) : Model.pinnedFirst(filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races, pins)
+    readonly property var selected: expanded && archiveSelection ? archiveSelection : rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
     readonly property var detail: selected && service ? Model.withCourse(service.details[selected.path] || ({}),service.courses[selected.path] || ({})) : ({})
     readonly property var preferences: Model.settings(demo ? {} : settings)
     readonly property var connection: Model.warning(service ? service.updateIssues : {},now,service ? service.nextAllowed : 0,service ? service.loading : false)
@@ -46,6 +46,28 @@ Panel {
     property string detailView: preferences.detailTab
     property bool resultsRevealed: false
     readonly property bool resultsHidden: Model.resultsHidden(preferences.revealMode,selected ? selected.status : "",detail.status || "",resultsRevealed)
+    property var demoPins: []
+    readonly property var pins: demo ? demoPins : preferences.pinnedRaces
+    readonly property var previousStage: Model.stageNeighbor(detail,-1)
+    readonly property var nextStage: Model.stageNeighbor(detail,1)
+    function pinned(path) {return Model.isPinned(path,pins)}
+    function pinRace(path) {
+        var selectedPath=selected ? selected.path : ""
+        var next=Model.togglePin(path,pins)
+        if(demo)demoPins=next
+        else persistSettings({pinnedRaces:next})
+        var index=rows.findIndex(function(r){return r.path===selectedPath})
+        if(index>=0)cursorIndex=index
+    }
+    function moveStage(offset) {
+        var stage=offset<0 ? previousStage : nextStage
+        if(!stage || !selected || !service)return
+        var parent=selected
+        if(!service.watchStage(stage,parent))return
+        archiveSelection={path:stage.path,name:Model.editionName(parent),editionName:Model.editionName(parent),status:"unknown",stageNavigation:true}
+        resultsRevealed=false
+        Qt.callLater(function(){scroller.contentY=0})
+    }
     property var appliedPreferences: ({})
     function chooseDetailView(view) {
         detailView=view==="events" ? "events" : "overview"
@@ -185,7 +207,7 @@ Panel {
     }
     function select(index, show) {
         cursorIndex = Math.max(0,Math.min(rows.length-1,index))
-        if(archive && show) {archiveSelection=rows[cursorIndex] || null;if(service)service.stopArchive(archiveMode)}
+        if(show || expanded) {archiveSelection=rows[cursorIndex] || null;if(archive && service)service.stopArchive(archiveMode)}
         if(show) expanded = true
         if(service && selected) service.watch(selected.path)
         Qt.callLater(function() {
@@ -222,7 +244,7 @@ Panel {
         if(resetList) {cursorIndex=0;expanded=false}
         if(archive && dashboardVisible && service)service.watchArchive(archiveMode,archiveCount,false)
     }
-    onDemoChanged: settingsError=""
+    onDemoChanged: {settingsError="";demoPins=[];archiveSelection=null}
     onSettingsOpenChanged: Qt.callLater(function(){scroller.contentY=0;root.updateVisibleCourses()})
     onFilterChanged: { cursorIndex = 0; expanded = false;if(!archive && service){service.stopArchive("recent");service.stopArchive("upcoming")} }
     onSelectedChanged: {
@@ -261,6 +283,8 @@ Panel {
         function events(): void { root.showDashboard(); root.select(root.cursorIndex,true); root.chooseDetailView("events") }
         function detailTab(view: string): void {root.chooseDetailView(view)}
         function spoilerProtection(enabled: bool): void {root.persistSettings({revealMode:enabled})}
+        function pinSelected(): void {if(root.selected)root.pinRace(root.selected.path)}
+        function stage(direction: int): void {root.moveStage(direction)}
         function revealResults(): void {root.toggleResults()}
         function setDetailView(view: string): void { root.detailView=view==="events" ? "events" : "overview" }
         function settings(): void { root.settingsOpen=true;root.showDashboard() }
@@ -291,12 +315,12 @@ Panel {
             root.filter = filterName === "Live" ? "Live" : filterName==="Calendar" ? "Calendar" : "Races"
             var i = root.rows.findIndex(function(r){return r.path === path})
             root.cursorIndex = Math.max(0,i)
-            if(root.archive)root.archiveSelection=root.rows[root.cursorIndex] || null
+            root.archiveSelection=root.rows[root.cursorIndex] || null
             root.expanded = expanded
             if(opened) root.showDashboard(); else root.hideDashboard()
         }
         function status(): string {
-            return JSON.stringify({opened:root.dashboardVisible,detached:root.detached,windowVisible:dashboardWindow.visible,expandedGroups:raceOverview.expandedGroupCount(), expanded:root.expanded, serviceReady:!!root.service,
+            return JSON.stringify({opened:root.dashboardVisible,detached:root.detached,windowVisible:dashboardWindow.visible,expandedGroups:raceOverview.expandedGroupCount(), pinnedRaces:root.pins, previousStage:root.previousStage, nextStage:root.nextStage, rowPaths:root.rows.map(function(r){return r.path}), expanded:root.expanded, serviceReady:!!root.service,
                 archiveMode:root.archiveMode,archiveCount:root.archiveCount,archiveBusy:root.archiveBusy,archiveDates:root.archiveData.dates || [],dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView,resultsHidden:root.resultsHidden,resultsRevealed:root.resultsRevealed, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
@@ -377,6 +401,9 @@ Panel {
                 if(k==="2"){root.showFilter("Live");return}
                 if(k==="3"){root.showCalendar(root.archiveMode);return}
                 if(root.settingsOpen)return
+                if(k==="f" && root.selected)root.pinRace(root.selected.path)
+                if(k==="[" && root.expanded)root.moveStage(-1)
+                if(k==="]" && root.expanded)root.moveStage(1)
                 if(k==="r")root.refreshView()
                 if(k==="o")root.openSource()
                 if(k==="t" && root.expanded && !root.preview)root.chooseDetailView(root.detailView==="events" ? "overview" : "events")
@@ -495,11 +522,19 @@ Panel {
                                 Column {
                                     id:miniProfile;anchors.right:parent.right;anchors.rightMargin:Style.space(8)
                                     readonly property bool hasProfile:(raceRow.course.profile || []).length>1 || !!raceRow.course.profileImage
-                                    anchors.verticalCenter:parent.verticalCenter;width:Style.space(hasProfile || raceRow.modelData.toGo ? 84 : 24)
+                                    anchors.verticalCenter:parent.verticalCenter;width:Style.space(hasProfile || raceRow.modelData.toGo ? 84 : 52)
                                     Profile {id:rowProfile;visible:miniProfile.hasProfile;width:parent.width;height:Style.space(raceRow.course.profileImage && !rowProfile.hasCurve ? 28 : 20);points:raceRow.course.profile || [];imageSource:raceRow.course.profileImage || "";lineColor:Color.accent}
                                     Row {
                                         width:parent.width;height:Style.space(24);spacing:Style.space(4)
-                                        RaceText {width:parent.width-raceLink.width-parent.spacing;anchors.verticalCenter:parent.verticalCenter;text:raceRow.modelData.toGo || "";horizontalAlignment:Text.AlignRight;font.pixelSize:Style.font.caption;color:root.dim}
+                                        RaceText {width:parent.width-raceLink.width-racePin.width-parent.spacing*2;anchors.verticalCenter:parent.verticalCenter;text:raceRow.modelData.toGo || "";horizontalAlignment:Text.AlignRight;font.pixelSize:Style.font.caption;color:root.dim}
+                                        Button {
+                                            id:racePin;width:Style.space(24);height:Style.space(24)
+                                            text:root.pinned(raceRow.modelData.path) ? "\uf005" : "\uf006"
+                                            foreground:root.pinned(raceRow.modelData.path) ? Color.accent : root.dim
+                                            tooltipText:root.pinned(raceRow.modelData.path) ? "Unpin race (F)" : "Pin race (F)"
+                                            Accessible.name:tooltipText
+                                            onClicked:root.pinRace(raceRow.modelData.path)
+                                        }
                                         Button {
                                             id:raceLink;width:Style.space(24);height:Style.space(24)
                                             text:"↗";foreground:root.foreground
@@ -528,8 +563,17 @@ Panel {
                     Column {
                         visible:root.expanded && !!root.selected
                         width:parent.width;spacing:Style.space(12)
-                        RaceText {width:parent.width;text:root.selected ? root.selected.name : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
-                        RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || (root.selected ? root.selected.date || "" : ""),root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "Race data unavailable" : root.finished ? "Loading results…" : root.preview ? "Loading race preview…" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
+                        Row {
+                            width:parent.width;spacing:Style.space(6)
+                            RaceText {width:parent.width-detailActions.width-parent.spacing;text:root.selected ? root.selected.name : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
+                            Row {
+                                id:detailActions;spacing:Style.space(4)
+                                Button {visible:(root.detail.stages || []).length>1;enabled:!!root.previousStage;text:"‹";width:height;tooltipText:"Previous stage ([)"+(root.previousStage ? " · "+root.previousStage.label : "");Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.moveStage(-1)}
+                                Button {visible:(root.detail.stages || []).length>1;enabled:!!root.nextStage;text:"›";width:height;tooltipText:"Next stage (])"+(root.nextStage ? " · "+root.nextStage.label : "");Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.moveStage(1)}
+                                Button {text:root.selected && root.pinned(root.selected.path) ? "\uf005" : "\uf006";width:height;tooltipText:root.selected && root.pinned(root.selected.path) ? "Unpin race (F)" : "Pin race (F)";Accessible.name:tooltipText;foreground:root.selected && root.pinned(root.selected.path) ? Color.accent : root.dim;onClicked:if(root.selected)root.pinRace(root.selected.path)}
+                            }
+                        }
+                        RaceText {width:parent.width;text:[/stage-/.test(root.detail.stagePath || (root.selected ? root.selected.path : "")) ? (root.detail.stagePath || root.selected.path).split("/").pop().replace("stage-","Stage ") : "",root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || (root.selected ? root.selected.date || "" : ""),root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "Race data unavailable" : root.finished ? "Loading results…" : root.preview ? "Loading race preview…" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
                         RaceText {width:parent.width;visible:!!root.detail.error;text:(root.detail.fetchedAt ? "Previous snapshot · " : "")+(root.detail.error || "");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Color.urgent}
                         Row {
                             id:detailTabs
@@ -578,7 +622,7 @@ Panel {
                         RaceOverview {
                             id:raceOverview
                             visible:root.detailView==="overview" && !root.finished && !root.preview
-                            width:parent.width;detail:root.detail;foreground:root.foreground
+                            width:parent.width;detail:root.detail;foreground:root.foreground;now:root.now;trendMaxAge:Math.max(180000,root.preferences.refreshIntervalSec*3000)
                         }
                     }
                     RaceText {width:parent.width;text:root.expanded ? "J/K select · Enter details · R refresh · Esc back" : root.archive ? "←/→ Recent / Upcoming · Enter details · R refresh" : "←/→ day · J/K select · Enter details · R refresh";font.pixelSize:Style.font.caption;color:root.dim;horizontalAlignment:Text.AlignHCenter}

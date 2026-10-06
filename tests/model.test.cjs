@@ -304,3 +304,56 @@ test('finished results stay concealed until this race is revealed or protection 
     assert.equal(model.resultsHidden(true,'live','live',false),false);
     assert.equal(model.resultsHidden(true,'scheduled','',false),false);
 });
+
+test('pins validate, deduplicate and persist as edition keys across stage URLs', () => {
+    const a='race/tour/2026/stage-1',b='race/tour/2026/gc';
+    const pins=model.togglePin(a,[]);
+    assert.equal(model.isPinned(b,pins),true);
+    assert.equal(model.isPinned('race/tour/2027/gc',pins),false);
+    assert.deepEqual(plain(model.settings(JSON.parse(JSON.stringify({pinnedRaces:pins}))).pinnedRaces),['race/tour/2026']);
+    assert.deepEqual(plain(model.togglePin(b,pins)),[]);
+    assert.deepEqual(plain(model.normalizePins([a,b,'https://evil.invalid','race/../2026/result',null])),['race/tour/2026']);
+    assert.deepEqual(plain(model.normalizePins('bad')),[]);
+    assert.equal(model.normalizePins(Array.from({length:150},(_,i)=>`race/tour-${i}/2026`)).length,100);
+});
+test('pins sort stably inside eligible lists and before archive limits', () => {
+    const rows=['a','b','c'].map(name=>({path:`race/${name}/2026/result`,name,date:'2026-10-05',status:'finished',competitionCategory:'ME',raceClass:'1.Pro'}));
+    assert.deepEqual(plain(model.pinnedFirst(rows,['race/c/2026']).map(r=>r.name)),['c','a','b']);
+    assert.deepEqual(rows.map(r=>r.name),['a','b','c']);
+    assert.equal(model.archiveRows(rows,'recent','2026-10-06',{pinnedRaces:['race/c/2026']},1)[0].name,'c');
+    assert.equal(model.archiveRows(rows,'recent','2026-10-06',{pinnedRaces:['race/c/2026'],categoryME:false},10).length,0);
+});
+test('stage neighbors respect published gaps, split stages and GC current stage', () => {
+    const stages=['1','2a','2b','4'].map(n=>({path:`race/tour/2026/stage-${n}`}));
+    assert.equal(model.stageNeighbor({path:stages[0].path,stages},-1),null);
+    assert.equal(model.stageNeighbor({path:stages[1].path,stages},1).path,stages[2].path);
+    assert.equal(model.stageNeighbor({path:'race/tour/2026/gc',stagePath:stages[2].path,stages},1).path,stages[3].path);
+    assert.equal(model.stageNeighbor({path:'race/tour/2026/gc',stages},1),null);
+});
+const group=(label,gap,ids=[])=>({label,gap,count:ids.length,riders:ids.map(id=>({id,name:id}))});
+const gapSnapshot=(seconds,groups,extra={})=>({path,status:'live',state:'ready',sourceAt:new Date(now+seconds*1000).toISOString(),groups,...extra});
+const originalGroups=()=>[group('Front','+0:00',['a','b']),group('Group 2','+1:12',['c','d']),group('Peloton','+2:03')];
+test('gap trends match rider membership, not order or group number', () => {
+    const before=gapSnapshot(-60,originalGroups());
+    const after=gapSnapshot(0,[group('Front','+0:00',['b','a']),group('Peloton','+2:13'),group('Chase','+0:58',['d','c'])]);
+    const groups=model.gapTrends(before,after,now,180000);
+    assert.deepEqual(plain(groups.map(g=>g.gapDelta)),[null,10,-14]);
+    assert.equal(model.gapTrendText(groups[1],true),' ↓');
+    assert.equal(model.gapTrendText(groups[2],true),' ↑');
+    assert.equal(model.gapTrendText(groups[2],false),'');
+    assert.equal(before.groups[1].gapDelta,undefined);
+});
+test('gap trends disappear for stale, failed, repeated or changed-front snapshots', () => {
+    const before=gapSnapshot(-60,originalGroups());
+    for(const after of [gapSnapshot(-60,originalGroups()),gapSnapshot(-120,originalGroups()),gapSnapshot(0,originalGroups(),{status:'finished'}),gapSnapshot(0,originalGroups(),{state:'blocked'}),gapSnapshot(0,originalGroups(),{path:'race/other/2026/result'}),gapSnapshot(0,[group('Front','+0:00',['new']),group('Peloton','+1:02')])])
+        assert.ok(model.gapTrends(before,after,now,180000).every(g=>g.gapDelta===null));
+    assert.ok(model.gapTrends(before,gapSnapshot(0,originalGroups()),now+600000,180000).every(g=>g.gapDelta===null));
+    assert.ok(model.gapTrends({...before,state:'blocked'},gapSnapshot(0,originalGroups()),now,180000).every(g=>g.gapDelta===null));
+});
+test('gap trends never compare uncertain, truncated, split or anonymous numbered groups', () => {
+    const before=gapSnapshot(-60,originalGroups());
+    for(const chase of [group('Group 2','+0:50',['c']),{...group('Chase','+0:50',['c','d']),uncertain:true},{...group('Chase','+0:50',['c','d']),omitted:4},group('Group 2','+0:50'),group('Chase','unknown',['c','d'])])
+        assert.equal(model.gapTrends(before,gapSnapshot(0,[originalGroups()[0],chase]),now,180000)[1].gapDelta,null);
+    assert.equal(model.gapSeconds('+1:02:03'),3723);
+    assert.equal(model.gapSeconds('+1:99'),null);
+});

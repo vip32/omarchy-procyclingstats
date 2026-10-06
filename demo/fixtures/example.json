@@ -1712,7 +1712,8 @@
               "bib": "52"
             }
           ],
-          "omitted": 0
+          "omitted": 0,
+          "gapDelta": -8
         },
         {
           "label": "Peloton",
@@ -1720,7 +1721,8 @@
           "count": 0,
           "uncertain": false,
           "riders": [],
-          "omitted": 0
+          "omitted": 0,
+          "gapDelta": 12
         }
       ],
       "keypoints": [
@@ -2227,7 +2229,8 @@
               "bib": "52"
             }
           ],
-          "omitted": 0
+          "omitted": 0,
+          "gapDelta": -8
         },
         {
           "label": "Peloton",
@@ -2235,7 +2238,8 @@
           "count": 0,
           "uncertain": false,
           "riders": [],
-          "omitted": 0
+          "omitted": 0,
+          "gapDelta": 12
         }
       ],
       "keypoints": [
@@ -2280,6 +2284,20 @@
         {
           "marker": "51",
           "text": "A small group is caught by the peloton."
+        }
+      ],
+      "stages": [
+        {
+          "path": "race/demo-alpine-tour/2026/stage-3",
+          "label": "Stage 3"
+        },
+        {
+          "path": "race/demo-alpine-tour/2026/stage-4",
+          "label": "Stage 4"
+        },
+        {
+          "path": "race/demo-alpine-tour/2026/stage-5",
+          "label": "Stage 5"
         }
       ]
     },
@@ -2865,7 +2883,21 @@
           "text": "A small group is caught by the peloton."
         }
       ],
-      "profileState": "ready"
+      "profileState": "ready",
+      "stages": [
+        {
+          "path": "race/demo-valley-tour/2026/stage-1",
+          "label": "Stage 1"
+        },
+        {
+          "path": "race/demo-valley-tour/2026/stage-2",
+          "label": "Stage 2"
+        },
+        {
+          "path": "race/demo-valley-tour/2026/stage-3",
+          "label": "Stage 3"
+        }
+      ]
     },
     "race/demo-city-circuit/2026/result": {
       "state": "ready",
@@ -3601,7 +3633,21 @@
           "text": "A small group is caught by the peloton."
         }
       ],
-      "profileState": "ready"
+      "profileState": "ready",
+      "stages": [
+        {
+          "path": "race/demo-valley-tour/2026/stage-1",
+          "label": "Stage 1"
+        },
+        {
+          "path": "race/demo-valley-tour/2026/stage-2",
+          "label": "Stage 2"
+        },
+        {
+          "path": "race/demo-valley-tour/2026/stage-3",
+          "label": "Stage 3"
+        }
+      ]
     },
     "race/demo-harbour-classic/2026/result": {
       "state": "ready",
@@ -4016,6 +4062,269 @@
           83.0
         ]
       ]
+    },
+    "race/demo-valley-tour/2026/stage-3": {
+      "state": "ready",
+      "status": "upcoming",
+      "startTime": "12:30 (local)",
+      "distance": 154.8,
+      "departure": "Harbour Square",
+      "arrival": "North Ridge",
+      "profile": [
+        [
+          0,
+          70
+        ],
+        [
+          20,
+          55
+        ],
+        [
+          40,
+          15
+        ],
+        [
+          60,
+          65
+        ],
+        [
+          80,
+          35
+        ],
+        [
+          100,
+          70
+        ]
+      ],
+      "path": "race/demo-valley-tour/2026/stage-3",
+      "name": "Fictional Valley Tour",
+      "date": "2026-10-07",
+      "profileLabel": "Stage 3",
+      "stages": [
+        {
+          "path": "race/demo-valley-tour/2026/stage-1",
+          "label": "Stage 1"
+        },
+        {
+          "path": "race/demo-valley-tour/2026/stage-2",
+          "label": "Stage 2"
+        },
+        {
+          "path": "race/demo-valley-tour/2026/stage-3",
+          "label": "Stage 3"
+        }
+      ],
+      "groups": [],
+      "keypoints": [],
+      "events": []
+    },
+    "race/demo-alpine-tour/2026/stage-3": {
+      "state": "ready",
+      "name": "Fictional Alpine Tour",
+      "status": "finished",
+      "date": "2026-10-07",
+      "kmToGo": 0,
+      "kmDone": 160.1,
+      "distance": 160.1,
+      "avgSpeed": 50.0,
+      "elapsed": "3:12:08",
+      "start": "13:00",
+      "elevation": 620,
+      "profile": [
+        [
+          0,
+          70
+        ],
+        [
+          20,
+          55
+        ],
+        [
+          40,
+          15
+        ],
+        [
+          60,
+          65
+        ],
+        [
+          80,
+          35
+        ],
+        [
+          100,
+          70
+        ]
+      ],
+      "groups": [],
+      "keypoints": [],
+      "path": "race/demo-alpine-tour/2026/stage-3",
+      "stageRace": true,
+      "gcAvailable": true,
+      "classifications": [
+        {
+          "kind": "gc",
+          "title": "General classification",
+          "rows": [
+            {
+              "rank": "1",
+              "name": "Alex Veld",
+              "bib": "11",
+              "time": "18:42:16"
+            },
+            {
+              "rank": "2",
+              "name": "Noah Laurent",
+              "bib": "12",
+              "time": "+0:12"
+            },
+            {
+              "rank": "3",
+              "name": "Elias Berg",
+              "bib": "13",
+              "time": "+0:24"
+            },
+            {
+              "rank": "4",
+              "name": "Luca Marin",
+              "bib": "14",
+              "time": "+0:36"
+            }
+          ]
+        },
+        {
+          "kind": "result",
+          "title": "Stage results",
+          "rows": [
+            {
+              "rank": "1",
+              "name": "Luca Marin",
+              "bib": "11",
+              "time": "3:12:08"
+            },
+            {
+              "rank": "2",
+              "name": "Elias Berg",
+              "bib": "12",
+              "time": "+0:00"
+            },
+            {
+              "rank": "3",
+              "name": "Noah Laurent",
+              "bib": "13",
+              "time": "+0:00"
+            },
+            {
+              "rank": "4",
+              "name": "Alex Veld",
+              "bib": "14",
+              "time": "+0:00"
+            }
+          ]
+        }
+      ],
+      "eventsState": "ready",
+      "events": [
+        {
+          "marker": "F",
+          "text": "The race has finished. Final results are available."
+        },
+        {
+          "marker": "42.6",
+          "text": "Attack by Alex Veld from the breakaway."
+        },
+        {
+          "marker": "43",
+          "text": "The chasing group closes to 28 seconds behind the leaders."
+        },
+        {
+          "marker": "44.2",
+          "text": "Noah Laurent and Elias Berg join the front group."
+        },
+        {
+          "marker": "46",
+          "text": "The peloton reaches the final circuit, 1:12 behind the breakaway."
+        },
+        {
+          "marker": "49.5",
+          "text": "Luca Marin takes the final intermediate sprint."
+        },
+        {
+          "marker": "51",
+          "text": "A small group is caught by the peloton."
+        }
+      ],
+      "profileState": "ready",
+      "stages": [
+        {
+          "path": "race/demo-alpine-tour/2026/stage-3",
+          "label": "Stage 3"
+        },
+        {
+          "path": "race/demo-alpine-tour/2026/stage-4",
+          "label": "Stage 4"
+        },
+        {
+          "path": "race/demo-alpine-tour/2026/stage-5",
+          "label": "Stage 5"
+        }
+      ],
+      "profileLabel": "Stage 3"
+    },
+    "race/demo-alpine-tour/2026/stage-5": {
+      "state": "ready",
+      "status": "upcoming",
+      "startTime": "12:30 (local)",
+      "distance": 154.8,
+      "departure": "Harbour Square",
+      "arrival": "North Ridge",
+      "profile": [
+        [
+          0,
+          70
+        ],
+        [
+          20,
+          55
+        ],
+        [
+          40,
+          15
+        ],
+        [
+          60,
+          65
+        ],
+        [
+          80,
+          35
+        ],
+        [
+          100,
+          70
+        ]
+      ],
+      "path": "race/demo-alpine-tour/2026/stage-5",
+      "name": "Fictional Alpine Tour",
+      "date": "2026-10-07",
+      "profileLabel": "Stage 5",
+      "stages": [
+        {
+          "path": "race/demo-alpine-tour/2026/stage-3",
+          "label": "Stage 3"
+        },
+        {
+          "path": "race/demo-alpine-tour/2026/stage-4",
+          "label": "Stage 4"
+        },
+        {
+          "path": "race/demo-alpine-tour/2026/stage-5",
+          "label": "Stage 5"
+        }
+      ],
+      "groups": [],
+      "keypoints": [],
+      "events": []
     }
   },
   "calendar": {

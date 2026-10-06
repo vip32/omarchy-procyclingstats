@@ -1,9 +1,12 @@
 import QtQuick
 import qs.Commons
 import qs.Ui
+import "Model.js" as Model
 
 CursorSurface {
     id: root
+    property bool trendFresh:false
+    readonly property string trend:Model.gapTrendText(group,trendFresh)
     property var group: ({})
     property color textColor: Color.foreground
     readonly property var riders: group.riders || []
@@ -17,7 +20,7 @@ CursorSurface {
     height:implicitHeight
     Accessible.role:Accessible.Button
     Accessible.name:(group.label || "Group")+" · "+(group.gap || "Gap unavailable")
-    Accessible.description:"Expand or collapse the named riders"
+    Accessible.description:"Expand or collapse the named riders"+(trend ? (group.gapDelta<0 ? ". Gaining " : ". Losing ")+Math.abs(group.gapDelta)+" seconds since the previous update" : "")
     Accessible.onPressAction:if(riders.length)showAll=!showAll
     Column {
         id:body
@@ -27,7 +30,7 @@ CursorSurface {
         Item {
             width:parent.width;height:Style.space(18)
             RaceText {anchors.left:parent.left;anchors.right:gap.left;anchors.rightMargin:Style.space(8);text:(root.group.label || "Group")+(root.group.count ? " · "+root.group.count : "")+(root.riders.length ? root.showAll ? "  ▴" : "  ▾" : "");font.pixelSize:Style.font.caption;font.bold:true;color:root.textColor}
-            RaceText {id:gap;anchors.right:parent.right;text:(root.group.gap || "—")+(root.group.uncertain ? " ?" : "");font.pixelSize:Style.font.caption;font.bold:true;color:Color.accent}
+            RaceText {id:gap;anchors.right:parent.right;text:(root.group.gap || "—")+(root.group.uncertain ? " ?" : "")+root.trend;font.pixelSize:Style.font.caption;font.bold:true;color:Color.accent}
         }
         RaceText {
             visible:!root.showAll && root.riders.length>0;width:parent.width

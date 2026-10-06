@@ -82,6 +82,8 @@ def main():
     p.add_argument('--window',action='store_true',help='Capture the detached desktop window')
     p.add_argument('--verify-window',action='store_true',help='Exercise dock, reopen, focus and close with fictional data')
     p.add_argument('--compact',action='store_true')
+    p.add_argument('--pin',action='store_true',help='Pin the selected fictional edition')
+    p.add_argument('--verify-following',action='store_true',help='Verify stage navigation, pins and spoiler reset using race index 2')
     p.add_argument('--reveal',action='store_true',help='Reveal fictional finished results')
     p.add_argument('--events',action='store_true',help='Capture the race-events tab')
     p.add_argument('--settings',action='store_true',help='Capture the settings screen')
@@ -130,6 +132,31 @@ def main():
         ipc(ID+'.panel','selectRace',str(args.race_index))
         ipc(ID+'.panel',mode)
         ipc(ID+'.panel','setDetailView','events' if args.events else 'overview')
+        if args.verify_following:
+            target=ID+'.panel'
+            before=status(target)
+            if before['selected']!='race/demo-valley-tour/2026/stage-2': raise RuntimeError('Use --race-index 2 for following checks')
+            ipc(target,'pinSelected')
+            check=status(target)
+            assert check['selected']==before['selected'] and check['rowPaths'][0]==before['selected']
+            assert 'race/demo-valley-tour/2026' in check['pinnedRaces']
+            ipc(target,'stage','1')
+            wait_for(lambda:status(target)['selected'].endswith('/stage-3'))
+            assert status(target)['detailState']=='ready'
+            assert not status(target)['resultsHidden']
+            ipc(target,'stage','-1')
+            assert status(target)['resultsHidden']
+            ipc(target,'revealResults')
+            assert not status(target)['resultsHidden']
+            ipc(target,'stage','-1')
+            assert status(target)['selected'].endswith('/stage-1') and status(target)['resultsHidden']
+            assert status(target)['previousStage'] is None
+            ipc(target,'stage','1')
+            assert status(target)['detailView']==before['detailView'] and status(target)['resultsHidden']
+            ipc(target,'pinSelected')
+            assert not status(target)['pinnedRaces']
+            print('Following smoke checks passed: pinned order, stable selection, previous/next preview and results, retained tab, spoiler reset.')
+        if args.pin: ipc(ID+'.panel','pinSelected')
         if args.reveal: ipc(ID+'.panel','revealResults')
         if args.settings: ipc(ID+'.panel','settings')
         if args.warning: ipc(ID,'demoWarning',args.warning)

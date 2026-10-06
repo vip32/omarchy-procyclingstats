@@ -330,6 +330,33 @@ def selected_stage(doc,path):
                     pass
     return stage_path
 
+def stage_links(doc,path):
+    """Use published links only, confined to this edition; never guess stage URLs."""
+    edition=path.rsplit('/',1)[0]
+    stages={}
+    for node in doc.nodes():
+        if node.tag not in ('option','a'): continue
+        value=node.attrs.get('value' if node.tag=='option' else 'href','')
+        try: candidate=race_path(value)
+        except (SourceError,ValueError): continue
+        tail=candidate.rsplit('/',1)[-1]
+        match=re.fullmatch(r'stage-(\d{1,2})([a-z]?)',tail)
+        if not match or candidate.rsplit('/',1)[0]!=edition: continue
+        # Navigation anchors must say Stage; avoid collecting unrelated links
+        # in result tables or editorial stories about other stages.
+        if node.tag=='a' and not re.match(r'^stage\s+\d',txt(node),re.I): continue
+        stages[candidate]=dict(path=candidate,label='Stage '+match[1]+match[2])
+    return sorted(stages.values(),key=lambda v:(int(re.search(r'stage-(\d+)',v['path'])[1]),v['path']))[:32]
+
+def race_date(value):
+    value=clean(value)
+    try: return dt.date.fromisoformat(value)
+    except ValueError: pass
+    months={name:i+1 for i,name in enumerate(('January','February','March','April','May','June','July','August','September','October','November','December'))}
+    match=re.fullmatch(r'(\d{1,2}) ([A-Za-z]+) (\d{4})',value)
+    try: return dt.date(int(match[3]),months[match[2]],int(match[1])) if match else None
+    except (ValueError,KeyError): return None
+
 def image_path(value):
     url=urllib.parse.urlsplit(urllib.parse.urljoin(BASE,value))
     if url.scheme!='https' or url.netloc!='www.procyclingstats.com' or url.query or url.fragment or not re.fullmatch(r'/images/profiles/[a-z0-9/_-]+\.(?:png|jpg|jpeg)',url.path):
@@ -349,7 +376,7 @@ def course_fields(doc,path):
                 image=candidate
                 break
     points=profile(doc)
-    return dict(profile=points,profileImagePath=image,stagePath=stage,
+    return dict(profile=points,profileImagePath=image,stagePath=stage,stages=stage_links(doc,path),
         profileLabel=stage.rsplit('/',1)[-1].replace('stage-','Stage ') if stage else '',
         profileState='ready' if points else 'pending' if image else 'unavailable',
         profileFetchedAt=dt.datetime.now(dt.timezone.utc).isoformat() if points else '')
@@ -569,7 +596,7 @@ def parse_race(html, path):
                 row=a.parent
                 while row is not g and row.parent and row.tag != 'li': row=row.parent
                 bib=txt(row.first(cls='bib')) if row is not g else ''
-                if len(riders)<30: riders.append(dict(name=txt(a),bib=clean(bib,8)))
+                if len(riders)<30: riders.append(dict(name=txt(a),bib=clean(bib,8),id=clean(href,160)))
             count=len(seen)
             groups.append(dict(label=label,gap=gap[0] if gap else '',count=count,riders=riders,
                                omitted=max(0,count-len(riders)),
@@ -586,7 +613,7 @@ def parse_race(html, path):
     return dict(state='ready',path=path,name=header,status=status,date=clean(data.get('race_date'),10),
                 kmToGo=remaining,kmDone=done,distance=distance,avgSpeed=number(value('avg_speed','avg'),150),
                 elapsed=value('racetime'),start=clean(data.get('start_time_cet')) or value('starttime'),startZone='CET' if data.get('start_time_cet') else 'local',elevation=number(value('elevation_todo')),
-                groups=groups,keypoints=keypoints[:40],profile=profile(doc.first(cls='bigProfile') or doc),
+                groups=groups,stages=stage_links(doc,path),keypoints=keypoints[:40],profile=profile(doc.first(cls='bigProfile') or doc),
                 sourceAt=dt.datetime.fromtimestamp(data['cur_ts'],dt.timezone.utc).isoformat()
                 if number(data.get('cur_ts'),4102444800) is not None else '')
 
@@ -660,7 +687,7 @@ def parse_results(html,path):
     points=course['profile']
     return dict(state='ready',path=path,name=txt(doc.first('title')),status='finished',
                 classifications=classifications,gcAvailable=any(c['kind']=='gc' for c in classifications),
-                stageRace=stage,stagePath=stage_path,groups=[],profile=points,keypoints=[],date=info.get('date',''),
+                stageRace=stage,stagePath=stage_path,stages=stage_links(doc,path),groups=[],profile=points,keypoints=[],date=info.get('date',''),
                 distance=metric(info.get('distance','')),elapsed=elapsed,
                 avgSpeed=metric(info.get('avg. speed winner',''),150),
                 profileState='ready' if points else 'unavailable',
@@ -712,11 +739,30 @@ def attach_events(result,path):
         result.update(eventsState=e.state,eventsError=e.message)
     return result
 
-def load_race(path,finished=False,upcoming=False):
+def load_race(path,finished=False,upcoming=False,stage=False):
+    page=None
+    navigation=[]
+    preview=None
+    if stage:
+        page=fetch(path)
+        navigation=stage_links(checked_html(page),path)
+        try:
+            published=parse_results(page,path)
+            finished=any(c['rows'] for c in published['classifications'])
+        except SourceError as e:
+            if e.state not in ('unavailable','unsupported'): raise
+        if not finished:
+            try: preview=parse_preview(page,path)
+            except SourceError as e:
+                if e.state not in ('unavailable','unsupported'): raise
+            date=race_date(preview.get('date','')) if preview else None
+            if date and date>dt.date.today():
+                return attach_image(preview,path)
+
     if upcoming:
         return attach_image(parse_preview(fetch(path),path),path)
     if finished:
-        result=attach_image(parse_results(fetch(path),path),path)
+        result=attach_image(parse_results(page if page is not None else fetch(path),path),path)
         # GC is an aggregate, not a course. Only follow the same race's explicit
         # Stage tab; never guess a /gc/live endpoint or another race's stage.
         course_path=result.get('stagePath') if path.endswith('/gc') else path
@@ -728,14 +774,20 @@ def load_race(path,finished=False,upcoming=False):
             result.update(eventsState=result['profileState'],eventsError='Event refresh deferred after PCS rejected the profile request.')
             return result
         return attach_events(result,course_path)
-    result=parse_race(fetch(path+'/live'),path)
+    try: result=parse_race(fetch(path+'/live'),path)
+    except SourceError as e:
+        if not stage or not preview or e.state not in ('unavailable','unsupported'): raise
+        # Without timing or results, a past/current page is not proof of a finish.
+        preview.update(status='unknown',eventsState='unavailable',eventsError='Race events are not available on PCS for this stage.')
+        return attach_image(preview,path)
+    if navigation: result['stages']=navigation
     if result['status']=='finished':
         # LiveStats clocks can keep advancing after the finish. Never label that
         # clock as the winner's time, even if the published results request fails.
         result['elapsed']=''
         try:
             results=parse_results(fetch(path),path)
-            result.update({k:results[k] for k in ('classifications','gcAvailable','stageRace')})
+            result.update({k:results[k] for k in ('classifications','gcAvailable','stageRace','stages')})
             result['elapsed']=results['elapsed']
             for key in ('distance','avgSpeed','date'):
                 if results[key] is not None and results[key]!='': result[key]=results[key]
@@ -801,6 +853,7 @@ def main():
     parser.add_argument('--date',default='')
     parser.add_argument('--direction',choices=['recent','upcoming'],default='recent')
     parser.add_argument('--upcoming',action='store_true',help='Read the published pre-race information')
+    parser.add_argument('--stage',action='store_true',help='Resolve a published stage as results, live race or preview')
     parser.add_argument('--finished',action='store_true',help='Read published results and stage GC instead of LiveStats')
     parser.add_argument('--html',type=Path,help='Parse a saved public page offline; no network request')
     args=parser.parse_args()
@@ -820,7 +873,7 @@ def main():
         elif args.mode=='archive':
             result=load_archive(date,args.direction)
         else:
-            result=parse_calendar(fetch('races.php?p=uci&s=today&date='+date),date) if date else parse_events(fetch(path+'/live/race-events')) if args.mode=='events' else load_race(path,args.finished,args.upcoming) if path else load_overview(calendar_date(args.date or dt.date.today().isoformat()))
+            result=parse_calendar(fetch('races.php?p=uci&s=today&date='+date),date) if date else parse_events(fetch(path+'/live/race-events')) if args.mode=='events' else load_race(path,args.finished,args.upcoming,args.stage) if path else load_overview(calendar_date(args.date or dt.date.today().isoformat()))
         if args.mode!='course-cache':result['fetchedAt']=dt.datetime.now(dt.timezone.utc).isoformat()
         if not args.html and args.mode in ('race','course'):cached_course(path,result)
         result['savedPage']=bool(args.html)

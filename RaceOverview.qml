@@ -5,6 +5,9 @@ import "Model.js" as Model
 
 Column {
     id:root
+    property double now:Date.now()
+    property int trendMaxAge:180000
+    readonly property bool trendsFresh:detail.state==="ready" && !detail.error && now-Date.parse(detail.sourceAt || detail.fetchedAt)<=trendMaxAge
     property var detail: ({})
     property color foreground: Color.foreground
     readonly property color dim: Qt.darker(foreground,1.5)
@@ -41,7 +44,7 @@ Column {
         Repeater {
             id:groupRepeater
             model:root.detail.groups || []
-            RiderGroup {required property var modelData;width:parent.width;group:modelData;racePath:root.detail.path || "";textColor:root.foreground}
+            RiderGroup {required property var modelData;width:parent.width;group:modelData;trendFresh:root.trendsFresh;racePath:root.detail.path || "";textColor:root.foreground}
         }
         RaceText {width:parent.width;visible:!(root.detail.groups || []).length;text:root.detail.status==="upcoming" ? "Race has not started yet." : "No group gaps published";font.pixelSize:Style.font.caption;color:root.dim}
     }

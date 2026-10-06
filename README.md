@@ -10,6 +10,14 @@ Race coverage depends on the public data PCS makes available.
 
 ## Features
 
+- **Pinned races:** star an edition to keep it first within your current list and
+  filters. Pins include every stage and survive shell restarts and reboots.
+- **Stage navigation:** previous/next arrows beside the race title follow PCS's
+  published stages, opening results, live coverage or the upcoming preview.
+- **Gap trends:** ↑ means gaining on the front; ↓ means losing time since the
+  previous fresh snapshot. No arrow is shown for unchanged, uncertain, stale or
+  incomparable groups, including a changed front group.
+
 - **Pop-out window:** detach into a regular tiled window and dock back without
   losing your current view; polling and notifications stay shared.
 - **Yesterday, today and tomorrow:** results, current races and upcoming stages.
@@ -131,6 +139,8 @@ needed. The header’s flag always returns to the race list; Live returns to tod
 | Gear / comma | Settings |
 | `H` / `L` in Settings | Decrease / increase, uncheck / check |
 | Enter in Settings | Toggle a category or adjust the selected setting |
+| Star / `F` | Pin or unpin the selected race edition |
+| `[` / `]` in details | Previous / next published stage |
 | `R` | Refresh, respecting configured intervals and cooldowns |
 | Esc | Back, then close |
 
@@ -146,6 +156,11 @@ The selected date/race, tab, expanded rider groups and scroll position survive
 detaching and docking (scroll is clamped to the available range). Navigation
 state lasts for the current loaded shell session; shell restart or plugin reload
 resets it. Saved settings persist across restarts.
+
+Pins apply within the selected date/calendar and category/level filters; they do
+not fetch races outside that view or enable extra notifications. Up to 100 editions
+can be pinned. Stage arrows appear only when PCS publishes the stage links;
+no missing stage URLs are guessed. A stage change hides finished results again.
 
 Settings save automatically to the widget’s entry in `~/.config/omarchy/shell.json`.
 See [filters, refresh intervals and notifications](docs/settings.md).
