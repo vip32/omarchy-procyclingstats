@@ -320,7 +320,7 @@ Panel {
             if(opened) root.showDashboard(); else root.hideDashboard()
         }
         function status(): string {
-            return JSON.stringify({opened:root.dashboardVisible,detached:root.detached,windowVisible:dashboardWindow.visible,expandedGroups:raceOverview.expandedGroupCount(), pinnedRaces:root.pins, previousStage:root.previousStage, nextStage:root.nextStage, rowPaths:root.rows.map(function(r){return r.path}), expanded:root.expanded, serviceReady:!!root.service,
+            return JSON.stringify({opened:root.dashboardVisible,detached:root.detached,windowVisible:dashboardWindow.visible,expandedGroups:raceOverview.expandedGroupCount(), pinnedRaces:root.pins, previousStage:root.previousStage, nextStage:root.nextStage, rowPaths:root.rows.map(function(r){return r.path}), expanded:root.expanded, preview:root.preview, serviceReady:!!root.service,
                 archiveMode:root.archiveMode,archiveCount:root.archiveCount,archiveBusy:root.archiveBusy,archiveDates:root.archiveData.dates || [],dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView,resultsHidden:root.resultsHidden,resultsRevealed:root.resultsRevealed, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),

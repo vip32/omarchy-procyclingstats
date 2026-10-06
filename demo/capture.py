@@ -135,6 +135,11 @@ def main():
         if args.verify_following:
             target=ID+'.panel'
             before=status(target)
+            ipc(target,'showDay','1');ipc(target,'selectRace','0')
+            assert status(target)['preview']
+            ipc(target,'showDay','0');ipc(target,'selectRace','0')
+            assert not status(target)['preview'] and status(target)['riderCount']>0
+            ipc(target,'selectRace','2')
             if before['selected']!='race/demo-valley-tour/2026/stage-2': raise RuntimeError('Use --race-index 2 for following checks')
             ipc(target,'pinSelected')
             check=status(target)
@@ -142,7 +147,7 @@ def main():
             assert 'race/demo-valley-tour/2026' in check['pinnedRaces']
             ipc(target,'stage','1')
             wait_for(lambda:status(target)['selected'].endswith('/stage-3'))
-            assert status(target)['detailState']=='ready'
+            assert status(target)['detailState']=='ready' and status(target)['preview']
             assert not status(target)['resultsHidden']
             ipc(target,'stage','-1')
             assert status(target)['resultsHidden']
