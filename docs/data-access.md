@@ -11,7 +11,7 @@ sessions or attempt challenge bypass. The provider can block access or change it
 | HTTPS | Only the fixed PCS origin; redirects outside that HTTPS origin are rejected |
 | Browser launch | `/usr/bin/xdg-open` receives a validated PCS URL after a user action |
 | Notifications | `/usr/bin/omarchy notification send`, only when enabled; bounded, escaped remote text |
-| Settings write | The shell updates this widget’s entry in `~/.config/omarchy/shell.json` when the user changes settings or selects a calendar/detail tab |
+| Settings write | The shell updates this widget’s entry in `~/.config/omarchy/shell.json` when the user changes settings, pins a race, or selects a calendar/detail tab |
 | Window focus | Wayland toplevel metadata locates the dashboard by title and activates it when the user opens it; Qt activation is the fallback |
 | Runtime state | Race snapshots, day lists and notification baselines live in memory and clear on restart |
 | Course cache write | Successful public profiles and distances only, under the XDG cache directory; seven-day retention, 100 entries / 32 MiB maximum |
@@ -27,6 +27,13 @@ winner time from that race or stage’s result table. If the results page lacks
 profile geometry, one bounded `/live` request retrieves it without using its clock.
 For an aggregate GC page, optional profile/events requests follow its explicit
 Stage tab within the same race/year; no `/gc/live` endpoint is guessed.
+Previous/next stage navigation uses at most 32 published links from the same
+race edition. It reads the selected stage page first to distinguish published
+results from a future preview, then requests live coverage when appropriate.
+Stage visits use the existing worker, deadline and cooldown; no new polling
+service or inferred stage URL is introduced. Pins are edition identifiers saved
+in shell settings, not cached race results.
+
 Images are fetched by the same Python adapter, with the actual race page as the
 HTTP Referer, then passed as inline data to QML. There are no direct QML network
 requests. Images are capped at 256 KB, 4096 × 2048 and 4 million pixels; SVG and
