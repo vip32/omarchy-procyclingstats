@@ -17,8 +17,8 @@ Column {
         Repeater {
             model:[
                 {label:"DISTANCE",value:root.value(root.detail.distance," km")},
-                {label:"WINNER TIME",value:root.concealed ? "Hidden" : root.detail.elapsed || "—"},
-                {label:"AVG. KM/H",value:root.concealed ? "Hidden" : root.value(root.detail.avgSpeed)}
+                {label:"WINNER TIME",value:root.concealed && root.detail.elapsed ? "Hidden" : root.detail.elapsed || "—"},
+                {label:"AVG. KM/H",value:root.concealed && root.detail.avgSpeed!==null && root.detail.avgSpeed!==undefined ? "Hidden" : root.value(root.detail.avgSpeed)}
             ]
             Column {
                 required property var modelData

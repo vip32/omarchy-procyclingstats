@@ -6,14 +6,17 @@ Column {
     id:root
     property var classification: ({})
     property color textColor: Color.foreground
+    property bool concealed:false
+    readonly property bool rowsHidden:concealed && rows.length>0
     property bool showAll:false
     readonly property var rows:classification.rows || []
     onClassificationChanged:showAll=false
     spacing:Style.space(5)
     PanelSectionHeader {text:(root.classification.title || "Classification").toUpperCase();foreground:root.textColor}
     RaceText {width:parent.width;text:"Leader’s time · gaps to leader";font.pixelSize:Style.font.caption;color:Qt.darker(root.textColor,1.5)}
+    SpoilerVeil {width:parent.width;visible:root.rowsHidden;foreground:root.textColor}
     Repeater {
-        model:root.showAll ? root.rows : root.rows.slice(0,10)
+        model:root.rowsHidden ? [] : root.showAll ? root.rows : root.rows.slice(0,10)
         CursorSurface {
             required property var modelData
             width:parent.width;height:Style.space(32);bordered:true;foreground:root.textColor
@@ -23,5 +26,5 @@ Column {
         }
     }
     RaceText {visible:!root.rows.length;width:parent.width;text:"Results not published yet";color:Qt.darker(root.textColor,1.5)}
-    Button {visible:root.rows.length>10;text:root.showAll ? "Show top 10" : "Show all "+root.rows.length;bordered:true;foreground:root.textColor;onClicked:root.showAll=!root.showAll}
+    Button {visible:!root.rowsHidden && root.rows.length>10;text:root.showAll ? "Show top 10" : "Show all "+root.rows.length;bordered:true;foreground:root.textColor;onClicked:root.showAll=!root.showAll}
 }

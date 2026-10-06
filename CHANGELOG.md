@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.3 — readable empty states
+
+- Conceal only populated results and event lists. Keep loading, unavailable and
+  unpublished messages readable, and show missing metrics as dashes.
+
 ## 0.11.2 — inline reveal control
 
 - Place the eye button at the right of the Overview/Race events tabs. The tabs

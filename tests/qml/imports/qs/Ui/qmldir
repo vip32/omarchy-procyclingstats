@@ -1,2 +1,5 @@
 module qs.Ui
 PanelSeparator 1.0 PanelSeparator.qml
+Button 1.0 Button.qml
+CursorSurface 1.0 CursorSurface.qml
+PanelSectionHeader 1.0 PanelSectionHeader.qml

@@ -549,29 +549,27 @@ Panel {
                                 onClicked:root.toggleResults()
                             }
                         }
-                        SpoilerVeil {width:parent.width;visible:root.resultsHidden && root.detailView==="events";foreground:root.foreground}
                         Column {
-                            visible:!root.resultsHidden && root.detailView==="events" && !root.preview
+                            visible:root.detailView==="events" && !root.preview
                             width:parent.width;spacing:Style.space(10)
                             RaceText {width:parent.width;text:root.demo ? "Fictional race events" : root.detail.eventsFetchedAt ? root.age(root.detail.eventsFetchedAt) : "";color:root.dim;font.pixelSize:Style.font.caption}
-                            RaceEvents {width:parent.width;events:root.resultsHidden ? [] : root.detail.events || [];state:root.detail.eventsState || "";error:root.detail.eventsError || (root.detail.error ? "Events could not be refreshed." : "");textColor:root.foreground}
+                            RaceEvents {width:parent.width;concealed:root.resultsHidden;events:root.detail.events || [];state:root.detail.eventsState || "";error:root.detail.eventsError || (root.detail.error ? "Events could not be refreshed." : "");textColor:root.foreground}
                         }
                         Column {
                             visible:root.detailView==="overview" && root.finished
                             width:parent.width;spacing:Style.space(10)
                             RaceSummary {width:parent.width;detail:root.detail;concealed:root.resultsHidden;foreground:root.foreground}
-                            SpoilerVeil {width:parent.width;visible:root.resultsHidden;foreground:root.foreground}
                             Row {
                                 width:parent.width;spacing:Style.space(6)
-                                visible:!root.resultsHidden && root.classifications.length>1
+                                visible:root.classifications.length>1
                                 Repeater {
                                     model:root.classifications
                                     Button {required property var modelData;width:(parent.width-Style.space(6)*(root.classifications.length-1))/Math.max(1,root.classifications.length);text:modelData.kind==="gc" ? "GC" : "Stage results";selected:root.classification.kind===modelData.kind;bordered:true;foreground:root.foreground;onClicked:root.classificationKind=modelData.kind}
                                 }
                             }
-                            Classification {width:parent.width;visible:!root.resultsHidden && root.classifications.length>0;classification:root.resultsHidden ? ({}) : root.classification;textColor:root.foreground}
-                            RaceText {width:parent.width;visible:!root.resultsHidden && !root.classifications.length;text:root.detail.resultsError || (root.detail.error ? "Results could not be loaded. Open PCS with ↗ in the header." : "Waiting for published results…");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
-                            RaceText {width:parent.width;visible:!root.resultsHidden && root.detail.stageRace===true && root.detail.gcAvailable===false;text:"General classification is not published on this stage page yet.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
+                            Classification {width:parent.width;visible:root.classifications.length>0;concealed:root.resultsHidden;classification:root.classification;textColor:root.foreground}
+                            RaceText {width:parent.width;visible:!root.classifications.length;text:root.detail.resultsError || (root.detail.error ? "Results could not be loaded. Open PCS with ↗ in the header." : "Waiting for published results…");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
+                            RaceText {width:parent.width;visible:root.detail.stageRace===true && root.detail.gcAvailable===false;text:"General classification is not published on this stage page yet.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
                         }
                         RacePreview {
                             visible:root.preview

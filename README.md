@@ -101,7 +101,8 @@ There are no stored credentials or background services outside the shell.
 metrics and race events behind a blurred placeholder. Use the **eye button** (or **S**) to reveal or hide the current race. The
 closed/slashed eye means hidden; the open eye means visible.
 Switching races or closing the dashboard hides results again. Profiles and
-distances stay visible. Finished-race event notifications are suppressed while
+distances stay visible. Empty tables, unavailable-event messages and missing
+metrics remain readable; only populated results and events are concealed. Finished-race event notifications are suppressed while
 protection is on. Disable **Spoiler protection** in Settings to show all results
 normally and remove the reveal button. Opening PCS leaves the dashboard; the
 external website can show results.
