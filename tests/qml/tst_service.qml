@@ -49,9 +49,11 @@ TestCase {
         verify(service.watchStage(stage,parent))
         verify(worker().command.indexOf("--stage")>=0)
         verify(worker().command.indexOf("--finished")<0)
+        var issues={};issues[stage.path]={path:stage.path,state:"offline",error:"Unavailable"};service.updateIssues=issues
         service.currentPath="";worker().running=false
         deliver({state:"ready",races:[race]})
         verify(service.watched.indexOf(stage.path)>=0)
+        verify(service.updateIssues[stage.path]!==undefined)
     }
     function worker() {
         for(var i=0;i<service.data.length;i++) if("command" in service.data[i])return service.data[i]

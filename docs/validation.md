@@ -1,5 +1,24 @@
 # Validation
 
+## 0.12.0 pins, stages and gap trends — 2026-10-06
+
+- `PCS_REQUIRE_QT=1 tests/run` passes Python parser, JavaScript model and Qt
+  component/service cases, including serialized pins and QML settings sequences.
+  The portable plugin validator and `git diff --check` pass.
+- Native fictional checks exercise pin sorting without switching the selection,
+  previous/next stages including upcoming preview and finished results, boundary
+  arrows, retained detail tabs and re-concealing results on stage changes.
+- A real pin was saved to shell.json and restored after a full shell restart;
+  original pins and view were restored afterward. No physical reboot was needed.
+- Native screenshots in `screenshots/gap-trends.png` and `stage-navigation.png`
+  were captured using fictional fixtures and visually inspected. Demo state,
+  workspaces, cursor and monitor focus were restored.
+- Stage parsing was checked against a previously saved PCS Langkawi page and
+  fictional split-stage, cross-edition and rejection cases. A live web probe
+  was rejected with HTTP 403; no challenge bypass or alternative route was used.
+- Gap comparisons reject stale/repeated/failed snapshots, changed front groups,
+  changed rider membership, incomplete groups and uncertain or invalid splits.
+
 ## 0.11.0 spoiler protection and detail tabs — 2026-10-06
 
 - `PCS_REQUIRE_QT=1 tests/run`: 171 behavioral tests (85 Python, 44 JavaScript,

@@ -288,7 +288,7 @@ Item {
                 }
                 return Object.assign({},r,{date:today})
             })
-            result.retainedRaces = result.races.concat(allRaces().filter(function(r) {return r.date !== today}))
+            result.retainedRaces = result.races.concat(allRaces().filter(function(r) {return r.date !== today})).concat(Object.keys(stageRaces).map(function(p){return stageRaces[p]}))
         }
         var issueResult=course && result.profileError ? {state:result.profileState,error:result.profileError} : result
         var issuePrevious=course && result.profileError ? Object.assign({},previousData,{fetchedAt:previousData.profileFetchedAt || ""}) : previousData
