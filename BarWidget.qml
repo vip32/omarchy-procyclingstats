@@ -29,7 +29,7 @@ Panel {
     readonly property var unfilteredRaces: dayData.races || []
     readonly property var races: unfilteredRaces.filter(function(r){return Model.matchesRace(r,preferences)})
     readonly property bool filtersActive: Model.filtersActive(preferences)
-    readonly property bool preview: selected && !finished && (selected.date>Model.dayKey(now,0) || (selected.stageNavigation && detail.status==="upcoming"))
+    readonly property bool preview: Model.racePreview(selected,detail,Model.dayKey(now,0),finished)
     readonly property bool demo: service ? service.demo : false
     readonly property var rows: archive ? Model.archiveRows(unfilteredRaces,archiveMode,Model.dayKey(now,0),Object.assign({},preferences,{pinnedRaces:pins}),archiveCount) : Model.pinnedFirst(filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races, pins)
     readonly property var selected: expanded && archiveSelection ? (archiveSelection.stageNavigation ? archiveSelection : rows.find(function(r){return r.path===archiveSelection.path}) || archiveSelection) : rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null

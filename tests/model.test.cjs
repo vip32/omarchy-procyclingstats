@@ -357,3 +357,11 @@ test('gap trends never compare uncertain, truncated, split or anonymous numbered
     assert.equal(model.gapSeconds('+1:02:03'),3723);
     assert.equal(model.gapSeconds('+1:99'),null);
 });
+
+test('preview is a boolean when returning from tomorrow to a live race with no stage flag', () => {
+    assert.equal(model.racePreview({date:'2026-10-07'},{},'2026-10-06',false),true);
+    assert.equal(model.racePreview({status:'live'},{status:'live'},'2026-10-06',false),false);
+    assert.equal(model.racePreview(null,{},'2026-10-06',false),false);
+    assert.equal(model.racePreview({stageNavigation:true},{status:'upcoming'},'2026-10-06',false),true);
+    assert.equal(model.racePreview({stageNavigation:true},{status:'finished'},'2026-10-06',true),false);
+});

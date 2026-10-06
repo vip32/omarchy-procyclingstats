@@ -281,3 +281,7 @@ function gapTrendText(group,fresh) {
 function editionName(race) {
     return race.editionName || String(race.name || "Race").replace(/\s*[·|–-]\s*Stage\s+\d+[a-z]?.*$/i,"")
 }
+
+function racePreview(race,detail,today,finished) {
+    return !!race && !finished && (race.date>today || (race.stageNavigation===true && detail.status==="upcoming"))
+}
