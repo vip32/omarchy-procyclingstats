@@ -98,8 +98,8 @@ There are no stored credentials or background services outside the shell.
 ## Use
 
 **Spoiler protection is on by default.** Finished races hide standings, winner
-metrics and race events behind a blurred placeholder. Use **Reveal results**
-(or **S**) to show the current race, and **Hide results** to cover it again.
+metrics and race events behind a blurred placeholder. Use the **eye button** (or **S**) to reveal or hide the current race. The
+closed/slashed eye means hidden; the open eye means visible.
 Switching races or closing the dashboard hides results again. Profiles and
 distances stay visible. Finished-race event notifications are suppressed while
 protection is on. Disable **Spoiler protection** in Settings to show all results

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.1 — compact reveal control
+
+- Replace the Reveal/Hide label with eye icons for hidden and visible results,
+  retaining descriptive tooltips, accessible labels and the S shortcut.
+
 ## 0.11.0 — spoiler protection and remembered detail tabs
 
 - Remember Overview/Race events across races and shell restarts.

@@ -539,9 +539,9 @@ Panel {
                         }
                         Button {
                             visible:root.finished && root.preferences.revealMode
-                            text:root.resultsHidden ? "Reveal results" : "Hide results"
-                            tooltipText:"Reveal or hide this race’s results (S)"
-                            Accessible.name:text
+                            text:root.resultsHidden ? "\uf070" : "\uf06e"
+                            tooltipText:(root.resultsHidden ? "Reveal results" : "Hide results")+" (S)"
+                            Accessible.name:root.resultsHidden ? "Reveal results" : "Hide results"
                             bordered:true;foreground:root.foreground
                             onClicked:root.toggleResults()
                         }
