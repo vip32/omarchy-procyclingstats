@@ -39,11 +39,12 @@ so update it before capturing a changed UI:
 ```sh
 omarchy plugin update io.github.vip32.procyclingstats --yes
 omarchy restart shell
-./demo/run --output preview.png
+./demo/run --pin --output preview.png
 ./demo/run --window --verify-window --output screenshots/window.png
-./demo/run --compact --output screenshots/compact.png
+./demo/run --compact --race-index 1 --pin --output screenshots/compact.png
 ./demo/run --events --output screenshots/events.png
-./demo/run --race-index 2 --output screenshots/gc.png
+./demo/run --race-index 2 --pin --reveal --output screenshots/gc.png
+./demo/run --race-index 2 --pin --verify-following --output screenshots/stage-navigation.png
 ./demo/run --settings --output screenshots/settings.png
 ./demo/run --settings --settings-section refresh --output screenshots/refresh-settings.png
 ./demo/run --warning blocked --output screenshots/warning.png
@@ -52,8 +53,8 @@ omarchy restart shell
 ```
 
 Capture dependencies: an unlocked Omarchy session, Git, `omarchy-shell`, `hyprctl`
-and `grim`. The harness currently supports one unrotated monitor. Use it while
-not interacting with the panel. It switches briefly to an unused empty workspace.
+and `grim`. Focus the unrotated monitor containing the plugin before capturing; other
+connected displays can remain enabled. Use it while not interacting with the panel. It switches briefly to an unused empty workspace.
 
 The committed fixture is visibly labelled DEMO. While active, the plugin uses
 read-only default settings, stops live polling and suppresses event notifications.

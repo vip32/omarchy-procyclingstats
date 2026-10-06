@@ -1,66 +1,79 @@
 # ProCyclingStats for Omarchy
 
-A compact road-cycling dashboard for the Omarchy Quattro bar. Follow the race
-situation, time gaps and latest events without keeping a browser window open.
+A road-cycling dashboard for the Omarchy Quattro bar. Follow live groups and
+splits, browse race profiles, move between stages, and catch up on results
+without spoiling the race you still want to watch.
 
 **Unofficial integration.** Not affiliated with or endorsed by ProCyclingStats.
-Race coverage depends on the public data PCS makes available.
+Coverage depends on the public data PCS makes available. No account or API key
+is required.
 
-![Live race overview with fictional demo data](preview.png)
+![Live race overview with a pinned race, gap trends, latest events and course profile](preview.png)
+
+*↑ gaining on the front · ↓ losing time. Hover a group to see the change in seconds.*
 
 ## Features
 
-- **Pinned races:** star an edition to keep it first within your current list and
-  filters. Pins include every stage and survive shell restarts and reboots.
-- **Stage navigation:** previous/next arrows beside the race title follow PCS's
-  published stages, opening results, live coverage or the upcoming preview.
-- **Gap trends:** ↑ means gaining on the front; ↓ means losing time since the
-  previous fresh snapshot. No arrow is shown for unchanged, uncertain, stale or
-  incomparable groups, including a changed front group. Hover a group for the
-  change in seconds.
-
-- **Pop-out window:** detach into a regular tiled window and dock back without
-  losing your current view; polling and notifications stay shared.
-- **Yesterday, today and tomorrow:** results, current races and upcoming stages.
-- **Profiles and distance:** published elevation thumbnails and kilometres for
-  past, current and upcoming races; larger profiles in the details view. Profiles
-  and distances survive shell restarts in a seven-day disk cache.
-- **Race calendar:** browse recent results and upcoming races beyond adjacent days.
-  Choose the default list size in Settings (25 races; adjustable from 10 to 100).
-- **One race overview:** distance remaining, race time, average speed, groups and
-  rider splits, latest events, course profile and the next published climb or sprint.
-- **Finished races:** course profile, distance, winner’s time and average speed,
-  alongside final results and the selected stage’s GC with time gaps.
-- **Race events:** attacks, sprints, dropped riders, abandonments and finish updates.
-- **Your races:** 13 independent category checkboxes and a minimum race level.
-  Choose ProSeries+ to hide Class 1 and Class 2 races. All categories and levels
-  are included by default.
-- **Optional notifications:** new events from followed races, with automatic expiry.
-- **Honest connection status:** visible warnings, last-success timestamps and
-  backoff when updates fail or PCS rejects access.
+- **Live race situation:** groups and rider splits, distance remaining, race
+  time, average speed, recent events and the next published climb or sprint.
+  Gap trends compare fresh snapshots of matching groups against the same front.
+- **Persistent pins:** star a race to sort it first within your current list and
+  filters. Pins cover the whole edition, including its stages, and survive reboots.
+- **Stage navigation:** previous/next arrows beside the title open published
+  stages as results, live coverage or an upcoming preview. Your active tab stays selected.
+- **Race calendar:** yesterday, today and tomorrow, plus Recent and Upcoming
+  lists beyond adjacent days. Set the list size from 10 to 100 races in Settings.
+- **Profiles and results:** course outlines and distance for past, current and
+  future races; finished-race results, stage GC, winner time and average speed.
+  Profiles and distance are cached on disk for seven days.
+- **Spoiler protection:** finished results and events stay concealed until you
+  use the eye button. Profiles, distances and empty-state messages stay readable.
+  Turn protection off entirely in Settings if preferred.
+- **Your coverage:** filter by 13 race categories and minimum race level; choose
+  refresh intervals and optional race-event notifications with automatic expiry.
+- **Tiled pop-out:** detach into a regular desktop window and dock back without
+  losing the current view. Polling and notifications remain shared.
+- **Visible connection status:** failed or rejected updates show a warning and
+  last-success information while keeping the previous snapshot available.
 
 The bike icon sits in the center of the bar by default. Colors and typography
-follow your Omarchy theme. Rider and team information appears only in race context.
+follow your Omarchy theme. Rider information appears in race context.
 
 ## Screenshots
 
-All screenshots show the actual plugin using committed fictional fixtures.
+Native captures from **v0.12.0**, using fictional races and riders. Click an image
+to see it at full size.
 
-| Races | Categories and level |
+| Race list with a pinned edition | Recent races with course profiles |
 | --- | --- |
-| ![Date navigation and race list](screenshots/compact.png) | ![Race filters in Settings](screenshots/settings.png) |
+| [![Pinned race first in the compact race list](screenshots/compact.png)](screenshots/compact.png) | [![Recent race calendar with profiles and distance](screenshots/calendar.png)](screenshots/calendar.png) |
 
-| Finished-stage GC | Tomorrow’s preview |
+| Stage navigation with results concealed | GC after revealing the results |
 | --- | --- |
-| ![General classification](screenshots/gc.png) | ![Upcoming race information](screenshots/tomorrow-preview.png) |
+| [![Previous and next stage arrows, pinned edition and closed eye](screenshots/stage-navigation.png)](screenshots/stage-navigation.png) | [![Revealed stage GC, winner metrics and profile](screenshots/gc.png)](screenshots/gc.png) |
 
-[Gap trends](screenshots/gap-trends.png) · [Stage navigation and pins](screenshots/stage-navigation.png) · [Spoiler protection](screenshots/spoiler-protection.png) · [Spoiler settings](screenshots/spoiler-settings.png) · [Race calendar](screenshots/calendar.png) · [Full course profile](screenshots/finished-profile.png) · [Detached window](screenshots/window.png) · [Race events](screenshots/events.png) · [Refresh and notifications](screenshots/refresh-settings.png)
-· [Connection warning](screenshots/warning.png) · [Tomorrow’s list](screenshots/tomorrow-list.png)
+<details>
+<summary>Upcoming preview, race events and filters</summary>
+
+**Upcoming course**
+
+![Upcoming race preview with distance and course profile](screenshots/tomorrow-preview.png)
+
+**Race events**
+
+![Race events with distance markers](screenshots/events.png)
+
+**Category and level filters**
+
+![Settings with category checkboxes and minimum race level](screenshots/settings.png)
+
+</details>
 
 ## Requirements
 
-- **Omarchy 4 Quattro.** Tested locally with Omarchy **4.0.4-1** and Qt **6.11.2**,
-  on one Wayland laptop display. Other versions and multiple monitors are unverified.
+- **Omarchy 4 Quattro.** Locally tested with Omarchy **4.0.4-1** and Qt
+  **6.11.2** under Wayland. Native captures also run in a multi-display session;
+  compatibility with other versions and display arrangements is not exhaustive.
 - **Python 3**, standard library only, available as `/usr/bin/python3`.
 - **xdg-utils** for `/usr/bin/xdg-open`, used only when opening PCS in your browser.
 - Network access to `https://www.procyclingstats.com`.
@@ -107,12 +120,13 @@ There are no stored credentials or background services outside the shell.
 ## Use
 
 **Spoiler protection is on by default.** Finished races hide standings, winner
-metrics and race events behind a blurred placeholder. Use the **eye button** (or **S**) to reveal or hide the current race. The
-closed/slashed eye means hidden; the open eye means visible.
+metrics and race events behind a blurred placeholder. Use the **eye button**
+(or **S**) to reveal or hide the current race. The slashed eye means hidden;
+the open eye means visible.
 Switching races or closing the dashboard hides results again. Profiles and
 distances stay visible. Empty tables, unavailable-event messages and missing
-metrics remain readable; only populated results and events are concealed. Finished-race event notifications are suppressed while
-protection is on. Disable **Spoiler protection** in Settings to show all results
+metrics remain readable; only populated results and events are concealed.
+Finished-race event notifications are suppressed while protection is on. Disable **Spoiler protection** in Settings to show all results
 normally and remove the reveal button. Opening PCS leaves the dashboard; the
 external website can show results.
 
@@ -135,6 +149,7 @@ needed. The header’s flag always returns to the race list; Live returns to tod
 | `J` / `K` or `↓` / `↑` | Select a race or setting |
 | Enter / click a race | Open its details |
 | `T` in race details | Overview / race events |
+| Eye / `S` in finished-race details | Reveal / hide results and events |
 | Header ↗ / `O` | Open the selected view on PCS |
 | Window icon / `P` | Pop out to a desktop window / dock back to the bar |
 | Gear / comma | Settings |
@@ -146,8 +161,8 @@ needed. The header’s flag always returns to the race list; Live returns to tod
 | Esc | Back, then close |
 
 The calendar applies your category and level filters before limiting the list.
-Click a race for results/GC or its upcoming preview. Change the default count in Settings. “Show more” expands this visit without
-changing your saved default. Multi-day races appear once,
+Click a race for results/GC or its upcoming preview. Change the default count in
+Settings. “Show more” expands this visit without changing your saved default. Multi-day races appear once,
 using their nearest listed date and the race/stage link PCS publishes.
 
 The pop-out is a normal Hyprland window: tile, move or resize it with your usual
@@ -169,10 +184,10 @@ See [filters, refresh intervals and notifications](docs/settings.md).
 ## Data limitations
 
 PCS coverage varies by race. Missing metrics show an em dash; unavailable riders,
-GC, events or profiles are labelled explicitly. Published PNG/JPEG profiles use the same inline graph when their outline can
-be traced reliably, with the original image as a fallback; unsupported formats or
-missing coverage still require opening PCS. Start-time text is shown as published, including its timezone; ETA
-means expected finish. Race position is never extrapolated. Finished-race time
+GC, events or profiles are labelled explicitly. Published PNG/JPEG profiles use
+the same inline graph when their outline can be traced reliably, with the original image as a fallback; unsupported formats or
+missing coverage still require opening PCS. Start-time text is shown as published,
+including its timezone; ETA means expected finish. Race position is never extrapolated. Finished-race time
 is the published winner’s time for that race or stage, not accumulated GC time
 or the live clock. Average speed is the published winner’s average.
 
