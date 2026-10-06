@@ -16,7 +16,8 @@ Race coverage depends on the public data PCS makes available.
   published stages, opening results, live coverage or the upcoming preview.
 - **Gap trends:** ↑ means gaining on the front; ↓ means losing time since the
   previous fresh snapshot. No arrow is shown for unchanged, uncertain, stale or
-  incomparable groups, including a changed front group.
+  incomparable groups, including a changed front group. Hover a group for the
+  change in seconds.
 
 - **Pop-out window:** detach into a regular tiled window and dock back without
   losing your current view; polling and notifications stay shared.
@@ -53,7 +54,7 @@ All screenshots show the actual plugin using committed fictional fixtures.
 | --- | --- |
 | ![General classification](screenshots/gc.png) | ![Upcoming race information](screenshots/tomorrow-preview.png) |
 
-[Spoiler protection](screenshots/spoiler-protection.png) · [Spoiler settings](screenshots/spoiler-settings.png) · [Race calendar](screenshots/calendar.png) · [Full course profile](screenshots/finished-profile.png) · [Detached window](screenshots/window.png) · [Race events](screenshots/events.png) · [Refresh and notifications](screenshots/refresh-settings.png)
+[Gap trends](screenshots/gap-trends.png) · [Stage navigation and pins](screenshots/stage-navigation.png) · [Spoiler protection](screenshots/spoiler-protection.png) · [Spoiler settings](screenshots/spoiler-settings.png) · [Race calendar](screenshots/calendar.png) · [Full course profile](screenshots/finished-profile.png) · [Detached window](screenshots/window.png) · [Race events](screenshots/events.png) · [Refresh and notifications](screenshots/refresh-settings.png)
 · [Connection warning](screenshots/warning.png) · [Tomorrow’s list](screenshots/tomorrow-list.png)
 
 ## Requirements

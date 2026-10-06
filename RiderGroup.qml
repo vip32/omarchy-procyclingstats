@@ -54,4 +54,9 @@ CursorSurface {
         RaceText {visible:root.showAll && Number(root.group.omitted || 0)>0;width:parent.width;text:"+"+root.group.omitted+" more riders · open PCS for the full group";font.pixelSize:Style.font.caption;color:Qt.darker(root.textColor,1.5)}
     }
     MouseArea {id:mouse;anchors.fill:parent;hoverEnabled:true;cursorShape:root.riders.length ? Qt.PointingHandCursor : Qt.ArrowCursor;onClicked:if(root.riders.length)root.showAll=!root.showAll}
+    PanelToolTip {
+        visible:root.trend!=="" && mouse.containsMouse
+        text:(root.group.gapDelta<0 ? "Gaining " : "Losing ")+Math.abs(root.group.gapDelta)+" seconds to the front since the previous update"
+    }
+
 }

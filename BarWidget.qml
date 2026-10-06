@@ -32,7 +32,7 @@ Panel {
     readonly property bool preview: selected && !finished && (selected.date>Model.dayKey(now,0) || (selected.stageNavigation && detail.status==="upcoming"))
     readonly property bool demo: service ? service.demo : false
     readonly property var rows: archive ? Model.archiveRows(unfilteredRaces,archiveMode,Model.dayKey(now,0),Object.assign({},preferences,{pinnedRaces:pins}),archiveCount) : Model.pinnedFirst(filter === "Live" ? races.filter(function(r) {return r.status === "live"}) : races, pins)
-    readonly property var selected: expanded && archiveSelection ? archiveSelection : rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
+    readonly property var selected: expanded && archiveSelection ? (archiveSelection.stageNavigation ? archiveSelection : rows.find(function(r){return r.path===archiveSelection.path}) || archiveSelection) : rows.length ? rows[Math.max(0,Math.min(cursorIndex,rows.length-1))] : null
     readonly property var detail: selected && service ? Model.withCourse(service.details[selected.path] || ({}),service.courses[selected.path] || ({})) : ({})
     readonly property var preferences: Model.settings(demo ? {} : settings)
     readonly property var connection: Model.warning(service ? service.updateIssues : {},now,service ? service.nextAllowed : 0,service ? service.loading : false)
@@ -240,7 +240,7 @@ Panel {
         if(appliedPreferences.revealMode!==preferences.revealMode)resultsRevealed=false
         appliedPreferences=preferences
         detailView=preferences.detailTab
-        configure();archiveCount=preferences.archiveRaceCount
+        configure();if(resetList)archiveCount=preferences.archiveRaceCount
         if(resetList) {cursorIndex=0;expanded=false}
         if(archive && dashboardVisible && service)service.watchArchive(archiveMode,archiveCount,false)
     }
