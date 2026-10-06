@@ -43,7 +43,15 @@ Panel {
     readonly property var classifications: detail.classifications || []
     readonly property var classification: classifications.filter(function(c){return c.kind === classificationKind})[0] || classifications[0] || ({})
     property string classificationKind: "gc"
-    property string detailView: "overview"
+    property string detailView: preferences.detailTab
+    property bool resultsRevealed: false
+    readonly property bool resultsHidden: Model.resultsHidden(preferences.revealMode,selected ? selected.status : "",detail.status || "",resultsRevealed)
+    property var appliedPreferences: ({})
+    function chooseDetailView(view) {
+        detailView=view==="events" ? "events" : "overview"
+        if(!demo)persistSettings({detailTab:detailView})
+    }
+    function toggleResults() {if(finished && preferences.revealMode)resultsRevealed=!resultsRevealed}
     property string lastSelectedPath: ""
     property string filter: "Races"
     property int cursorIndex: 0
@@ -113,7 +121,6 @@ Panel {
         filter=name === "Live" ? "Live" : name==="Calendar" ? "Calendar" : "Races"
         archiveSelection=null
         cursorIndex=0
-        detailView="overview"
         Qt.callLater(function(){scroller.contentY=0})
     }
     function showCalendar(mode) {
@@ -207,7 +214,12 @@ Panel {
     onPreferencesChanged: {
         if(service && archiveMode!==preferences.calendarTab)service.stopArchive(archiveMode)
         archiveMode=preferences.calendarTab
-        configure();archiveCount=preferences.archiveRaceCount;cursorIndex=0;expanded=false
+        var resetList=["calendarTab","archiveRaceCount","minimumRaceLevel"].concat(Model.categories().map(function(c){return c.key})).some(function(k){return appliedPreferences[k]!==preferences[k]})
+        if(appliedPreferences.revealMode!==preferences.revealMode)resultsRevealed=false
+        appliedPreferences=preferences
+        detailView=preferences.detailTab
+        configure();archiveCount=preferences.archiveRaceCount
+        if(resetList) {cursorIndex=0;expanded=false}
         if(archive && dashboardVisible && service)service.watchArchive(archiveMode,archiveCount,false)
     }
     onDemoChanged: settingsError=""
@@ -215,11 +227,12 @@ Panel {
     onFilterChanged: { cursorIndex = 0; expanded = false;if(!archive && service){service.stopArchive("recent");service.stopArchive("upcoming")} }
     onSelectedChanged: {
         var path = selected ? selected.path : ""
-        if(path !== lastSelectedPath) {classificationKind="gc";detailView="overview";lastSelectedPath=path}
+        if(path !== lastSelectedPath) {classificationKind="gc";resultsRevealed=false;lastSelectedPath=path}
         if(dashboardVisible && expanded && service && selected) service.watch(selected.path)
     }
     onDetailViewChanged: Qt.callLater(function(){scroller.contentY=0})
     onDashboardVisibleChanged: {
+        if(!dashboardVisible)resultsRevealed=false
         Qt.callLater(updateVisibleCourses)
         if(dashboardVisible) {now=Date.now(); configure(); if(service){service.refresh();service.watchDay(dayDate);if(expanded && selected)service.watch(selected.path)} Qt.callLater(function(){keys.forceActiveFocus()})}
     }
@@ -245,19 +258,22 @@ Panel {
         function open(): void { root.showDashboard() }
         function close(): void { root.hideDashboard() }
         function expand(): void { root.showDashboard(); root.select(root.cursorIndex, true) }
-        function events(): void { root.showDashboard(); root.select(root.cursorIndex,true); root.detailView="events" }
+        function events(): void { root.showDashboard(); root.select(root.cursorIndex,true); root.chooseDetailView("events") }
+        function detailTab(view: string): void {root.chooseDetailView(view)}
+        function spoilerProtection(enabled: bool): void {root.persistSettings({revealMode:enabled})}
+        function revealResults(): void {root.toggleResults()}
         function setDetailView(view: string): void { root.detailView=view==="events" ? "events" : "overview" }
         function settings(): void { root.settingsOpen=true;root.showDashboard() }
         function settingsSection(section: string): void {
             root.settingsOpen=true;root.showDashboard()
-            settingsPage.cursorIndex=section==="refresh" ? settingsPage.fieldsStart : 0
+            settingsPage.cursorIndex=section==="spoilers" ? settingsPage.lastIndex : section==="refresh" ? settingsPage.fieldsStart : 0
             Qt.callLater(function(){
-                var y=section==="refresh" ? settingsPage.cursorItem().mapToItem(column,0,0).y-Style.space(30) : 0
+                var y=section==="refresh" || section==="spoilers" ? settingsPage.cursorItem().mapToItem(column,0,0).y-Style.space(30) : 0
                 scroller.contentY=Math.max(0,Math.min(y,Math.max(0,scroller.contentHeight-scroller.height)))
             })
         }
         function restoreScroll(offset: int, cursor: int): void {
-            settingsPage.cursorIndex=Math.max(0,Math.min(settingsPage.notificationIndex,cursor))
+            settingsPage.cursorIndex=Math.max(0,Math.min(settingsPage.lastIndex,cursor))
             Qt.callLater(function(){scroller.contentY=Math.max(0,Math.min(offset,Math.max(0,scroller.contentHeight-scroller.height)))})
         }
         function showDay(offset: int): void { root.showDay(offset) }
@@ -281,7 +297,7 @@ Panel {
         }
         function status(): string {
             return JSON.stringify({opened:root.dashboardVisible,detached:root.detached,windowVisible:dashboardWindow.visible,expandedGroups:raceOverview.expandedGroupCount(), expanded:root.expanded, serviceReady:!!root.service,
-                archiveMode:root.archiveMode,archiveCount:root.archiveCount,archiveBusy:root.archiveBusy,archiveDates:root.archiveData.dates || [],dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
+                archiveMode:root.archiveMode,archiveCount:root.archiveCount,archiveBusy:root.archiveBusy,archiveDates:root.archiveData.dates || [],dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView,resultsHidden:root.resultsHidden,resultsRevealed:root.resultsRevealed, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
                 classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",profileImage:!!root.detail.profileImage,distance:root.detail.distance,profileLabel:root.detail.profileLabel || "",courseRows:root.rows.map(function(r){var c=root.rowCourse(r);return {path:r.path,distance:c.distance,hasProfile:!!c.profileImage || (c.profile || []).length>1}}),
@@ -363,7 +379,8 @@ Panel {
                 if(root.settingsOpen)return
                 if(k==="r")root.refreshView()
                 if(k==="o")root.openSource()
-                if(k==="t" && root.expanded && !root.preview)root.detailView=root.detailView==="events" ? "overview" : "events"
+                if(k==="t" && root.expanded && !root.preview)root.chooseDetailView(root.detailView==="events" ? "overview" : "events")
+                if(k==="s" && root.expanded)root.toggleResults()
                 if(k==="e" && root.selected){root.expanded=!root.expanded;root.select(root.cursorIndex,root.expanded)}
             }
             BorderSurface {
@@ -411,9 +428,9 @@ Panel {
                             Button {text:"◉";tooltipText:"Live races (2)";Accessible.name:"Live races";selected:root.filter==="Live" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Live")}
                             Button {text:"↻";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:root.refreshView()}
                             Button {text:root.detached ? "▣" : "□";tooltipText:root.detached ? "Dock back to bar (P)" : "Pop out to window (P)";Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.toggleWindow()}
-                            Button {text:"↗";tooltipText:"Open PCS in browser (O)";Accessible.name:"Open ProCyclingStats in browser";bordered:true;foreground:root.foreground;onClicked:root.openSource()}
+                            Button {text:"↗";tooltipText:"Open on PCS (O)";Accessible.name:"Open ProCyclingStats in browser";bordered:true;foreground:root.foreground;onClicked:root.openSource()}
                             Button {text:root.settingsOpen ? "←" : "⚙";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:{if(root.settingsOpen)root.showFilter("Races");else root.settingsOpen=true}}
-                            Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to race list";bordered:true;foreground:root.foreground;onClicked:{root.expanded=false;root.detailView="overview"}}
+                            Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to race list";bordered:true;foreground:root.foreground;onClicked:root.expanded=false}
                         }
                     }
                     PanelSeparator {foreground:root.foreground}
@@ -486,7 +503,7 @@ Panel {
                                         Button {
                                             id:raceLink;width:Style.space(24);height:Style.space(24)
                                             text:"↗";foreground:root.foreground
-                                            tooltipText:"Open "+raceRow.modelData.name+" on PCS"
+                                            tooltipText:"Open on PCS"
                                             Accessible.name:tooltipText
                                             onClicked:root.openPcsPath(raceRow.modelData.path)
                                         }
@@ -517,30 +534,40 @@ Panel {
                         Row {
                             visible:!root.preview
                             width:parent.width;spacing:Style.space(6)
-                            Button {width:(parent.width-Style.space(6))/2;text:"Overview";selected:root.detailView==="overview";bordered:true;foreground:root.foreground;onClicked:root.detailView="overview"}
-                            Button {width:(parent.width-Style.space(6))/2;text:"Race events";selected:root.detailView==="events";bordered:true;foreground:root.foreground;onClicked:root.detailView="events"}
+                            Button {width:(parent.width-Style.space(6))/2;text:"Overview";selected:root.detailView==="overview";bordered:true;foreground:root.foreground;onClicked:root.chooseDetailView("overview")}
+                            Button {width:(parent.width-Style.space(6))/2;text:"Race events";selected:root.detailView==="events";bordered:true;foreground:root.foreground;onClicked:root.chooseDetailView("events")}
                         }
+                        Button {
+                            visible:root.finished && root.preferences.revealMode
+                            text:root.resultsHidden ? "Reveal results" : "Hide results"
+                            tooltipText:"Reveal or hide this race’s results (S)"
+                            Accessible.name:text
+                            bordered:true;foreground:root.foreground
+                            onClicked:root.toggleResults()
+                        }
+                        SpoilerVeil {width:parent.width;visible:root.resultsHidden && root.detailView==="events";foreground:root.foreground}
                         Column {
-                            visible:root.detailView==="events" && !root.preview
+                            visible:!root.resultsHidden && root.detailView==="events" && !root.preview
                             width:parent.width;spacing:Style.space(10)
                             RaceText {width:parent.width;text:root.demo ? "Fictional race events" : root.detail.eventsFetchedAt ? root.age(root.detail.eventsFetchedAt) : "";color:root.dim;font.pixelSize:Style.font.caption}
-                            RaceEvents {width:parent.width;events:root.detail.events || [];state:root.detail.eventsState || "";error:root.detail.eventsError || (root.detail.error ? "Events could not be refreshed." : "");textColor:root.foreground}
+                            RaceEvents {width:parent.width;events:root.resultsHidden ? [] : root.detail.events || [];state:root.detail.eventsState || "";error:root.detail.eventsError || (root.detail.error ? "Events could not be refreshed." : "");textColor:root.foreground}
                         }
                         Column {
                             visible:root.detailView==="overview" && root.finished
                             width:parent.width;spacing:Style.space(10)
-                            RaceSummary {width:parent.width;detail:root.detail;foreground:root.foreground}
+                            RaceSummary {width:parent.width;detail:root.detail;concealed:root.resultsHidden;foreground:root.foreground}
+                            SpoilerVeil {width:parent.width;visible:root.resultsHidden;foreground:root.foreground}
                             Row {
                                 width:parent.width;spacing:Style.space(6)
-                                visible:root.classifications.length>1
+                                visible:!root.resultsHidden && root.classifications.length>1
                                 Repeater {
                                     model:root.classifications
                                     Button {required property var modelData;width:(parent.width-Style.space(6)*(root.classifications.length-1))/Math.max(1,root.classifications.length);text:modelData.kind==="gc" ? "GC" : "Stage results";selected:root.classification.kind===modelData.kind;bordered:true;foreground:root.foreground;onClicked:root.classificationKind=modelData.kind}
                                 }
                             }
-                            Classification {width:parent.width;visible:root.classifications.length>0;classification:root.classification;textColor:root.foreground}
-                            RaceText {width:parent.width;visible:!root.classifications.length;text:root.detail.resultsError || (root.detail.error ? "Results could not be loaded. Open PCS with ↗ in the header." : "Waiting for published results…");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
-                            RaceText {width:parent.width;visible:root.detail.stageRace===true && root.detail.gcAvailable===false;text:"General classification is not published on this stage page yet.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
+                            Classification {width:parent.width;visible:!root.resultsHidden && root.classifications.length>0;classification:root.resultsHidden ? ({}) : root.classification;textColor:root.foreground}
+                            RaceText {width:parent.width;visible:!root.resultsHidden && !root.classifications.length;text:root.detail.resultsError || (root.detail.error ? "Results could not be loaded. Open PCS with ↗ in the header." : "Waiting for published results…");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
+                            RaceText {width:parent.width;visible:!root.resultsHidden && root.detail.stageRace===true && root.detail.gcAvailable===false;text:"General classification is not published on this stage page yet.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.dim}
                         }
                         RacePreview {
                             visible:root.preview

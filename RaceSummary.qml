@@ -4,6 +4,7 @@ import qs.Ui
 
 Column {
     id:root
+    property bool concealed: false
     property var detail: ({})
     property color foreground: Color.foreground
     readonly property color dim: Qt.darker(foreground,1.5)
@@ -16,8 +17,8 @@ Column {
         Repeater {
             model:[
                 {label:"DISTANCE",value:root.value(root.detail.distance," km")},
-                {label:"WINNER TIME",value:root.detail.elapsed || "—"},
-                {label:"AVG. KM/H",value:root.value(root.detail.avgSpeed)}
+                {label:"WINNER TIME",value:root.concealed ? "Hidden" : root.detail.elapsed || "—"},
+                {label:"AVG. KM/H",value:root.concealed ? "Hidden" : root.value(root.detail.avgSpeed)}
             ]
             Column {
                 required property var modelData

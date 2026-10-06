@@ -82,9 +82,10 @@ def main():
     p.add_argument('--window',action='store_true',help='Capture the detached desktop window')
     p.add_argument('--verify-window',action='store_true',help='Exercise dock, reopen, focus and close with fictional data')
     p.add_argument('--compact',action='store_true')
+    p.add_argument('--reveal',action='store_true',help='Reveal fictional finished results')
     p.add_argument('--events',action='store_true',help='Capture the race-events tab')
     p.add_argument('--settings',action='store_true',help='Capture the settings screen')
-    p.add_argument('--settings-section',choices=['filters','refresh'],default='filters')
+    p.add_argument('--settings-section',choices=['filters','refresh','spoilers'],default='filters')
     p.add_argument('--warning',choices=['blocked','rate-limited','offline'],help='Show a fictional connection warning')
     p.add_argument('--race-index',type=int,default=0,choices=range(4))
     args=p.parse_args()
@@ -129,12 +130,13 @@ def main():
         ipc(ID+'.panel','selectRace',str(args.race_index))
         ipc(ID+'.panel',mode)
         ipc(ID+'.panel','setDetailView','events' if args.events else 'overview')
+        if args.reveal: ipc(ID+'.panel','revealResults')
         if args.settings: ipc(ID+'.panel','settings')
         if args.warning: ipc(ID,'demoWarning',args.warning)
         wait_for(lambda:status(ID+'.panel')['opened'] and status(ID+'.panel')['expanded'] != args.compact)
         if args.settings:
             ipc(ID+'.panel','settingsSection',args.settings_section)
-            if args.settings_section=='refresh':
+            if args.settings_section in ('refresh','spoilers'):
                 wait_for(lambda:status(ID+'.panel')['scrollY']>0)
         if args.verify_window: verify_window()
         if args.window:

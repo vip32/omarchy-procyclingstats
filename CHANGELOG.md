@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.0 — spoiler protection and remembered detail tabs
+
+- Remember Overview/Race events across races and shell restarts.
+- Add default-on spoiler protection for every finished race: obscure results,
+  winner metrics and events until revealed, and suppress finished-race event
+  notifications. Disable it in Settings to remove the reveal control entirely.
+- Keep profiles and distances visible; hide results again on race changes and
+  dashboard close. Use anonymous blurred rows to avoid leaking rider names.
+- Shorten per-race link tooltips to “Open on PCS”.
+
 ## 0.10.3 — remember the calendar tab
 
 - Remember Recent or Upcoming across navigation and shell restarts. The calendar

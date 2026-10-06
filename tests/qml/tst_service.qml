@@ -275,6 +275,23 @@ TestCase {
         compare(Object.keys(service.updateIssues).length,1)
         verify(service.nextAllowed>Date.now()+890000)
     }
+    function test_finished_events_do_not_spoil_notifications_when_protected() {
+        service.eventNotifications=true
+        deliver(snapshot("Race continues"))
+        var finish=snapshot("Winner crossed the line");finish.status="finished"
+        deliver(finish)
+        compare(Quickshell.commands.length,0)
+        service.revealMode=false
+        finish.events=[{marker:"F",text:"Final result update"}]
+        deliver(finish)
+        compare(Quickshell.commands.length,1)
+    }
+    function test_finished_list_status_also_suppresses_event_notifications() {
+        service.eventNotifications=true
+        service.races=[Object.assign({},race,{status:"finished"})]
+        deliver(snapshot("First"));deliver(snapshot("Winner"))
+        compare(Quickshell.commands.length,0)
+    }
     function test_failed_event_fetch_never_notifies() {
         service.eventNotifications=true
         deliver(snapshot("Old event"))

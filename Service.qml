@@ -44,6 +44,7 @@ Item {
     property int overviewIntervalSec: 300
     property int resultsIntervalSec: 300
     property bool eventNotifications: false
+    property bool revealMode: true
     property int notificationDurationSec: 8
     property var updateIssues: ({})
     property string metadataFetchedAt: ""
@@ -52,7 +53,7 @@ Item {
     property var eventBaselines: ({})
     readonly property var options: Model.settings(Object.assign({},raceFilters,{refreshIntervalSec:refreshIntervalSec,
         overviewIntervalSec:overviewIntervalSec,resultsIntervalSec:resultsIntervalSec,
-        eventNotifications:eventNotifications,notificationDurationSec:notificationDurationSec}))
+        revealMode:revealMode,eventNotifications:eventNotifications,notificationDurationSec:notificationDurationSec}))
     property double nextAllowed: 0
     property bool demo: false
     onEventNotificationsChanged: eventBaselines = ({})
@@ -356,6 +357,7 @@ Item {
         for(var i=0;i<watched.length;i++) if(eventBaselines[watched[i]]) next[watched[i]]=eventBaselines[watched[i]]
         next[path]=diff.baseline
         eventBaselines=next
+        if(Model.resultsHidden(revealMode,race ? race.status : "",result.status || "",false))return
         if(diff.fresh.length && race && (race.status==="live" || result.status==="live" || result.status==="finished"))
             Quickshell.execDetached(Model.notificationArgs(race.name,diff.fresh,notificationDurationSec))
     }

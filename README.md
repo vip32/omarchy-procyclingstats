@@ -97,8 +97,18 @@ There are no stored credentials or background services outside the shell.
 
 ## Use
 
+**Spoiler protection is on by default.** Finished races hide standings, winner
+metrics and race events behind a blurred placeholder. Use **Reveal results**
+(or **S**) to show the current race, and **Hide results** to cover it again.
+Switching races or closing the dashboard hides results again. Profiles and
+distances stay visible. Finished-race event notifications are suppressed while
+protection is on. Disable **Spoiler protection** in Settings to show all results
+normally and remove the reveal button. Opening PCS leaves the dashboard; the
+external website can show results.
+
 Click the bike, choose a date, then select a race. The calendar remembers your
-last Recent or Upcoming tab, including after a shell restart. Each row has a ↗ icon that
+last Recent or Upcoming tab, including after a shell restart. Overview/Race events
+is remembered across races and restarts too. Each row has a ↗ icon that
 opens that race or stage’s page directly on ProCyclingStats. Click a group to expand its
 riders and bib numbers. Finished stages open on GC; switch to stage results when
 needed. The header’s flag always returns to the race list; Live returns to today.

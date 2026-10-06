@@ -287,3 +287,20 @@ test('calendar tab preference restores Upcoming and falls back to Recent', () =>
     for (const value of [undefined,null,'recent','invalid',42])
         assert.equal(model.settings({calendarTab:value}).calendarTab,'recent');
 });
+
+test('detail tabs and spoiler protection have safe persisted defaults', () => {
+    assert.equal(model.settings({}).detailTab,'overview');
+    assert.equal(model.settings({detailTab:'events'}).detailTab,'events');
+    assert.equal(model.settings({detailTab:'invalid'}).detailTab,'overview');
+    assert.equal(model.settings({}).revealMode,true);
+    assert.equal(model.settings({revealMode:false}).revealMode,false);
+    assert.equal(model.settings({revealMode:'false'}).revealMode,true);
+});
+test('finished results stay concealed until this race is revealed or protection is disabled', () => {
+    assert.equal(model.resultsHidden(true,'finished','',false),true);
+    assert.equal(model.resultsHidden(true,'live','finished',false),true);
+    assert.equal(model.resultsHidden(true,'finished','finished',true),false);
+    assert.equal(model.resultsHidden(false,'finished','finished',false),false);
+    assert.equal(model.resultsHidden(true,'live','live',false),false);
+    assert.equal(model.resultsHidden(true,'scheduled','',false),false);
+});

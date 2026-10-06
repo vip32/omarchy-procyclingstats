@@ -15,6 +15,7 @@ Column {
     readonly property var levels: Model.raceLevels()
     readonly property int fieldsStart: 1+categories.length
     readonly property int notificationIndex: fieldsStart+fields.length
+    readonly property int lastIndex: notificationIndex+1
     spacing: Style.space(12)
     readonly property var fields: [
         {key:"archiveRaceCount",label:"Recent & upcoming race count",min:10,max:100,step:5,unit:"races"},
@@ -40,21 +41,24 @@ Column {
         if(cursorIndex===0) return levelRow
         if(cursorIndex<fieldsStart) return categoryRepeater.itemAt(cursorIndex-1)
         if(cursorIndex===notificationIndex) return notificationToggle
+        if(cursorIndex===lastIndex) return spoilerToggle
         return fieldRepeater.itemAt(cursorIndex-fieldsStart)
     }
     onCursorIndexChanged: reveal(cursorItem())
     function move(dx,dy) {
-        cursorIndex = Math.max(0,Math.min(notificationIndex,cursorIndex+dy))
+        cursorIndex = Math.max(0,Math.min(lastIndex,cursorIndex+dy))
         if(!dx) return
         if(cursorIndex===0) levelChange(dx)
         else if(cursorIndex<fieldsStart) categoryChange(cursorIndex-1,dx>0)
         else if(cursorIndex===notificationIndex) changed({eventNotifications:dx>0})
+        else if(cursorIndex===lastIndex) changed({revealMode:dx>0})
         else change(cursorIndex-fieldsStart,dx)
     }
     function activate() {
         if(cursorIndex===0) levelChange(levels.indexOf(values.minimumRaceLevel)===levels.length-1 ? -levels.length : 1)
         else if(cursorIndex<fieldsStart) categoryChange(cursorIndex-1,!values[categories[cursorIndex-1].key])
         else if(cursorIndex===notificationIndex) changed({eventNotifications:!values.eventNotifications})
+        else if(cursorIndex===lastIndex) changed({revealMode:!values.revealMode})
         else change(cursorIndex-fieldsStart,1)
     }
     function duration(seconds) {return seconds < 60 ? seconds+" sec" : seconds%60 ? Math.floor(seconds/60)+"m "+seconds%60+"s" : seconds/60+" min"}
@@ -141,6 +145,13 @@ Column {
         onClicked:{root.cursorIndex=root.notificationIndex;root.changed({eventNotifications:!root.values.eventNotifications})}
     }
     RaceText {width:parent.width;text:"Notifications close automatically and respect Do Not Disturb. New events in one refresh are grouped into one notification per race.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Qt.darker(root.foreground,1.5);font.pixelSize:Style.font.caption}
+    Toggle {
+        id:spoilerToggle
+        width:parent.width;label:"Spoiler protection"
+        description:"Blur finished results until revealed. Also hides finished-race events and notifications."
+        checked:root.values.revealMode;hasCursor:root.cursorIndex===root.lastIndex;foreground:root.foreground
+        onClicked:{root.cursorIndex=root.lastIndex;root.changed({revealMode:!root.values.revealMode})}
+    }
     RaceText {width:parent.width;text:root.feedback || "Changes save automatically. PCS cooldowns still apply.";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.feedback ? Color.urgent : Qt.darker(root.foreground,1.5);font.pixelSize:Style.font.caption}
     RaceText {width:parent.width;text:"J/K select · H/L adjust · Enter change · Esc back";wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Qt.darker(root.foreground,1.5);font.pixelSize:Style.font.caption}
 }

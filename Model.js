@@ -7,6 +7,8 @@ function integer(value, fallback, min, max) {
 function settings(value) {
     value = value || {}
     var result = {
+        detailTab: value.detailTab === "events" ? "events" : "overview",
+        revealMode: value.revealMode !== false,
         calendarTab: value.calendarTab === "upcoming" ? "upcoming" : "recent",
         archiveRaceCount: integer(value.archiveRaceCount, 25, 10, 100),
         refreshIntervalSec: integer(value.refreshIntervalSec, 60, 60, 900),
@@ -200,4 +202,9 @@ function withCourse(detail,course) {
     if(!result.profileLabel)result.profileLabel=course.profileLabel || ""
     if(!result.stagePath)result.stagePath=course.stagePath || ""
     return result
+}
+
+// A reveal applies only to the currently selected race, never to the next one.
+function resultsHidden(enabled, raceStatus, detailStatus, revealed) {
+    return enabled && (raceStatus === "finished" || detailStatus === "finished") && !revealed
 }
