@@ -1,5 +1,22 @@
 # Validation
 
+## 0.11.0 spoiler protection and detail tabs — 2026-10-06
+
+- `PCS_REQUIRE_QT=1 tests/run`: 171 behavioral tests (85 Python, 44 JavaScript,
+  42 Qt cases), plus the two profile cases at 150% scaling. Manifest validation,
+  QML parsing and the advisory scan passed without reported findings.
+- Actual RaceSummary Qt checks ensure concealed winner time/average are absent
+  from rendered text while distance and the course remain. Service tests cover
+  finished status from both live data and race lists suppressing notifications,
+  and normal notification behavior when protection is off.
+- Native checks: remembered tabs across navigation/races; no collapse when a tab
+  saves; finished GC and one-day races hidden initially; explicit reveal; hide
+  again after switching races or closing; live data unaffected. The setting saved
+  both on and off. Real results were never exposed during off-mode verification.
+- Race events preference and protection setting survived a shell restart.
+  Fictional hidden/revealed result and Settings captures were visually inspected.
+  Earlier view/preferences restored with the new default-on protection retained.
+
 ## 0.10.3 calendar tab retention — 2026-10-05
 
 - `PCS_REQUIRE_QT=1 tests/run`: 165 behavioral tests (85 Python, 42 JavaScript,

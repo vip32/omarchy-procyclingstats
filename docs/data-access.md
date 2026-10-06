@@ -11,7 +11,7 @@ sessions or attempt challenge bypass. The provider can block access or change it
 | HTTPS | Only the fixed PCS origin; redirects outside that HTTPS origin are rejected |
 | Browser launch | `/usr/bin/xdg-open` receives a validated PCS URL after a user action |
 | Notifications | `/usr/bin/omarchy notification send`, only when enabled; bounded, escaped remote text |
-| Settings write | The shell updates this widget’s entry in `~/.config/omarchy/shell.json` when the user changes settings or selects a calendar tab |
+| Settings write | The shell updates this widget’s entry in `~/.config/omarchy/shell.json` when the user changes settings or selects a calendar/detail tab |
 | Window focus | Wayland toplevel metadata locates the dashboard by title and activates it when the user opens it; Qt activation is the fallback |
 | Runtime state | Race snapshots, day lists and notification baselines live in memory and clear on restart |
 | Course cache write | Successful public profiles and distances only, under the XDG cache directory; seven-day retention, 100 entries / 32 MiB maximum |
@@ -84,6 +84,13 @@ The fixture demo is explicit and labelled. It pauses real polling and notificati
 uses fictional committed data and read-only default settings, then returns to the
 user’s saved preferences. The screenshot harness writes its requested PNG and a
 private temporary recovery directory; successful restoration removes the latter.
+
+Spoiler protection is enabled by default for finished races. Until explicitly
+revealed, the dashboard substitutes anonymous blurred rows for results/events
+and omits winner time and average speed. Real rider names are not painted behind
+the blur. Reveal state is temporary and resets on race changes or dashboard close.
+Finished-race event notifications are suppressed while protection is enabled;
+opening the external PCS site is outside this protection.
 
 Race data belongs to its respective providers. The repository distributes synthetic
 HTML fixtures and fictional race data, not captured PCS pages. See [asset provenance](assets.md).
