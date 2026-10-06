@@ -3537,7 +3537,7 @@
           "gradient": null
         }
       ],
-      "path": "race/demo-valley-tour/2026/stage-2",
+      "path": "race/demo-valley-tour/2026/stage-1",
       "stageRace": true,
       "gcAvailable": true,
       "classifications": [
@@ -4061,7 +4061,8 @@
           100,
           83.0
         ]
-      ]
+      ],
+      "path": "race/demo-harbour-classic/2026/result"
     },
     "race/demo-valley-tour/2026/stage-3": {
       "state": "ready",
