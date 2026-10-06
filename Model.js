@@ -217,7 +217,12 @@ function raceEdition(path) {
     return match ? match[1] : ""
 }
 function normalizePins(value) {
-    return (Array.isArray(value) ? value : []).map(raceEdition).filter(function(p,i,a){return p && a.indexOf(p)===i}).slice(0,100)
+    // shell.json arrays can arrive as QML sequences, not native JS Arrays.
+    var entries=[]
+    if(value && typeof value==="object" && Number.isInteger(value.length) && value.length>=0) {
+        for(var i=0;i<Math.min(value.length,1000);i++)entries.push(value[i])
+    }
+    return entries.map(raceEdition).filter(function(p,i,a){return p && a.indexOf(p)===i}).slice(0,100)
 }
 function isPinned(path,pins) {return normalizePins(pins).indexOf(raceEdition(path))>=0}
 function togglePin(path,pins) {
