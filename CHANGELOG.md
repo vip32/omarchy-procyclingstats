@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.2 — inline reveal control
+
+- Place the eye button at the right of the Overview/Race events tabs. The tabs
+  reclaim the full row when spoiler protection is off or the race is live.
+
 ## 0.11.1 — compact reveal control
 
 - Replace the Reveal/Hide label with eye icons for hidden and visible results,

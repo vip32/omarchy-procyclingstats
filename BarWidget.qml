@@ -532,18 +532,22 @@ Panel {
                         RaceText {width:parent.width;text:[root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || (root.selected ? root.selected.date || "" : ""),root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "Race data unavailable" : root.finished ? "Loading results…" : root.preview ? "Loading race preview…" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
                         RaceText {width:parent.width;visible:!!root.detail.error;text:(root.detail.fetchedAt ? "Previous snapshot · " : "")+(root.detail.error || "");wrapMode:Text.WordWrap;elide:Text.ElideNone;color:Color.urgent}
                         Row {
+                            id:detailTabs
                             visible:!root.preview
                             width:parent.width;spacing:Style.space(6)
-                            Button {width:(parent.width-Style.space(6))/2;text:"Overview";selected:root.detailView==="overview";bordered:true;foreground:root.foreground;onClicked:root.chooseDetailView("overview")}
-                            Button {width:(parent.width-Style.space(6))/2;text:"Race events";selected:root.detailView==="events";bordered:true;foreground:root.foreground;onClicked:root.chooseDetailView("events")}
-                        }
-                        Button {
-                            visible:root.finished && root.preferences.revealMode
-                            text:root.resultsHidden ? "\uf070" : "\uf06e"
-                            tooltipText:(root.resultsHidden ? "Reveal results" : "Hide results")+" (S)"
-                            Accessible.name:root.resultsHidden ? "Reveal results" : "Hide results"
-                            bordered:true;foreground:root.foreground
-                            onClicked:root.toggleResults()
+                            readonly property real tabWidth:(width-spacing-(revealButton.visible ? revealButton.width+spacing : 0))/2
+                            Button {width:detailTabs.tabWidth;text:"Overview";selected:root.detailView==="overview";bordered:true;foreground:root.foreground;onClicked:root.chooseDetailView("overview")}
+                            Button {width:detailTabs.tabWidth;text:"Race events";selected:root.detailView==="events";bordered:true;foreground:root.foreground;onClicked:root.chooseDetailView("events")}
+                            Button {
+                                id:revealButton
+                                visible:root.finished && root.preferences.revealMode
+                                width:height
+                                text:root.resultsHidden ? "\uf070" : "\uf06e"
+                                tooltipText:(root.resultsHidden ? "Reveal results" : "Hide results")+" (S)"
+                                Accessible.name:root.resultsHidden ? "Reveal results" : "Hide results"
+                                bordered:true;foreground:root.foreground
+                                onClicked:root.toggleResults()
+                            }
                         }
                         SpoilerVeil {width:parent.width;visible:root.resultsHidden && root.detailView==="events";foreground:root.foreground}
                         Column {
