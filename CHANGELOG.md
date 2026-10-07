@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.2 — consistent dashboard icons
+
+- Use consistently sized, centered icons for the header, date navigation, stage controls, pins and spoiler toggle.
+- Compact the header buttons to leave more room for the race dashboard title.
+- Keep the calendar button anchored inside the panel at every theme scale.
+
 ## 0.12.1 — upcoming race previews and dismissible warnings
 
 - Read today's upcoming/scheduled races as previews rather than treating absent

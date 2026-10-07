@@ -460,14 +460,14 @@ Panel {
                             RaceText {width:parent.width;text:root.demo ? "DEMO · fictional road races" : root.service && root.service.loading ? "Refreshing races…" : "Road cycling · " + root.age(root.dayData.fetchedAt || "");font.pixelSize:Style.font.caption;color:root.dim}
                         }
                         Row {
-                            id:actions;anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(6)
-                            Button {text:"\uf11e";tooltipText:"Races (1)";Accessible.name:"Races";selected:root.filter==="Races" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
-                            Button {text:"◉";tooltipText:"Live races (2)";Accessible.name:"Live races";selected:root.filter==="Live" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Live")}
-                            Button {text:"↻";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:root.refreshView()}
-                            Button {text:root.detached ? "▣" : "□";tooltipText:root.detached ? "Dock back to bar (P)" : "Pop out to window (P)";Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.toggleWindow()}
-                            Button {text:"↗";tooltipText:"Open on PCS (O)";Accessible.name:"Open ProCyclingStats in browser";bordered:true;foreground:root.foreground;onClicked:root.openSource()}
-                            Button {text:root.settingsOpen ? "←" : "⚙";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:{if(root.settingsOpen)root.showFilter("Races");else root.settingsOpen=true}}
-                            Button {visible:root.expanded && !root.settingsOpen;text:"↙";tooltipText:"Back to race list";bordered:true;foreground:root.foreground;onClicked:root.expanded=false}
+                            id:actions;anchors.right:parent.right;anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(4)
+                            RaceIconButton {iconText:"\uf11e";tooltipText:"Races (1)";Accessible.name:"Races";selected:root.filter==="Races" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Races")}
+                            RaceIconButton {iconText:"\uf192";tooltipText:"Live races (2)";Accessible.name:"Live races";selected:root.filter==="Live" && !root.settingsOpen && !root.expanded;bordered:true;foreground:root.foreground;onClicked:root.showFilter("Live")}
+                            RaceIconButton {iconText:"\uf021";tooltipText:"Refresh races (R)";bordered:true;foreground:root.foreground;onClicked:root.refreshView()}
+                            RaceIconButton {iconText:root.detached ? "\uf066" : "\uf2d2";tooltipText:root.detached ? "Dock back to bar (P)" : "Pop out to window (P)";Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.toggleWindow()}
+                            RaceIconButton {iconText:"\uf08e";tooltipText:"Open on PCS (O)";Accessible.name:"Open ProCyclingStats in browser";bordered:true;foreground:root.foreground;onClicked:root.openSource()}
+                            RaceIconButton {iconText:root.settingsOpen ? "\uf060" : "\uf013";tooltipText:root.settingsOpen ? "Back to races" : "Settings (,)";bordered:true;foreground:root.foreground;onClicked:{if(root.settingsOpen)root.showFilter("Races");else root.settingsOpen=true}}
+                            RaceIconButton {visible:root.expanded && !root.settingsOpen;iconText:"\uf060";tooltipText:"Back to race list";bordered:true;foreground:root.foreground;onClicked:root.expanded=false}
                         }
                     }
                     PanelSeparator {foreground:root.foreground}
@@ -495,13 +495,16 @@ Panel {
                     Column {
                         visible:!root.expanded || !root.selected
                         width:parent.width;spacing:Style.space(4)
-                        Row {
+                        Item {
                             visible:!root.archive
-                            width:parent.width;spacing:Style.space(6)
-                            Button {id:previousDay;text:"‹";enabled:root.dayOffset>-1;tooltipText:"Previous day (Left)";Accessible.name:"Previous day";bordered:true;foreground:root.foreground;onClicked:root.showDay(root.dayOffset-1)}
-                            Button {width:parent.width-previousDay.width-nextDay.width-calendarButton.width-Style.space(18);text:Model.dayLabel(root.now,root.dayOffset);tooltipText:"Return to today";Accessible.name:text;foreground:root.foreground;onClicked:root.showDay(0)}
-                            Button {id:nextDay;text:"›";enabled:root.dayOffset<1;tooltipText:"Next day (Right)";Accessible.name:"Next day";bordered:true;foreground:root.foreground;onClicked:root.showDay(root.dayOffset+1)}
-                            Button {id:calendarButton;text:"\uf073";tooltipText:"Recent & upcoming races (3)";Accessible.name:"Race calendar";bordered:true;foreground:root.foreground;onClicked:root.showCalendar()}
+                            width:parent.width;height:previousDay.height
+                            RaceIconButton {id:previousDay;anchors.left:parent.left;iconText:"\uf053";enabled:root.dayOffset>-1;tooltipText:"Previous day (Left)";Accessible.name:"Previous day";foreground:root.foreground;onClicked:root.showDay(root.dayOffset-1)}
+                            Button {anchors.left:previousDay.right;anchors.right:dayActions.left;anchors.leftMargin:Style.space(6);anchors.rightMargin:Style.space(6);height:parent.height;text:Model.dayLabel(root.now,root.dayOffset);tooltipText:"Return to today";Accessible.name:text;foreground:root.foreground;onClicked:root.showDay(0)}
+                            Row {
+                                id:dayActions;anchors.right:parent.right;spacing:Style.space(4)
+                                RaceIconButton {iconText:"\uf054";enabled:root.dayOffset<1;tooltipText:"Next day (Right)";Accessible.name:"Next day";foreground:root.foreground;onClicked:root.showDay(root.dayOffset+1)}
+                                RaceIconButton {iconText:"\uf073";tooltipText:"Recent & upcoming races (3)";Accessible.name:"Race calendar";foreground:root.foreground;onClicked:root.showCalendar()}
+                            }
                         }
                         Row {
                             visible:root.archive;width:parent.width;spacing:Style.space(6)
@@ -537,17 +540,17 @@ Panel {
                                     Row {
                                         width:parent.width;height:Style.space(24);spacing:Style.space(4)
                                         RaceText {width:parent.width-raceLink.width-racePin.width-parent.spacing*2;anchors.verticalCenter:parent.verticalCenter;text:raceRow.modelData.toGo || "";horizontalAlignment:Text.AlignRight;font.pixelSize:Style.font.caption;color:root.dim}
-                                        Button {
-                                            id:racePin;width:Style.space(24);height:Style.space(24)
-                                            text:root.pinned(raceRow.modelData.path) ? "\uf005" : "\uf006"
+                                        RaceIconButton {
+                                            id:racePin;width:Style.space(24);height:width;iconSize:Style.space(14);bordered:false
+                                            iconText:root.pinned(raceRow.modelData.path) ? "\uf005" : "\uf006"
                                             foreground:root.pinned(raceRow.modelData.path) ? Color.accent : root.dim
                                             tooltipText:root.pinned(raceRow.modelData.path) ? "Unpin race (F)" : "Pin race (F)"
                                             Accessible.name:tooltipText
                                             onClicked:root.pinRace(raceRow.modelData.path)
                                         }
-                                        Button {
-                                            id:raceLink;width:Style.space(24);height:Style.space(24)
-                                            text:"↗";foreground:root.foreground
+                                        RaceIconButton {
+                                            id:raceLink;width:Style.space(24);height:width;iconSize:Style.space(14);bordered:false
+                                            iconText:"\uf08e";foreground:root.foreground
                                             tooltipText:"Open on PCS"
                                             Accessible.name:tooltipText
                                             onClicked:root.openPcsPath(raceRow.modelData.path)
@@ -578,9 +581,9 @@ Panel {
                             RaceText {width:parent.width-detailActions.width-parent.spacing;text:root.selected ? root.selected.name : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
                             Row {
                                 id:detailActions;spacing:Style.space(4)
-                                Button {visible:(root.detail.stages || []).length>1;enabled:!!root.previousStage;text:"‹";width:height;tooltipText:"Previous stage ([)"+(root.previousStage ? " · "+root.previousStage.label : "");Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.moveStage(-1)}
-                                Button {visible:(root.detail.stages || []).length>1;enabled:!!root.nextStage;text:"›";width:height;tooltipText:"Next stage (])"+(root.nextStage ? " · "+root.nextStage.label : "");Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.moveStage(1)}
-                                Button {text:root.selected && root.pinned(root.selected.path) ? "\uf005" : "\uf006";width:height;tooltipText:root.selected && root.pinned(root.selected.path) ? "Unpin race (F)" : "Pin race (F)";Accessible.name:tooltipText;foreground:root.selected && root.pinned(root.selected.path) ? Color.accent : root.dim;onClicked:if(root.selected)root.pinRace(root.selected.path)}
+                                RaceIconButton {visible:(root.detail.stages || []).length>1;enabled:!!root.previousStage;iconText:"\uf053";tooltipText:"Previous stage ([)"+(root.previousStage ? " · "+root.previousStage.label : "");Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.moveStage(-1)}
+                                RaceIconButton {visible:(root.detail.stages || []).length>1;enabled:!!root.nextStage;iconText:"\uf054";tooltipText:"Next stage (])"+(root.nextStage ? " · "+root.nextStage.label : "");Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.moveStage(1)}
+                                RaceIconButton {iconText:root.selected && root.pinned(root.selected.path) ? "\uf005" : "\uf006";bordered:false;tooltipText:root.selected && root.pinned(root.selected.path) ? "Unpin race (F)" : "Pin race (F)";Accessible.name:tooltipText;foreground:root.selected && root.pinned(root.selected.path) ? Color.accent : root.dim;onClicked:if(root.selected)root.pinRace(root.selected.path)}
                             }
                         }
                         RaceText {width:parent.width;text:[/stage-/.test(root.detail.stagePath || (root.selected ? root.selected.path : "")) ? (root.detail.stagePath || root.selected.path).split("/").pop().replace("stage-","Stage ") : "",root.titleStatus(root.detail.status || (root.selected ? root.selected.status : "")),root.detail.date || (root.selected ? root.selected.date || "" : ""),root.demo ? "Fictional snapshot" : root.detail.fetchedAt ? root.age(root.detail.sourceAt || root.detail.fetchedAt) : root.detail.error ? "Race data unavailable" : root.finished ? "Loading results…" : root.preview ? "Loading race preview…" : "Loading LiveStats…"].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:Color.accent}
@@ -590,13 +593,13 @@ Panel {
                             visible:!root.preview
                             width:parent.width;spacing:Style.space(6)
                             readonly property real tabWidth:(width-spacing-(revealButton.visible ? revealButton.width+spacing : 0))/2
-                            Button {width:detailTabs.tabWidth;text:"Overview";selected:root.detailView==="overview";bordered:true;foreground:root.foreground;onClicked:root.chooseDetailView("overview")}
+                            Button {id:overviewTab;width:detailTabs.tabWidth;text:"Overview";selected:root.detailView==="overview";bordered:true;foreground:root.foreground;onClicked:root.chooseDetailView("overview")}
                             Button {width:detailTabs.tabWidth;text:"Race events";selected:root.detailView==="events";bordered:true;foreground:root.foreground;onClicked:root.chooseDetailView("events")}
-                            Button {
+                            RaceIconButton {
                                 id:revealButton
                                 visible:root.finished && root.preferences.revealMode
-                                width:height
-                                text:root.resultsHidden ? "\uf070" : "\uf06e"
+                                width:height;height:overviewTab.height
+                                iconText:root.resultsHidden ? "\uf070" : "\uf06e"
                                 tooltipText:(root.resultsHidden ? "Reveal results" : "Hide results")+" (S)"
                                 Accessible.name:root.resultsHidden ? "Reveal results" : "Hide results"
                                 bordered:true;foreground:root.foreground
