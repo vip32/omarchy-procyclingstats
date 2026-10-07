@@ -41,6 +41,18 @@ def race_info_page():
     return '<ul class="keyvalueList">'+''.join('<li><div class="title">'+k+':</div><div class="value">'+v+'</div></li>' for k,v in [('Date','27 September 2026'),('Distance','160 km'),('Avg. speed winner','48.0 km/h')])+'</ul>'
 
 class Parsing(unittest.TestCase):
+    def test_total_ascent_is_read_for_course_preview_and_results(self):
+        page=race_info_page()+'<ul class="keyvalueList"><li><div class="title">Vertical meters:</div><div class="value">2,450 m</div></li></ul>'
+        for parser in (pcs.parse_course,pcs.parse_preview,pcs.parse_results):
+            with self.subTest(parser=parser.__name__):
+                self.assertEqual(parser(page+results_page(),'race/demo/2026/stage-2')['elevationGain'],2450)
+                self.assertIsNone(parser(race_info_page()+results_page(),'race/demo/2026/stage-2')['elevationGain'])
+        self.assertNotIn('elevationGain',pcs.parse_race(live(dict(DATA,elevation_todo=620)),'race/demo/2026/result'))
+
+    def test_total_ascent_accepts_zero_and_grouping_but_not_invalid_values(self):
+        for raw,want in [('0',0),('2450',2450),('2.450',2450),('2 450 m',2450),('2\u00a0450',2450),('',None),('-',None),('-200',None),('NaN',None),('2450 km',None),('100001',None)]:
+            with self.subTest(raw=raw):self.assertEqual(pcs.elevation_gain({'vertical meters':raw}),want)
+
     def test_stage_navigation_uses_published_same_edition_links(self):
         html='<select>'+''.join('<option value="'+p+'">Stage</option>' for p in [
             'race/demo-2026-stage-2b/live','race/demo/2026/stage-1',

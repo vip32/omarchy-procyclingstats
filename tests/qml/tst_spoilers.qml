@@ -8,7 +8,7 @@ TestCase {
     width:640;height:350
     Plugin.RaceSummary {
         id:summary;width:600
-        detail:({state:"ready",distance:180,elapsed:"3:12:08",avgSpeed:56.2,profileLabel:"Stage 2",profile:[[0,80],[50,10],[100,80]]})
+        detail:({state:"ready",distance:180,elevationGain:2450,elapsed:"3:12:08",avgSpeed:56.2,profileLabel:"Stage 2",profile:[[0,80],[50,10],[100,80]]})
     }
     Plugin.Classification {id:classification;width:600;concealed:true}
     Plugin.RaceEvents {id:events;width:600;concealed:true}
@@ -56,7 +56,7 @@ TestCase {
         wait(0)
         var values=texts(summary)
         verify(values.indexOf("Hidden")<0)
-        compare(values.filter(function(v){return v==="—"}).length,2)
+        compare(values.filter(function(v){return v==="—"}).length,3)
         summary.detail=previous
     }
     function texts(item) {
@@ -70,6 +70,7 @@ TestCase {
         wait(0)
         var values=texts(summary)
         verify(values.indexOf("180 km")>=0)
+        verify(values.indexOf("2450 m")>=0)
         verify(values.indexOf("Stage 2 · elevation profile")>=0)
         verify(values.indexOf("Hidden")>=0)
         verify(values.indexOf("3:12:08")<0)

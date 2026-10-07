@@ -24,7 +24,7 @@ class CourseCache(unittest.TestCase):
         self.env=patch.dict(os.environ,{'XDG_CACHE_HOME':self.temp.name})
         self.env.start();self.addCleanup(self.env.stop)
         self.directory=Path(self.temp.name)/'omarchy-procyclingstats/courses-v1'
-        self.value={'state':'ready','distance':180,'profile':[[0,80],[50,10],[100,80]],
+        self.value={'state':'ready','distance':180,'elevationGain':2450,'profile':[[0,80],[50,10],[100,80]],
                     'fetchedAt':'2026-10-05T12:00:00+00:00','profileFetchedAt':'2026-10-05T12:00:00+00:00',
                     'elapsed':'DO NOT CACHE','events':[{'text':'DO NOT CACHE'}],'groups':[{'name':'DO NOT CACHE'}]}
 
@@ -36,12 +36,28 @@ class CourseCache(unittest.TestCase):
         result=json.loads(subprocess.check_output([sys.executable,'-I',str(ROOT/'bin/pcs.py'),'course-cache','--race',self.path],text=True))
         self.assertEqual(result['profile'],self.value['profile'])
         self.assertEqual(result['distance'],180)
+        self.assertEqual(result['elevationGain'],2450)
         self.assertEqual(result['fetchedAt'],self.value['fetchedAt'])
         self.assertNotIn('events',result)
         self.assertNotIn('elapsed',result)
         self.assertNotIn('groups',result)
         self.assertEqual(self.filename().stat().st_mode&0o777,0o600)
         self.assertEqual(self.directory.stat().st_mode&0o777,0o700)
+
+    def test_live_profile_refresh_preserves_total_ascent(self):
+        pcs.cached_course(self.path,self.value)
+        live=dict(self.value);del live['elevationGain']
+        live['elevation']=620
+        pcs.cached_course(self.path,live)
+        self.assertEqual(pcs.cached_course(self.path)['elevationGain'],2450)
+        self.assertNotIn('elevation',pcs.cached_course(self.path))
+
+    def test_invalid_ascent_cannot_enter_cache(self):
+        for gain in [-1,100001,True,'2450',float('nan')]:
+            with self.subTest(gain=gain),self.assertRaises(ValueError):
+                pcs.course_cache_value(dict(self.value,elevationGain=gain),self.path)
+        self.assertEqual(pcs.course_cache_value(dict(self.value,elevationGain=0),self.path)['elevationGain'],0)
+        self.assertIsNone(pcs.course_cache_value(dict(self.value,elevationGain=None),self.path)['elevationGain'])
 
     def test_image_roundtrip_revalidates_mime_and_dimensions(self):
         fixture=json.loads((ROOT/'demo/fixtures/example.json').read_text())

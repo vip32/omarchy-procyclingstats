@@ -309,6 +309,14 @@ def metric(value, maximum=10000):
     match = re.match(r'^(\d+(?:[.,]\d+)?)\b', value)
     return number(match[1].replace(',', '.'), maximum) if match else None
 
+def elevation_gain(info):
+    # PCS publishes total ascent separately from LiveStats' elevation_todo.
+    value=clean(info.get('vertical meters',''))
+    if not re.fullmatch(r'(?:\d{1,3}(?:[ ,.]\d{3})+|\d+)(?:\s*m)?',value):
+        return None
+    meters=int(re.sub(r'[^0-9]','',value))
+    return meters if 0<=meters<=100000 else None
+
 def selected_stage(doc,path):
     if not path.endswith('/gc'): return ''
     navigation=doc.first(cls='resultTabs') or doc.first(cls='unitTabs')
@@ -439,6 +447,11 @@ def course_cache_value(value,path):
         if type(distance) not in (int,float) or not math.isfinite(distance) or not 0<distance<=10000:
             raise ValueError('Invalid course distance')
         out['distance']=distance
+    if 'elevationGain' in value:
+        gain=value['elevationGain']
+        if gain is not None and (type(gain) not in (int,float) or not math.isfinite(gain) or not 0<=gain<=100000):
+            raise ValueError('Invalid course elevation gain')
+        out['elevationGain']=gain
     stage=value.get('stagePath') or ''
     if stage:
         stage=race_path(stage)
@@ -497,6 +510,12 @@ def prune_course_cache(directory,now):
 
 def cached_course(path,value=None):
     """Best-effort cache: misses, damage and unwritable disks never block PCS."""
+    # LiveStats snapshots omit total ascent. Do not erase course metadata when
+    # refreshing their profile; the existing entry is validated and age-limited.
+    if isinstance(value,dict) and 'elevationGain' not in value:
+        previous=cached_course(path)
+        if 'elevationGain' in previous:
+            value=dict(value,elevationGain=previous['elevationGain'])
     try:
         path=race_path(path)
         name=hashlib.sha256(path.encode('utf-8')).hexdigest()+'.json'
@@ -538,7 +557,7 @@ def parse_course(html,path):
     course=course_fields(doc,path)
     if not info.get('date') and not course['profile'] and not course['profileImagePath']:
         raise SourceError('unsupported','PCS course information could not be read.')
-    return dict(state='ready',path=path,distance=metric(info.get('distance','')),**course)
+    return dict(state='ready',path=path,distance=metric(info.get('distance','')),elevationGain=elevation_gain(info),**course)
 
 def load_course(path):
     return attach_image(parse_course(fetch(path),path),path)
@@ -549,7 +568,7 @@ def parse_preview(html, path):
     if not values.get('date'):
         raise SourceError('unsupported', 'PCS race preview could not be read.')
     return dict(state='ready', path=path, status='upcoming', date=values['date'],
-        startTime=values.get('start time', ''), distance=metric(values.get('distance', '')),
+        startTime=values.get('start time', ''), distance=metric(values.get('distance', '')),elevationGain=elevation_gain(values),
         departure=values.get('departure', ''), arrival=values.get('arrival', ''),
         **course_fields(doc,path))
 
@@ -688,7 +707,7 @@ def parse_results(html,path):
     return dict(state='ready',path=path,name=txt(doc.first('title')),status='finished',
                 classifications=classifications,gcAvailable=any(c['kind']=='gc' for c in classifications),
                 stageRace=stage,stagePath=stage_path,stages=stage_links(doc,path),groups=[],profile=points,keypoints=[],date=info.get('date',''),
-                distance=metric(info.get('distance','')),elapsed=elapsed,
+                distance=metric(info.get('distance','')),elevationGain=elevation_gain(info),elapsed=elapsed,
                 avgSpeed=metric(info.get('avg. speed winner',''),150),
                 profileState='ready' if points else 'unavailable',
                 profileFetchedAt=dt.datetime.now(dt.timezone.utc).isoformat() if points else '',
@@ -789,7 +808,7 @@ def load_race(path,finished=False,upcoming=False,stage=False):
             results=parse_results(fetch(path),path)
             result.update({k:results[k] for k in ('classifications','gcAvailable','stageRace','stages')})
             result['elapsed']=results['elapsed']
-            for key in ('distance','avgSpeed','date'):
+            for key in ('distance','elevationGain','avgSpeed','date'):
                 if results[key] is not None and results[key]!='': result[key]=results[key]
             if results['profile']: result['profile']=results['profile']
             result['profileState']='ready' if result['profile'] else 'unavailable'

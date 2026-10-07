@@ -23,11 +23,11 @@ is required.
   stages as results, live coverage or an upcoming preview. Your active tab stays selected.
 - **Race calendar:** yesterday, today and tomorrow, plus Recent and Upcoming
   lists beyond adjacent days. Set the list size from 10 to 100 races in Settings.
-- **Profiles and results:** course outlines and distance for past, current and
+- **Profiles and results:** course outlines, distance and elevation gain (HM) for past, current and
   future races; finished-race results, stage GC, winner time and average speed.
-  Profiles and distance are cached on disk for seven days.
+  Profiles, distance and elevation gain are cached on disk for seven days.
 - **Spoiler protection:** finished results and events stay concealed until you
-  use the eye button. Profiles, distances and empty-state messages stay readable.
+  use the eye button. Profiles, distances, HM and empty-state messages stay readable.
   Turn protection off entirely in Settings if preferred.
 - **Your coverage:** filter by 13 race categories and minimum race level; choose
   refresh intervals and optional race-event notifications with automatic expiry.

@@ -119,6 +119,8 @@ Item {
     function courseDue(path) {
         if(!courses[path])return true
         var failed=Model.isFailure(courses[path].state) || !!courses[path].profileError
+        // Old caches and LiveStats profiles have not fetched total ascent yet.
+        if(!failed && courses[path].elevationGain===undefined)return true
         return Date.now()-Number(lastRequests["course:"+path] || 0)>=(failed ? 300000 : 3600000)
     }
     function watchCourses(paths) {
@@ -140,6 +142,7 @@ Item {
         if(Model.isFailure(value.state))next[path]=Object.assign({},prior,{state:value.state,error:value.error,profileError:value.error})
         else {
             var snapshot=Model.courseSnapshot(value)
+            if((snapshot.elevationGain===null || snapshot.elevationGain===undefined) && prior.elevationGain!==undefined)snapshot.elevationGain=prior.elevationGain
             if(snapshot.distance===null || snapshot.distance===undefined)snapshot.distance=prior.distance
             if(value.profileError) {
                 ;["profile","profileImage","profileImageWidth","profileImageHeight","profileFetchedAt"].forEach(function(k){if(prior[k])snapshot[k]=prior[k]})

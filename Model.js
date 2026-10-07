@@ -191,12 +191,13 @@ function matchesRace(race, options) {
 
 function courseSnapshot(value) {
     var out={state:value.state,fetchedAt:value.fetchedAt || ""}
-    ;["distance","profile","profileImage","profileImageWidth","profileImageHeight","profileLabel","stagePath","profileState","profileError","profileFetchedAt"].forEach(function(key){if(value[key]!==undefined)out[key]=value[key]})
+    ;["distance","elevationGain","profile","profileImage","profileImageWidth","profileImageHeight","profileLabel","stagePath","profileState","profileError","profileFetchedAt"].forEach(function(key){if(value[key]!==undefined)out[key]=value[key]})
     return out
 }
 
 function withCourse(detail,course) {
     var result=Object.assign({},detail)
+    if(result.elevationGain===null || result.elevationGain===undefined)result.elevationGain=course.elevationGain
     if(result.distance===null || result.distance===undefined)result.distance=course.distance
     if(!(result.profile || []).length && !result.profileImage) {
         ;["profile","profileImage","profileImageWidth","profileImageHeight","profileState","profileError","profileFetchedAt"].forEach(function(key){if(course[key]!==undefined)result[key]=course[key]})

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.3 — elevation gain in race details
+
+- Show total ascent (HM) beside distance for finished, upcoming and live races, using PCS's published vertical meters.
+- Cache elevation gain with the course profile; keep it visible with spoiler protection enabled.
+- Show a dash when PCS has not published the total ascent.
+
 ## 0.12.2 — consistent dashboard icons
 
 - Use consistently sized, centered icons for the header, date navigation, stage controls, pins and spoiler toggle.

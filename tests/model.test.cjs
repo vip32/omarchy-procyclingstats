@@ -398,3 +398,11 @@ test('new issues, changed failures and recurrence after recovery show again', ()
     const recovered=model.retainedDismissals({},dismissed);
     assert.equal(Object.keys(model.visibleIssues(issues,recovered)).length,1);
 });
+
+test('total ascent survives snapshots and fills live details without using remaining elevation', () => {
+    const course=model.courseSnapshot({state:'ready',distance:180,elevationGain:2450,elevation:620});
+    assert.equal(course.elevationGain,2450);assert.equal(course.elevation,undefined);
+    assert.equal(model.withCourse({elevation:620},course).elevationGain,2450);
+    assert.equal(model.withCourse({elevationGain:0},course).elevationGain,0);
+    assert.equal(model.withCourse({elevationGain:3000},course).elevationGain,3000);
+});

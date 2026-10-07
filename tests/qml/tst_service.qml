@@ -72,7 +72,7 @@ TestCase {
         wait(0)
     }
     function cached(age) {
-        return {state:"ready",cacheSavedAt:(Date.now()-age)/1000,profile:[[0,80],[100,20]],distance:180,profileState:"ready",fetchedAt:"saved"}
+        return {state:"ready",cacheSavedAt:(Date.now()-age)/1000,profile:[[0,80],[100,20]],distance:180,elevationGain:2450,profileState:"ready",fetchedAt:"saved"}
     }
     function test_invalid_cache_output_falls_back_to_normal_fetch_without_warning() {
         service.watchCourses([racePath])
@@ -88,6 +88,23 @@ TestCase {
         compare(service.courseDiskHits,1)
         verify(!worker().running)
         verify(!service.courseDue(racePath))
+    }
+    function test_old_cache_without_ascent_gets_one_refresh() {
+        service.watchCourses([racePath])
+        var old=cached(1000);delete old.elevationGain
+        restore(old)
+        compare(worker().command[3],"course")
+        verify(worker().running)
+        worker().running=false
+        deliver({state:"ready",distance:180,elevationGain:null,profile:[[0,80],[100,20]],profileState:"ready"})
+        wait(0)
+        verify(!service.courseDue(racePath))
+        verify(!worker().running)
+    }
+    function test_live_refresh_keeps_known_total_ascent() {
+        service.rememberCourse(racePath,{state:"ready",elevationGain:2450})
+        service.rememberCourse(racePath,{state:"ready",elevation:620})
+        compare(service.courses[racePath].elevationGain,2450)
     }
     function test_old_disk_profile_displays_while_normal_refresh_runs() {
         service.watchCourses([racePath])
@@ -219,7 +236,7 @@ TestCase {
     function test_course_cache_is_reused_and_bounded() {
         for(var i=0;i<45;i++)service.rememberCourse("race/demo-"+i+"/2026/result",{state:"ready",distance:i,profileState:"unavailable"})
         compare(Object.keys(service.courses).length,40)
-        service.rememberCourse(racePath,{state:"ready",distance:180,profileState:"ready",profileImage:"image"})
+        service.rememberCourse(racePath,{state:"ready",distance:180,elevationGain:2450,profileState:"ready",profileImage:"image"})
         var times={};times["course:"+racePath]=Date.now();service.lastRequests=times
         service.watchCourses([racePath])
         verify(!service.loading)
@@ -238,7 +255,7 @@ TestCase {
         deliver({state:"error",error:"Unavailable"})
         verify(service.updateIssues["course:"+racePath]!==undefined)
         service.currentPath=racePath
-        deliver({state:"ready",distance:180,profileState:"ready",profileImage:"image"})
+        deliver({state:"ready",distance:180,elevationGain:2450,profileState:"ready",profileImage:"image"})
         compare(service.courses[racePath].profileImage,"image")
         verify(service.updateIssues["course:"+racePath]===undefined)
         verify(!service.courseDue(racePath))

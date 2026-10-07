@@ -186,6 +186,7 @@ Panel {
                 if(y+item.height>0 && y<scroller.height)paths.push(item.modelData.path)
             }
         }
+        if(dashboardVisible && !settingsOpen && expanded && selected)paths.push(selected.path)
         service.watchCourses(paths)
     }
     onRowsChanged: Qt.callLater(updateVisibleCourses)
@@ -252,6 +253,7 @@ Panel {
     onSettingsOpenChanged: Qt.callLater(function(){scroller.contentY=0;root.updateVisibleCourses()})
     onFilterChanged: { cursorIndex = 0; expanded = false;if(!archive && service){service.stopArchive("recent");service.stopArchive("upcoming")} }
     onSelectedChanged: {
+        Qt.callLater(updateVisibleCourses)
         var path = selected ? selected.path : ""
         if(path !== lastSelectedPath) {classificationKind="gc";resultsRevealed=false;lastSelectedPath=path}
         if(dashboardVisible && expanded && service && selected) service.watch(selected.path)
@@ -329,7 +331,7 @@ Panel {
                 archiveMode:root.archiveMode,archiveCount:root.archiveCount,archiveBusy:root.archiveBusy,archiveDates:root.archiveData.dates || [],dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView,resultsHidden:root.resultsHidden,resultsRevealed:root.resultsRevealed, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
-                classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",profileImage:!!root.detail.profileImage,distance:root.detail.distance,profileLabel:root.detail.profileLabel || "",courseRows:root.rows.map(function(r){var c=root.rowCourse(r);return {path:r.path,distance:c.distance,hasProfile:!!c.profileImage || (c.profile || []).length>1}}),
+                classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",profileImage:!!root.detail.profileImage,distance:root.detail.distance,elevationGain:root.detail.elevationGain,profileLabel:root.detail.profileLabel || "",courseRows:root.rows.map(function(r){var c=root.rowCourse(r);return {path:r.path,distance:c.distance,hasProfile:!!c.profileImage || (c.profile || []).length>1}}),
                 filtersActive:root.filtersActive,unfilteredRows:root.unfilteredRaces.length,settingsCursor:settingsPage.cursorIndex,scrollY:Math.round(scroller.contentY),warning:root.connection,warningBanner:root.bannerConnection,settingsOpen:root.settingsOpen,settings:root.preferences,
                 demo:root.demo, vertical:root.bar ? root.bar.vertical : false})
         }

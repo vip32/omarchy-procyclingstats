@@ -71,8 +71,8 @@ Column {
     }
     Row {
         width:parent.width
-        RaceText {width:parent.width*0.6;text:root.value(root.detail.kmDone)+" / "+root.value(root.detail.distance," km covered");font.pixelSize:Style.font.caption;color:root.dim}
-        RaceText {width:parent.width*0.4;text:root.detail.profile && root.detail.profile.length>1 ? root.detail.distance>0 && root.detail.kmDone!==null && root.detail.kmDone!==undefined ? "│ Current position" : "" : "Profile unavailable";horizontalAlignment:Text.AlignRight;font.pixelSize:Style.font.caption;color:root.dim}
+        RaceText {width:parent.width*0.7;text:root.value(root.detail.kmDone)+" / "+root.value(root.detail.distance," km")+" · "+root.value(root.detail.elevationGain)+" HM";wrapMode:Text.WordWrap;elide:Text.ElideNone;font.pixelSize:Style.font.caption;color:root.dim}
+        RaceText {width:parent.width*0.3;text:root.detail.profile && root.detail.profile.length>1 ? root.detail.distance>0 && root.detail.kmDone!==null && root.detail.kmDone!==undefined ? "│ Current position" : "" : "Profile unavailable";horizontalAlignment:Text.AlignRight;font.pixelSize:Style.font.caption;color:root.dim}
     }
     RaceText {
         width:parent.width;visible:!!root.nextPoint

@@ -1768,7 +1768,8 @@
           "marker": "51",
           "text": "A small group is caught by the peloton."
         }
-      ]
+      ],
+      "elevationGain": 2450
     },
     "race/demo-alpine-tour/2026/stage-4": {
       "state": "ready",
@@ -2299,7 +2300,8 @@
           "path": "race/demo-alpine-tour/2026/stage-5",
           "label": "Stage 5"
         }
-      ]
+      ],
+      "elevationGain": 3180
     },
     "race/demo-valley-tour/2026/stage-2": {
       "state": "ready",
@@ -2897,7 +2899,8 @@
           "path": "race/demo-valley-tour/2026/stage-3",
           "label": "Stage 3"
         }
-      ]
+      ],
+      "elevationGain": 1820
     },
     "race/demo-city-circuit/2026/result": {
       "state": "ready",
@@ -3049,7 +3052,8 @@
       "profileState": "ready",
       "profileImage": "data:image/png;base64,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",
       "profileImageWidth": 600,
-      "profileImageHeight": 240
+      "profileImageHeight": 240,
+      "elevationGain": 640
     },
     "race/demo-valley-tour/2026/stage-1": {
       "state": "ready",
@@ -3647,7 +3651,8 @@
           "path": "race/demo-valley-tour/2026/stage-3",
           "label": "Stage 3"
         }
-      ]
+      ],
+      "elevationGain": 2450
     },
     "race/demo-harbour-classic/2026/result": {
       "state": "ready",
@@ -4062,7 +4067,8 @@
           83.0
         ]
       ],
-      "path": "race/demo-harbour-classic/2026/result"
+      "path": "race/demo-harbour-classic/2026/result",
+      "elevationGain": 3180
     },
     "race/demo-valley-tour/2026/stage-3": {
       "state": "ready",
@@ -4117,7 +4123,8 @@
       ],
       "groups": [],
       "keypoints": [],
-      "events": []
+      "events": [],
+      "elevationGain": 1820
     },
     "race/demo-alpine-tour/2026/stage-3": {
       "state": "ready",
@@ -4270,7 +4277,8 @@
           "label": "Stage 5"
         }
       ],
-      "profileLabel": "Stage 3"
+      "profileLabel": "Stage 3",
+      "elevationGain": 640
     },
     "race/demo-alpine-tour/2026/stage-5": {
       "state": "ready",
@@ -4325,7 +4333,8 @@
       ],
       "groups": [],
       "keypoints": [],
-      "events": []
+      "events": [],
+      "elevationGain": 2450
     }
   },
   "calendar": {
