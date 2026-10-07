@@ -499,7 +499,7 @@ Panel {
                             visible:!root.archive
                             width:parent.width;height:previousDay.height
                             RaceIconButton {id:previousDay;anchors.left:parent.left;iconText:"\uf053";enabled:root.dayOffset>-1;tooltipText:"Previous day (Left)";Accessible.name:"Previous day";foreground:root.foreground;onClicked:root.showDay(root.dayOffset-1)}
-                            Button {anchors.left:previousDay.right;anchors.right:dayActions.left;anchors.leftMargin:Style.space(6);anchors.rightMargin:Style.space(6);height:parent.height;text:Model.dayLabel(root.now,root.dayOffset);tooltipText:"Return to today";Accessible.name:text;foreground:root.foreground;onClicked:root.showDay(0)}
+                            Button {anchors.horizontalCenter:parent.horizontalCenter;width:parent.width-2*(dayActions.width+Style.space(6));height:parent.height;text:Model.dayLabel(root.now,root.dayOffset);tooltipText:"Return to today";Accessible.name:text;foreground:root.foreground;onClicked:root.showDay(0)}
                             Row {
                                 id:dayActions;anchors.right:parent.right;spacing:Style.space(4)
                                 RaceIconButton {iconText:"\uf054";enabled:root.dayOffset<1;tooltipText:"Next day (Right)";Accessible.name:"Next day";foreground:root.foreground;onClicked:root.showDay(root.dayOffset+1)}
