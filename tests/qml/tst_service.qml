@@ -102,9 +102,10 @@ TestCase {
         verify(!worker().running)
     }
     function test_live_refresh_keeps_known_total_ascent() {
-        service.rememberCourse(racePath,{state:"ready",elevationGain:2450})
-        service.rememberCourse(racePath,{state:"ready",elevation:620})
+        service.rememberCourse(racePath,{state:"ready",elevationGain:2450,country:"VE"})
+        service.rememberCourse(racePath,{state:"ready",elevation:620,country:""})
         compare(service.courses[racePath].elevationGain,2450)
+        compare(service.courses[racePath].country,"VE")
     }
     function test_old_disk_profile_displays_while_normal_refresh_runs() {
         service.watchCourses([racePath])

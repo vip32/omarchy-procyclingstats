@@ -191,12 +191,13 @@ function matchesRace(race, options) {
 
 function courseSnapshot(value) {
     var out={state:value.state,fetchedAt:value.fetchedAt || ""}
-    ;["distance","elevationGain","profile","profileImage","profileImageWidth","profileImageHeight","profileLabel","stagePath","profileState","profileError","profileFetchedAt"].forEach(function(key){if(value[key]!==undefined)out[key]=value[key]})
+    ;["distance","elevationGain","country","profile","profileImage","profileImageWidth","profileImageHeight","profileLabel","stagePath","profileState","profileError","profileFetchedAt"].forEach(function(key){if(value[key]!==undefined)out[key]=value[key]})
     return out
 }
 
 function withCourse(detail,course) {
     var result=Object.assign({},detail)
+    if(!result.country)result.country=course.country || ""
     if(result.elevationGain===null || result.elevationGain===undefined)result.elevationGain=course.elevationGain
     if(result.distance===null || result.distance===undefined)result.distance=course.distance
     if(!(result.profile || []).length && !result.profileImage) {
@@ -312,4 +313,16 @@ function visibleIssues(issues,dismissed) {
         if(dismissed[key]!==issueFingerprint(issues[key]))visible[key]=issues[key]
     })
     return visible
+}
+
+// Regional-indicator flags render from the installed emoji font: no image fetch.
+function countryFlag(country) {
+    var code=String(country || "").toUpperCase()
+    if(!/^[A-Z]{2}$/.test(code) || code==="XX" || code==="ZZ")return ""
+    if(code==="UK")code="GB"
+    return String.fromCodePoint(127397+code.charCodeAt(0),127397+code.charCodeAt(1))
+}
+function raceTitle(name,country) {
+    var flag=countryFlag(country)
+    return (flag ? flag+"  " : "")+(name || "")
 }

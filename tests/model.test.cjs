@@ -406,3 +406,14 @@ test('total ascent survives snapshots and fills live details without using remai
     assert.equal(model.withCourse({elevationGain:0},course).elevationGain,0);
     assert.equal(model.withCourse({elevationGain:3000},course).elevationGain,3000);
 });
+
+test('country flags are local unicode and unknown countries stay absent', () => {
+    assert.equal(model.countryFlag('ve'),'🇻🇪');
+    assert.equal(model.countryFlag('UK'),'🇬🇧');
+    for(const code of ['',null,'xx','zz','Venezuela','https://example.com/flag'])assert.equal(model.countryFlag(code),'');
+    assert.equal(model.raceTitle('Demo','VE'),'🇻🇪  Demo');
+    assert.equal(model.raceTitle('Demo',''),'Demo');
+    const course=model.courseSnapshot({state:'ready',country:'VE'});
+    assert.equal(model.withCourse({country:''},course).country,'VE');
+    assert.equal(model.withCourse({country:'NL'},course).country,'NL');
+});

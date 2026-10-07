@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.5 — race country flags
+
+- Show each race's published country flag beside its name in lists and details.
+- Render flags locally without image downloads, and retain country codes in the seven-day course cache.
+- Keep flags absent when the race country is unknown; never infer it from rider nationalities.
+
 ## 0.12.4 — clearer elevation label
 
 - Rename HM to Elevation throughout race details.

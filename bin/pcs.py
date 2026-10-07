@@ -147,6 +147,30 @@ def profile(n):
             return points[::stride]
     return []
 
+def flag_country(node):
+    """Read a PCS flag only inside the caller's race-specific container."""
+    if node is None:return ''
+    for flag in [node,*node.nodes(cls='flag')]:
+        classes=flag.attrs.get('class','').split()
+        if 'flag' not in classes:continue
+        codes=[c.upper() for c in classes if re.fullmatch(r'[a-z]{2}',c)]
+        if len(codes)==1 and codes[0] not in ('XX','ZZ'):
+            return 'GB' if codes[0]=='UK' else codes[0]
+    return ''
+
+def race_country(doc):
+    heading=doc.first('h1')
+    if heading is None:return ''
+    country=flag_country(heading)
+    if country:return country
+    # The race flag is a sibling of h1 on PCS. Never scan the whole page:
+    # language pickers and rider/result tables also contain country flags.
+    for sibling in heading.parent.children:
+        if isinstance(sibling,Node) and 'flag' in sibling.attrs.get('class','').split():
+            country=flag_country(sibling)
+            if country:return country
+    return ''
+
 def race_metadata(category, race_class, name):
     category = clean(category).upper().replace(' ', '')
     is_tt = '(TT)' in category or bool(re.search(r'\b(?:ITT|TTT|TT|PROLOGUE)\b|TIME[ -]TRIAL|MIXED[ -]RELAY', name.upper()))
@@ -165,6 +189,7 @@ def load_overview(date):
             if meta:
                 for key in ('competitionCategory','raceClass','category','date'):
                     race[key] = meta[key]
+                if meta.get('country'):race['country']=meta['country']
                 if meta['status'] == 'finished': race['status'] = 'finished'
             merged.append(race)
         merged.extend(by_path.values())
@@ -192,7 +217,7 @@ def parse_overview(html):
             state = txt(li.first(cls='status')).lower()
             state = 'live' if state in ('live','racing') else ('finished' if state in ('finished','finish') else 'upcoming')
             races[path] = dict(path=path, name=txt(li.first(cls='title')) or txt(a), status=state,
-                               toGo=txt(li.first(cls='togo')), profile=profile(li), category='', eta='')
+                               toGo=txt(li.first(cls='togo')), profile=profile(li), country=flag_country(a), category='', eta='')
     for table in doc.nodes('table'):
         if not {'hp-next-to-finish','next-to-finish'} & set(table.attrs.get('class','').split()):
             continue
@@ -205,7 +230,7 @@ def parse_overview(html):
             if not path:
                 continue
             race = races.setdefault(path, dict(path=path,name=txt(a),status='scheduled',toGo='',profile=[]))
-            race.update(eta=txt(cells[1]), category=' · '.join(txt(x) for x in cells[4:6]))
+            race.update(country=flag_country(cells[3]) or race.get('country',''),eta=txt(cells[1]), category=' · '.join(txt(x) for x in cells[4:6]))
             race.update(race_metadata(txt(cells[4]) if len(cells)>4 else '',txt(cells[5]) if len(cells)>5 else '',race['name']))
     # PCS has occasionally nested yesterday's list inside today's list. Walk in
     # document order and stop at the next section heading, not every descendant.
@@ -221,7 +246,7 @@ def parse_overview(html):
             a,path = race_link(n)
             if path:
                 race = races.setdefault(path,dict(path=path,toGo='',profile=[],eta='',category=''))
-                race.update(name=txt(a),status='finished')
+                race.update(name=txt(a),status='finished',country=flag_country(a))
     if not recognized:
         raise SourceError('unsupported', 'PCS page format changed; today’s races could not be read.')
     order = {'live':0,'upcoming':1,'scheduled':2,'finished':3}
@@ -260,7 +285,7 @@ def parse_calendar(html, date):
             if not path:
                 continue
             winner = any(a.attrs.get('href', '').startswith('rider/') for a in values['winner'].nodes('a'))
-            races[path] = dict(path=path, name=txt(a), date=date,
+            races[path] = dict(path=path, name=txt(a), date=date,country=flag_country(values['race']),
                 status='finished' if winner else 'scheduled', profile=[], toGo='',
                 category=' · '.join(filter(None, [txt(values['cat.']), txt(values['class.'])])),
                 eta=txt(values['exp. finish']))
@@ -452,6 +477,10 @@ def course_cache_value(value,path):
         if gain is not None and (type(gain) not in (int,float) or not math.isfinite(gain) or not 0<=gain<=100000):
             raise ValueError('Invalid course elevation gain')
         out['elevationGain']=gain
+    country=value.get('country','')
+    if not isinstance(country,str) or (country and not re.fullmatch(r'[A-Z]{2}',country)):
+        raise ValueError('Invalid course country')
+    if country:out['country']=country
     stage=value.get('stagePath') or ''
     if stage:
         stage=race_path(stage)
@@ -512,10 +541,11 @@ def cached_course(path,value=None):
     """Best-effort cache: misses, damage and unwritable disks never block PCS."""
     # LiveStats snapshots omit total ascent. Do not erase course metadata when
     # refreshing their profile; the existing entry is validated and age-limited.
-    if isinstance(value,dict) and 'elevationGain' not in value:
+    if isinstance(value,dict) and ('elevationGain' not in value or not value.get('country')):
         previous=cached_course(path)
-        if 'elevationGain' in previous:
-            value=dict(value,elevationGain=previous['elevationGain'])
+        for key in ('elevationGain','country'):
+            if (key not in value or (key=='country' and not value[key])) and key in previous:
+                value=dict(value,**{key:previous[key]})
     try:
         path=race_path(path)
         name=hashlib.sha256(path.encode('utf-8')).hexdigest()+'.json'
@@ -557,7 +587,7 @@ def parse_course(html,path):
     course=course_fields(doc,path)
     if not info.get('date') and not course['profile'] and not course['profileImagePath']:
         raise SourceError('unsupported','PCS course information could not be read.')
-    return dict(state='ready',path=path,distance=metric(info.get('distance','')),elevationGain=elevation_gain(info),**course)
+    return dict(state='ready',path=path,country=race_country(doc),distance=metric(info.get('distance','')),elevationGain=elevation_gain(info),**course)
 
 def load_course(path):
     return attach_image(parse_course(fetch(path),path),path)
@@ -567,7 +597,7 @@ def parse_preview(html, path):
     values = race_info(doc)
     if not values.get('date'):
         raise SourceError('unsupported', 'PCS race preview could not be read.')
-    return dict(state='ready', path=path, status='upcoming', date=values['date'],
+    return dict(state='ready', path=path,country=race_country(doc), status='upcoming', date=values['date'],
         startTime=values.get('start time', ''), distance=metric(values.get('distance', '')),elevationGain=elevation_gain(values),
         departure=values.get('departure', ''), arrival=values.get('arrival', ''),
         **course_fields(doc,path))
@@ -629,7 +659,7 @@ def parse_race(html, path):
                               length=number(kp.get('lengte')),gradient=number(kp.get('avg_perc'),40)))
     keypoints.sort(key=lambda k:k['km'])
     header=txt(doc.first('title')).removeprefix('LiveStats for ')
-    return dict(state='ready',path=path,name=header,status=status,date=clean(data.get('race_date'),10),
+    return dict(state='ready',path=path,name=header,country=race_country(doc),status=status,date=clean(data.get('race_date'),10),
                 kmToGo=remaining,kmDone=done,distance=distance,avgSpeed=number(value('avg_speed','avg'),150),
                 elapsed=value('racetime'),start=clean(data.get('start_time_cet')) or value('starttime'),startZone='CET' if data.get('start_time_cet') else 'local',elevation=number(value('elevation_todo')),
                 groups=groups,stages=stage_links(doc,path),keypoints=keypoints[:40],profile=profile(doc.first(cls='bigProfile') or doc),
@@ -704,7 +734,7 @@ def parse_results(html,path):
     if elapsed=='—': elapsed=''
     course=course_fields(doc,path)
     points=course['profile']
-    return dict(state='ready',path=path,name=txt(doc.first('title')),status='finished',
+    return dict(state='ready',path=path,country=race_country(doc),name=txt(doc.first('title')),status='finished',
                 classifications=classifications,gcAvailable=any(c['kind']=='gc' for c in classifications),
                 stageRace=stage,stagePath=stage_path,stages=stage_links(doc,path),groups=[],profile=points,keypoints=[],date=info.get('date',''),
                 distance=metric(info.get('distance','')),elevationGain=elevation_gain(info),elapsed=elapsed,
@@ -808,7 +838,7 @@ def load_race(path,finished=False,upcoming=False,stage=False):
             results=parse_results(fetch(path),path)
             result.update({k:results[k] for k in ('classifications','gcAvailable','stageRace','stages')})
             result['elapsed']=results['elapsed']
-            for key in ('distance','elevationGain','avgSpeed','date'):
+            for key in ('distance','elevationGain','avgSpeed','date','country'):
                 if results[key] is not None and results[key]!='': result[key]=results[key]
             if results['profile']: result['profile']=results['profile']
             result['profileState']='ready' if result['profile'] else 'unavailable'

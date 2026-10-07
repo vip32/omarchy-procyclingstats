@@ -331,7 +331,7 @@ Panel {
                 archiveMode:root.archiveMode,archiveCount:root.archiveCount,archiveBusy:root.archiveBusy,archiveDates:root.archiveData.dates || [],dayOffset:root.dayOffset,date:root.dayDate,dayState:root.dayData.state || "",detailView:root.detailView,resultsHidden:root.resultsHidden,resultsRevealed:root.resultsRevealed, eventsCount:(root.detail.events || []).length, eventsState:root.detail.eventsState || "", filter:root.filter, rows:root.rows.length, selected:root.selected ? root.selected.path : "", detailState:root.detail.state || "",
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
-                classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",profileImage:!!root.detail.profileImage,distance:root.detail.distance,elevationGain:root.detail.elevationGain,profileLabel:root.detail.profileLabel || "",courseRows:root.rows.map(function(r){var c=root.rowCourse(r);return {path:r.path,distance:c.distance,hasProfile:!!c.profileImage || (c.profile || []).length>1}}),
+                classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",profileImage:!!root.detail.profileImage,country:root.detail.country || (root.selected ? root.selected.country : ""),distance:root.detail.distance,elevationGain:root.detail.elevationGain,profileLabel:root.detail.profileLabel || "",courseRows:root.rows.map(function(r){var c=root.rowCourse(r);return {path:r.path,distance:c.distance,hasProfile:!!c.profileImage || (c.profile || []).length>1}}),
                 filtersActive:root.filtersActive,unfilteredRows:root.unfilteredRaces.length,settingsCursor:settingsPage.cursorIndex,scrollY:Math.round(scroller.contentY),warning:root.connection,warningBanner:root.bannerConnection,settingsOpen:root.settingsOpen,settings:root.preferences,
                 demo:root.demo, vertical:root.bar ? root.bar.vertical : false})
         }
@@ -531,7 +531,7 @@ Panel {
                                     anchors.left:parent.left;anchors.leftMargin:Style.space(8)
                                     anchors.right:miniProfile.left;anchors.rightMargin:Style.space(8)
                                     anchors.verticalCenter:parent.verticalCenter;spacing:Style.space(2)
-                                    RaceText {width:parent.width;text:raceRow.modelData.name;font.bold:true;color:root.foreground}
+                                    RaceText {width:parent.width;text:Model.raceTitle(raceRow.modelData.name,raceRow.modelData.country || raceRow.course.country);font.bold:true;color:root.foreground}
                                     RaceText {width:parent.width;text:[root.archive ? raceRow.modelData.date : root.titleStatus(raceRow.modelData.status),raceRow.modelData.category,raceRow.course.profileLabel || "",raceRow.course.distance!==null && raceRow.course.distance!==undefined ? raceRow.course.distance+" km" : "",raceRow.modelData.status!=="finished" && raceRow.modelData.eta ? "ETA "+raceRow.modelData.eta : ""].filter(Boolean).join(" · ");font.pixelSize:Style.font.caption;color:raceRow.modelData.status==="live" ? Color.accent : root.dim}
                                 }
                                 Column {
@@ -580,7 +580,7 @@ Panel {
                         width:parent.width;spacing:Style.space(12)
                         Row {
                             width:parent.width;spacing:Style.space(6)
-                            RaceText {width:parent.width-detailActions.width-parent.spacing;text:root.selected ? root.selected.name : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
+                            RaceText {width:parent.width-detailActions.width-parent.spacing;text:root.selected ? Model.raceTitle(root.selected.name,root.detail.country || root.selected.country) : "";font.pixelSize:Style.font.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground}
                             Row {
                                 id:detailActions;spacing:Style.space(4)
                                 RaceIconButton {visible:(root.detail.stages || []).length>1;enabled:!!root.previousStage;iconText:"\uf053";tooltipText:"Previous stage ([)"+(root.previousStage ? " · "+root.previousStage.label : "");Accessible.name:tooltipText;bordered:true;foreground:root.foreground;onClicked:root.moveStage(-1)}

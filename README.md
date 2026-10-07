@@ -23,6 +23,7 @@ is required.
   stages as results, live coverage or an upcoming preview. Your active tab stays selected.
 - **Race calendar:** yesterday, today and tomorrow, plus Recent and Upcoming
   lists beyond adjacent days. Set the list size from 10 to 100 races in Settings.
+- **Country flags:** race flags beside list and detail titles, rendered locally without image downloads. Country codes are retained with the seven-day course cache.
 - **Profiles and results:** course outlines, distance and elevation gain for past, current and
   future races; finished-race results, stage GC, winner time and average speed.
   Profiles, distance and elevation gain are cached on disk for seven days.

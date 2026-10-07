@@ -41,6 +41,22 @@ def race_info_page():
     return '<ul class="keyvalueList">'+''.join('<li><div class="title">'+k+':</div><div class="value">'+v+'</div></li>' for k,v in [('Date','27 September 2026'),('Distance','160 km'),('Avg. speed winner','48.0 km/h')])+'</ul>'
 
 class Parsing(unittest.TestCase):
+    def test_race_country_comes_from_heading_not_language_or_winner(self):
+        header='<nav><span class="flag gb"></span></nav><div class="title"><span class="flag ve w32"></span><h1>Fictional race</h1></div>'
+        rider='<table><tr><td><span class="flag it"></span><a href="rider/demo">Winner</a></td></tr></table>'
+        page=header+race_info_page()+results_page()+rider
+        for parser in (pcs.parse_course,pcs.parse_preview,pcs.parse_results,pcs.parse_race):
+            with self.subTest(parser=parser.__name__):
+                self.assertEqual(parser(page+live(),'race/demo/2026/stage-2')['country'],'VE')
+                self.assertEqual(parser(page.replace('<span class="flag ve w32"></span>','')+live(),'race/demo/2026/stage-2')['country'],'')
+        self.assertEqual(pcs.race_country(pcs.checked_html('<h1><span class="flag nl"></span>Race</h1>')),'NL')
+        self.assertEqual(pcs.race_country(pcs.checked_html(rider)),'')
+
+    def test_country_flags_reject_unknown_or_ambiguous_codes(self):
+        for classes,want in [('flag xx',''),('flag zz',''),('flag w32',''),('flag us ca',''),('flag uk','GB'),('flag fr w32','FR')]:
+            with self.subTest(classes=classes):
+                self.assertEqual(pcs.flag_country(pcs.checked_html('<span class="'+classes+'"></span>')),want)
+
     def test_total_ascent_is_read_for_course_preview_and_results(self):
         page=race_info_page()+'<ul class="keyvalueList"><li><div class="title">Vertical meters:</div><div class="value">2,450 m</div></li></ul>'
         for parser in (pcs.parse_course,pcs.parse_preview,pcs.parse_results):
@@ -441,6 +457,15 @@ class Events(unittest.TestCase):
 class Calendar(unittest.TestCase):
     def page(self, winner=True):
         return '<input name="date" value="2026-09-28"><h4>UCI races</h4><table><tr>'+''.join('<th>'+x+'</th>' for x in ['Race','Class.','Cat.','Winner','Exp. finish'])+'</tr><tr><td><a href="race/demo/2026/stage-2">Demo stage 2</a></td><td>2.Pro</td><td>WE</td><td>'+('<a href="rider/demo">Winner</a>' if winner else '')+'</td><td>14:50 (08:50 CET)</td></tr></table><h4>National races and other disciplines</h4><table><tr><td><a href="race/gravel/2026/result">Gravel</a></td></tr></table>'
+    def test_calendar_country_uses_race_cell_and_survives_homepage_merge(self):
+        page=self.page().replace('<td><a href="race/', '<td><span class="flag ve"></span><a href="race/',1).replace('<a href="rider/', '<span class="flag it"></span><a href="rider/',1)
+        self.assertEqual(pcs.parse_calendar(page,'2026-09-28')['races'][0]['country'],'VE')
+        with patch.object(pcs,'fetch',side_effect=[HOME,page]):
+            result=pcs.load_overview('2026-09-28')
+        self.assertEqual(next(r for r in result['races'] if r['path']=='race/demo/2026/stage-2')['country'],'VE')
+        missing=page.replace('<span class="flag ve"></span>','')
+        self.assertEqual(pcs.parse_calendar(missing,'2026-09-28')['races'][0]['country'],'')
+
     def test_calendar_filters_other_disciplines_and_preserves_stage(self):
         result=pcs.parse_calendar(self.page(),'2026-09-28')
         self.assertEqual(len(result['races']),1)

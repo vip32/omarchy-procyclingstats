@@ -142,6 +142,7 @@ Item {
         if(Model.isFailure(value.state))next[path]=Object.assign({},prior,{state:value.state,error:value.error,profileError:value.error})
         else {
             var snapshot=Model.courseSnapshot(value)
+            if(!snapshot.country && prior.country)snapshot.country=prior.country
             if((snapshot.elevationGain===null || snapshot.elevationGain===undefined) && prior.elevationGain!==undefined)snapshot.elevationGain=prior.elevationGain
             if(snapshot.distance===null || snapshot.distance===undefined)snapshot.distance=prior.distance
             if(value.profileError) {
@@ -289,7 +290,7 @@ Item {
             result.races = (result.races || []).map(function(r) {
                 var old=races.filter(function(p){return p.path===r.path})[0] || {}
                 if(result.metadataError) {
-                    ["competitionCategory","raceClass","category"].forEach(function(k){if(!r[k] && old[k])r[k]=old[k]})
+                    ["competitionCategory","raceClass","category","country"].forEach(function(k){if(!r[k] && old[k])r[k]=old[k]})
                 }
                 return Object.assign({},r,{date:today})
             })
