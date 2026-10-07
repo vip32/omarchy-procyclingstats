@@ -23,7 +23,7 @@ Column {
         }
         Column {
             width:(parent.width-parent.spacing*2)*0.25;spacing:Style.space(4)
-            RaceText {text:"HM";font.pixelSize:Style.font.caption;color:root.dim}
+            RaceText {text:"ELEVATION";font.pixelSize:Style.font.caption;color:root.dim}
             RaceText {text:root.detail.elevationGain===null || root.detail.elevationGain===undefined ? "—" : root.detail.elevationGain+" m";font.pixelSize:Style.font.subtitle;color:root.foreground}
         }
     }

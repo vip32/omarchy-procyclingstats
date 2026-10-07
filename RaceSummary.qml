@@ -17,7 +17,7 @@ Column {
         Repeater {
             model:[
                 {label:"DISTANCE",value:root.value(root.detail.distance," km")},
-                {label:"HM",value:root.value(root.detail.elevationGain," m")},
+                {label:"ELEVATION",value:root.value(root.detail.elevationGain," m")},
                 {label:"WINNER TIME",value:root.concealed && root.detail.elapsed ? "Hidden" : root.detail.elapsed || "—"},
                 {label:"AVG. KM/H",value:root.concealed && root.detail.avgSpeed!==null && root.detail.avgSpeed!==undefined ? "Hidden" : root.value(root.detail.avgSpeed)}
             ]

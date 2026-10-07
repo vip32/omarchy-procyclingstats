@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.4 — clearer elevation label
+
+- Rename HM to Elevation throughout race details.
+
 ## 0.12.3 — elevation gain in race details
 
 - Show total ascent (HM) beside distance for finished, upcoming and live races, using PCS's published vertical meters.
