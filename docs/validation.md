@@ -1,5 +1,17 @@
 # Validation
 
+## 0.12.1 preview routing and warning dismissal — 2026-10-07
+
+- `PCS_REQUIRE_QT=1 tests/run`, the portable plugin validator and diff checks pass.
+  Cases cover today's upcoming/scheduled request mode, transition to live,
+  successful preview clearing an old LiveStats warning, and warning dismissal.
+- Native fictional checks verify ×/D's shared dismissal action keeps the warning
+  indicator active, suppresses identical retries, and shows changed issues and
+  recurrence after recovery. Updated `screenshots/warning.png` inspected visually.
+- Live checks load both European elite ITT races as ready previews with distance
+  and no warning; the women's published preview also includes start time/profile.
+  Previous selected race, tab and panel state restored after checks.
+
 ## 0.12.0 pins, stages and gap trends — 2026-10-06
 
 - `PCS_REQUIRE_QT=1 tests/run` passes Python parser, JavaScript model and Qt

@@ -47,7 +47,7 @@ omarchy restart shell
 ./demo/run --race-index 2 --pin --verify-following --output screenshots/stage-navigation.png
 ./demo/run --settings --output screenshots/settings.png
 ./demo/run --settings --settings-section refresh --output screenshots/refresh-settings.png
-./demo/run --warning blocked --output screenshots/warning.png
+./demo/run --warning blocked --verify-warning --output screenshots/warning.png
 ./demo/run --day 1 --compact --output screenshots/tomorrow-list.png
 ./demo/run --day 1 --output screenshots/tomorrow-preview.png
 ```
