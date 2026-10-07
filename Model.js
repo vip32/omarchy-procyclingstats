@@ -283,5 +283,32 @@ function editionName(race) {
 }
 
 function racePreview(race,detail,today,finished) {
-    return !!race && !finished && (race.date>today || (race.stageNavigation===true && detail.status==="upcoming"))
+    return !!race && !finished && (raceRequestMode(race,today)==="upcoming" || (race.stageNavigation===true && detail.status==="upcoming"))
+}
+
+function raceRequestMode(race,today) {
+    if(!race)return "live"
+    if(race.status==="finished")return "finished"
+    if(race.date>today || ((race.status==="upcoming" || race.status==="scheduled") && (!race.date || race.date===today)))return "upcoming"
+    return "live"
+}
+function issueFingerprint(issue) {return JSON.stringify([issue.state || "",issue.error || ""])}
+function dismissIssues(issues) {
+    var dismissed={}
+    Object.keys(issues || {}).forEach(function(key){dismissed[key]=issueFingerprint(issues[key])})
+    return dismissed
+}
+function retainedDismissals(issues,dismissed) {
+    var retained={}
+    Object.keys(issues || {}).forEach(function(key){
+        if(dismissed[key]===issueFingerprint(issues[key]))retained[key]=dismissed[key]
+    })
+    return retained
+}
+function visibleIssues(issues,dismissed) {
+    var visible={}
+    Object.keys(issues || {}).forEach(function(key){
+        if(dismissed[key]!==issueFingerprint(issues[key]))visible[key]=issues[key]
+    })
+    return visible
 }

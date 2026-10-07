@@ -88,6 +88,7 @@ def main():
     p.add_argument('--events',action='store_true',help='Capture the race-events tab')
     p.add_argument('--settings',action='store_true',help='Capture the settings screen')
     p.add_argument('--settings-section',choices=['filters','refresh','spoilers'],default='filters')
+    p.add_argument('--verify-warning',action='store_true',help='Verify dismissal, repeated failure and recovery with fictional warnings')
     p.add_argument('--warning',choices=['blocked','rate-limited','offline'],help='Show a fictional connection warning')
     p.add_argument('--race-index',type=int,default=0,choices=range(4))
     args=p.parse_args()
@@ -165,6 +166,20 @@ def main():
         if args.reveal: ipc(ID+'.panel','revealResults')
         if args.settings: ipc(ID+'.panel','settings')
         if args.warning: ipc(ID,'demoWarning',args.warning)
+        if args.verify_warning:
+            target=ID+'.panel'
+            kind=args.warning or 'blocked'
+            ipc(ID,'demoWarning',kind)
+            assert status(target)['warningBanner']['visible']
+            ipc(target,'dismissWarning')
+            assert not status(target)['warningBanner']['visible'] and status(target)['warning']['visible']
+            ipc(ID,'demoWarning',kind)
+            assert not status(target)['warningBanner']['visible']
+            ipc(ID,'demoWarning','offline' if kind!='offline' else 'blocked')
+            assert status(target)['warningBanner']['visible']
+            ipc(target,'dismissWarning');ipc(ID,'demoWarning','ready');ipc(ID,'demoWarning',kind)
+            assert status(target)['warningBanner']['visible']
+            print('Warning checks passed: dismiss, retained indicator, quiet retries, changed issue and recurrence after recovery.')
         wait_for(lambda:status(ID+'.panel')['opened'] and status(ID+'.panel')['expanded'] != args.compact)
         if args.settings:
             ipc(ID+'.panel','settingsSection',args.settings_section)

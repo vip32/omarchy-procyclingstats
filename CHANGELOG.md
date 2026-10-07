@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.1 — upcoming race previews and dismissible warnings
+
+- Read today's upcoming/scheduled races as previews rather than treating absent
+  LiveStats as a connection failure; switch to live requests when the list does.
+- Close warning banners with × or D. Repeated retries stay dismissed, while new
+  or changed issues and failures after recovery show again. The bike indicator
+  and automatic retries remain active.
+
 ## 0.12.0 — follow races and stages
 
 - Pin race editions with a compact star; keep matching races first in lists and

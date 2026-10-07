@@ -157,6 +157,7 @@ needed. The header’s flag always returns to the race list; Live returns to tod
 | Enter in Settings | Toggle a category or adjust the selected setting |
 | Star / `F` | Pin or unpin the selected race edition |
 | `[` / `]` in details | Previous / next published stage |
+| `D` / warning × | Dismiss the current warning banner |
 | `R` | Refresh, respecting configured intervals and cooldowns |
 | Esc | Back, then close |
 
@@ -192,7 +193,10 @@ is the published winner’s time for that race or stage, not accumulated GC time
 or the live clock. Average speed is the published winner’s average.
 
 Blocked or rate-limited access triggers a 15-minute cooldown. Previous data stays
-visible with its timestamp and warning. Changing HTML can require an adapter update.
+visible with its timestamp and warning. Close the banner with **×** or **D**;
+retries continue, and the bike indicator still reports the issue. Repeated retries
+stay dismissed for this shell session; new or changed problems, or a failure
+after recovery, show again. Changing HTML can require an adapter update.
 
 ## Development and support
 

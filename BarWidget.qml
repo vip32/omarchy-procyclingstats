@@ -36,6 +36,9 @@ Panel {
     readonly property var detail: selected && service ? Model.withCourse(service.details[selected.path] || ({}),service.courses[selected.path] || ({})) : ({})
     readonly property var preferences: Model.settings(demo ? {} : settings)
     readonly property var connection: Model.warning(service ? service.updateIssues : {},now,service ? service.nextAllowed : 0,service ? service.loading : false)
+    property var dismissedWarnings: ({})
+    readonly property var bannerConnection: Model.warning(Model.visibleIssues(service ? service.updateIssues : {},dismissedWarnings),now,service ? service.nextAllowed : 0,service ? service.loading : false)
+    function dismissWarning() {dismissedWarnings=Model.dismissIssues(service ? service.updateIssues : {})}
     readonly property color warningColor: bar ? bar.urgent : Color.urgent
     property bool settingsOpen: false
     property string settingsError: ""
@@ -224,8 +227,9 @@ Panel {
         })
     }
     function openSource() {
-        var sourcePath=selected ? (expanded && detailView==="events" && detail.stagePath ? detail.stagePath : selected.path) : ""
-        var path = selected ? sourcePath + (expanded && detailView === "events" ? "/live/race-events" : !preview && (selected.status === "live" || selected.status === "upcoming") ? "/live" : "") : ""
+        var events=expanded && detailView==="events" && !preview
+        var sourcePath=selected ? (events && detail.stagePath ? detail.stagePath : selected.path) : ""
+        var path = selected ? sourcePath + (events ? "/live/race-events" : !preview && (selected.status === "live" || selected.status === "upcoming") ? "/live" : "") : ""
         openPcsPath(path)
     }
     function openPcsPath(path) {
@@ -244,7 +248,7 @@ Panel {
         if(resetList) {cursorIndex=0;expanded=false}
         if(archive && dashboardVisible && service)service.watchArchive(archiveMode,archiveCount,false)
     }
-    onDemoChanged: {settingsError="";demoPins=[];archiveSelection=null}
+    onDemoChanged: {settingsError="";dismissedWarnings=({});demoPins=[];archiveSelection=null}
     onSettingsOpenChanged: Qt.callLater(function(){scroller.contentY=0;root.updateVisibleCourses()})
     onFilterChanged: { cursorIndex = 0; expanded = false;if(!archive && service){service.stopArchive("recent");service.stopArchive("upcoming")} }
     onSelectedChanged: {
@@ -270,7 +274,7 @@ Panel {
     Timer { interval:15000; running:root.dashboardVisible || root.connection.visible; repeat:true; onTriggered:root.now=Date.now() }
     Connections {
         target:root.service
-        function onUpdateIssuesChanged() {root.now=Date.now()}
+        function onUpdateIssuesChanged() {root.now=Date.now();root.dismissedWarnings=Model.retainedDismissals(root.service.updateIssues,root.dismissedWarnings)}
         function onNextAllowedChanged() {root.now=Date.now()}
     }
     IpcHandler {
@@ -279,6 +283,7 @@ Panel {
         function dock(): void { root.dockDashboard() }
         function open(): void { root.showDashboard() }
         function close(): void { root.hideDashboard() }
+        function dismissWarning(): void {root.dismissWarning()}
         function expand(): void { root.showDashboard(); root.select(root.cursorIndex, true) }
         function events(): void { root.showDashboard(); root.select(root.cursorIndex,true); root.chooseDetailView("events") }
         function detailTab(view: string): void {root.chooseDetailView(view)}
@@ -325,7 +330,7 @@ Panel {
                 geometry:{x:panel.cardOrigin.x,y:panel.cardOrigin.y,width:panel.contentWidth,height:panel.contentHeight,screen:panel.screen ? panel.screen.name : ""},
                 riderCount:(root.detail.groups || []).reduce(function(n,g){return n+(g.riders || []).length},0),
                 classificationRows:(root.classification.rows || []).length, classificationTitle:root.classification.title || "",profileImage:!!root.detail.profileImage,distance:root.detail.distance,profileLabel:root.detail.profileLabel || "",courseRows:root.rows.map(function(r){var c=root.rowCourse(r);return {path:r.path,distance:c.distance,hasProfile:!!c.profileImage || (c.profile || []).length>1}}),
-                filtersActive:root.filtersActive,unfilteredRows:root.unfilteredRaces.length,settingsCursor:settingsPage.cursorIndex,scrollY:Math.round(scroller.contentY),warning:root.connection,settingsOpen:root.settingsOpen,settings:root.preferences,
+                filtersActive:root.filtersActive,unfilteredRows:root.unfilteredRaces.length,settingsCursor:settingsPage.cursorIndex,scrollY:Math.round(scroller.contentY),warning:root.connection,warningBanner:root.bannerConnection,settingsOpen:root.settingsOpen,settings:root.preferences,
                 demo:root.demo, vertical:root.bar ? root.bar.vertical : false})
         }
     }
@@ -404,6 +409,7 @@ Panel {
                 if(k==="f" && root.selected)root.pinRace(root.selected.path)
                 if(k==="[" && root.expanded)root.moveStage(-1)
                 if(k==="]" && root.expanded)root.moveStage(1)
+                if(k==="d")root.dismissWarning()
                 if(k==="r")root.refreshView()
                 if(k==="o")root.openSource()
                 if(k==="t" && root.expanded && !root.preview)root.chooseDetailView(root.detailView==="events" ? "overview" : "events")
@@ -412,14 +418,18 @@ Panel {
             }
             BorderSurface {
                 id:connectionBanner
-                visible:root.connection.visible
+                visible:root.bannerConnection.visible
                 width:parent.width;height:visible ? warningText.implicitHeight+Style.space(20) : 0
                 color:"transparent";radius:Style.cornerRadius
                 borderSpec:Border.controlSpec("normal",root.warningColor,root.warningColor)
                 Column {
                     id:warningText;x:Style.space(10);y:Style.space(10);width:parent.width-Style.space(20);spacing:Style.space(4)
-                    RaceText {width:parent.width;text:"⚠ "+root.connection.title;font.bold:true;color:root.warningColor}
-                    RaceText {width:parent.width;text:root.connection.text;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground;font.pixelSize:Style.font.caption}
+                    Row {
+                        width:parent.width;spacing:Style.space(6)
+                        RaceText {width:parent.width-dismissWarningButton.width-parent.spacing;text:"⚠ "+root.bannerConnection.title;font.bold:true;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.warningColor}
+                        Button {id:dismissWarningButton;text:"×";width:Style.space(24);height:width;tooltipText:"Dismiss warning (D)";Accessible.name:"Dismiss warning";foreground:root.warningColor;onClicked:root.dismissWarning()}
+                    }
+                    RaceText {width:parent.width;text:root.bannerConnection.text;wrapMode:Text.WordWrap;elide:Text.ElideNone;color:root.foreground;font.pixelSize:Style.font.caption}
                 }
             }
             Flickable {

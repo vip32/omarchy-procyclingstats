@@ -207,7 +207,7 @@ Item {
         var key = path || "overview"
         if ((worker.running && currentPath === path) || queue.indexOf(path) >= 0) return
         var race = findRace(path)
-        var finished = (race && (race.status === "finished" || race.date > today)) || (details[path] && details[path].status!=="live")
+        var finished = (Model.raceRequestMode(race,today)!=="live") || (details[path] && details[path].status!=="live")
         if(path.indexOf("course:")===0 && !courseDue(path.slice(7)))return
         if (path.indexOf("archive:")!==0 && path.indexOf("course:")!==0 && Date.now() - Number(lastRequests[key] || 0) < Model.requestInterval(path, finished, options)) return
         queue = queue.concat([path]).slice(0, 5)
@@ -260,8 +260,10 @@ Item {
         else {
             var race = findRace(currentPath)
             if(stageRaces[currentPath]) worker.command=worker.command.concat(["--stage"])
-            else if (race && race.status === "finished") worker.command = worker.command.concat(["--finished"])
-            else if (race && race.date > today) worker.command = worker.command.concat(["--upcoming"])
+            else {
+                var mode=Model.raceRequestMode(race,today)
+                if(mode!=="live")worker.command=worker.command.concat(["--"+mode])
+            }
         }
         worker.running = true
     }

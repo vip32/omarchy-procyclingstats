@@ -392,6 +392,26 @@ TestCase {
         compare(service.races.length,0)
         compare(service.watched.length,0)
     }
+    function test_today_upcoming_and_scheduled_use_preview_then_switch_to_live() {
+        for(var i=0;i<2;i++) {
+            service.races=[Object.assign({},race,{date:service.today,status:i===0 ? "upcoming" : "scheduled"})]
+            service.lastRequests={};worker().running=false;service.queue=[]
+            service.watch(racePath)
+            verify(worker().command.indexOf("--upcoming")>=0)
+        }
+        service.races=[Object.assign({},race,{date:service.today,status:"live"})]
+        service.lastRequests={};worker().running=false;service.queue=[]
+        service.watch(racePath)
+        verify(worker().command.indexOf("--upcoming")<0)
+        verify(worker().command.indexOf("--finished")<0)
+    }
+    function test_preview_success_clears_old_livestats_warning() {
+        deliver({state:"unsupported",error:"LiveStats unavailable"})
+        verify(service.updateIssues[racePath]!==undefined)
+        deliver({path:racePath,state:"ready",status:"upcoming",date:service.today,distance:22.1})
+        verify(service.updateIssues[racePath]===undefined)
+        compare(service.details[racePath].status,"upcoming")
+    }
     function test_tomorrow_routes_to_preview_without_events() {
         var future={path:"race/future/2026/stage-2",name:"Future",date:"9999-01-01",status:"scheduled"}
         service.dayLists={future:{races:[future]}}

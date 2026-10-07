@@ -365,3 +365,36 @@ test('preview is a boolean when returning from tomorrow to a live race with no s
     assert.equal(model.racePreview({stageNavigation:true},{status:'upcoming'},'2026-10-06',false),true);
     assert.equal(model.racePreview({stageNavigation:true},{status:'finished'},'2026-10-06',true),false);
 });
+
+test('today pre-race states route to previews without suppressing genuine live failures', () => {
+    for(const status of ['upcoming','scheduled']) {
+        const race={status,date:'2026-10-07'};
+        assert.equal(model.raceRequestMode(race,'2026-10-07'),'upcoming');
+        assert.equal(model.racePreview(race,{},'2026-10-07',false),true);
+        assert.equal(model.raceRequestMode({status},'2026-10-07'),'upcoming');
+    }
+    assert.equal(model.raceRequestMode({status:'live',date:'2026-10-07'},'2026-10-07'),'live');
+    assert.equal(model.raceRequestMode({status:'finished',date:'2026-10-07'},'2026-10-07'),'finished');
+    assert.equal(model.raceRequestMode({status:'scheduled',date:'2026-10-06'},'2026-10-07'),'live');
+    assert.equal(model.raceRequestMode(null,'2026-10-07'),'live');
+});
+test('dismissing warnings preserves source issues and ignores retry timestamps', () => {
+    const issues={race:{state:'offline',error:'Could not connect',failedAt:now,lastSuccess:'saved'}};
+    const dismissed=model.dismissIssues(issues);
+    assert.equal(Object.keys(model.visibleIssues(issues,dismissed)).length,0);
+    const retry={race:{...issues.race,failedAt:now+60000}};
+    const retained=model.retainedDismissals(retry,dismissed);
+    assert.equal(Object.keys(model.visibleIssues(retry,retained)).length,0);
+    assert.equal(issues.race.state,'offline');
+    assert.equal(model.warning(issues,now,0,false).visible,true);
+});
+test('new issues, changed failures and recurrence after recovery show again', () => {
+    const issues={race:{state:'offline',error:'Could not connect'}};
+    const dismissed=model.dismissIssues(issues);
+    for(const changed of [{race:{state:'blocked',error:'Rejected'}},{race:{state:'offline',error:'Different error'}},{...issues,profile:{state:'error',error:'Profile error'}}]) {
+        const visible=model.visibleIssues(changed,model.retainedDismissals(changed,dismissed));
+        assert.equal(Object.keys(visible).length,1);
+    }
+    const recovered=model.retainedDismissals({},dismissed);
+    assert.equal(Object.keys(model.visibleIssues(issues,recovered)).length,1);
+});
